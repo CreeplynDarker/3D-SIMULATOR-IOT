@@ -92,3 +92,12 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   time, so the holes line up with the anchors. The fan stand, fan leads, probe cable and coil, and resistor leads are
   drawn outside the §13.2 bounding boxes. The ESP32's 13 mm height includes 6.5 mm of exposed pins, because its
   §13.2 box sits just above the breadboard. Affects `scene/models/`, `scripts/crop-textures.ts`, `package.json`.
+- **D-025 · 2026-10-30 · Wires are routed by rule, not hand-placed.** Each wire leaves its anchor along the anchor's
+  exit direction (10 mm, or 8 mm straight up from a hole or pin). It rises to a travel height of 8 mm over the
+  tallest part it crosses, clamped to 10–30 mm, and walks around parts taller than 27 mm (fan, adapter, laptop).
+  Shoulder points keep the centripetal Catmull–Rom curve from overshooting. A breadboard end takes the free hole
+  nearest the other end; holes used by or covered by a resistor are excluded, and no two wires share a hole. Two
+  extra unit tests back the [human] check: no rendered wire enters a component box other than its own two ends, and
+  no curve rises more than 2 mm above its travel height. The USB cable has hand-placed via points around the front of
+  the breadboard. The Wi-Fi arc is a dashed quadratic Bézier 0.14 m above the screen top. Affects
+  `scene/wires/route.ts`.

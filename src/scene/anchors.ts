@@ -203,7 +203,7 @@ const NODE_FREE_ROWS: Record<BbNode, readonly BbRow[]> = {
   dq: ['b', 'c', 'd', 'e'], // row a holds r_pu_ds
   tach: ['b', 'c', 'd', 'e'], // row a holds r_pu_tach
   divTop: ['a', 'b', 'c', 'd'], // row e holds r_div_top
-  divMid: ['a', 'c', 'd'], // rows b and e hold r_div_bot and r_div_top
+  divMid: ['c', 'd'], // rows b and e hold r_div_bot and r_div_top; r_div_bot's body covers row a
 };
 
 /** Free holes (world, m) a wire may use for a `bb.*` anchor; empty for other anchors. */

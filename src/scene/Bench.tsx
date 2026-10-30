@@ -14,6 +14,8 @@ import { photoTexturesReady } from './models/materials.ts';
 import { Mpu6050 } from './models/Mpu6050.tsx';
 import { Relay } from './models/Relay.tsx';
 import { Resistor } from './models/Resistor.tsx';
+import { WifiArc } from './wires/WifiArc.tsx';
+import { Wires } from './wires/Wires.tsx';
 
 /** Scene hooks for the e2e tests (`window.__scene`, only with `?debug=1`). */
 export interface SceneDebug {
@@ -56,7 +58,7 @@ function Placed({ id, children }: { id: ComponentId; children: ReactNode }) {
   );
 }
 
-/** The bench top and every §13.2 component at its position. */
+/** The bench top, every §13.2 component at its position, the wires (§13.3) and the Wi-Fi arc. */
 export function Bench() {
   return (
     <>
@@ -72,6 +74,8 @@ export function Bench() {
       <Placed id="fan">
         <FanStand />
       </Placed>
+      <Wires />
+      <WifiArc />
     </>
   );
 }
