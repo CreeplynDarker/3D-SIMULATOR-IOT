@@ -43,7 +43,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-30 · sim/thermal.ts (§6.2): warm start 34.072 °C, overheat 1.0 steady state 69.07 °C, 63% rise 179.9 s · no tuning
 - [x] P2.3 Faults
   2026-10-30 · sim/faults.ts (§6.9): steps, linear ramps from the current value, clearAll, FAULT_SET per change (clearAll emits one with detail "clearAll") · no tuning
-- [ ] P2.4 Sensors (deps: P2.1)
+- [x] P2.4 Sensors (deps: P2.1)
+  2026-10-30 · sim/sensors/: MPU6050 DLPF + noise + quantise/clip, ACS712, divider + ADC with INL, DS18B20 lag/85/−127/0.75 s timing, tach 2 edges/rev · no tuning
 - [ ] P2.5 Relay and supply
 - [ ] P2.6 Plant integration (deps: P2.1–P2.5)
 - [ ] P2.7 Sim worker (deps: P2.6)

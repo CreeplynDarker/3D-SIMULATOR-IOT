@@ -138,3 +138,11 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   current (`current_A`, which drives the thermal model and `power_W`) and the instantaneous current with ripple
   (`currentInst_A`, which the ACS712 sees). GPIO levels are `0 | 1`, with `GPIO_LOW = 0` (relay IN2 is active
   LOW). Affects `src/sim/`.
+- **D-030 · 2026-10-30 · Formula constants that §6 fixes stay in `sim/` as named constants.** §6.5's ADC
+  nonlinearity uses a 3.1 V period, and §6.3 uses fixed shape factors (0.3 and 0.2 on the blade-pass and axial
+  terms, a π/4 phase). They are part of the normative equations, not §5.2 tunables, and `config.ts` must stay
+  verbatim (§5.1). So each becomes a named, commented constant beside its formula (`ADC_INL_PERIOD_V`,
+  `VIB_SHAPE`), which keeps AGENTS.md rule 1's intent: no unexplained numbers. Noise samples are drawn by the
+  caller and passed in (`acs712Out_V(i, cfg, noise_V)`, `adcCounts(v, cfg, noise_counts)`), so the noiseless
+  checks pass 0. Before its first conversion completes, the DS18B20 register holds the power-on value 85 °C. A new
+  reading is signalled by the `readings` counter. Affects `sim/sensors/`, `sim/vibration.ts`.
