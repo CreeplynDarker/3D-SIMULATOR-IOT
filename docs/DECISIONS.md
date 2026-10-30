@@ -32,3 +32,13 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   2020-12 from `z.toJSONSchema`) and takes an optional output directory, so the test writes to a temp folder.**
   `src/shared/protocol.ts` is kept verbatim from §10.1 (and in `.prettierignore`); `z.infer` types share each schema's
   name. Affects `scripts/export-schema.ts`, `public/schema/`.
+- **D-014 · 2026-10-29 · Worker messages add what §10.2 implies but doesn't name.** (a) `connect{port}` from main to
+  each worker hands over its end of the "Wi-Fi" MessageChannel. (b) The RCF worker also answers `ping{id}` with
+  `pong{id}`, because P0.6 requires a ping round trip for both workers. (c) `Snapshot` carries `lagging` (the pacing
+  flag in §10.2), and `faults` is the full §6.9 key set. Messages are plain objects discriminated by `type`; the
+  `Packet`/`Verdict`/`Command` shapes are untouched, so `PROTOCOL_VERSION` stays 1. Affects `shared/messages.ts`.
+- **D-015 · 2026-10-29 · Until P2.7/P4.4, the worker stubs echo through the channel.** On `play` the sim stub sends one
+  zero packet over the channel (and copies it to main); the RCF stub validates it with `Packet` and answers an
+  unscored `UNTRAINED` verdict, which the sim forwards to main as `verdictIn`. `App.tsx` exposes
+  `window.__pdm` (ping, play and the messages seen) only for the e2e tests. Affects `sim/worker.ts`, `rcf/worker.ts`,
+  `App.tsx`.
