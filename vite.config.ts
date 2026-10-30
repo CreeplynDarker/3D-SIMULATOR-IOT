@@ -20,6 +20,7 @@ export default defineConfig({
         statements: 80,
         // AGENTS.md: each pure-core folder keeps its own 80%, not just the average
         'src/sim/**/*.ts': { lines: 80, functions: 80, branches: 80, statements: 80 },
+        'src/firmware/**/*.ts': { lines: 80, functions: 80, branches: 80, statements: 80 },
       },
     },
   },

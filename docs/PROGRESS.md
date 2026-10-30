@@ -54,7 +54,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 ## P3 — Firmware mirror (deps: P2.6)
 
-- [ ] P3.1 Sampler
+- [x] P3.1 Sampler
+  2026-10-30 · firmware/sampler.ts: 1 kHz window buffers (two sets, alternating), DS18B20 request/read at +0.75 s, PCNT edges per window; firmware coverage threshold on · no tuning
 - [ ] P3.2 Features (deps: P3.1)
 - [ ] P3.3 Limits and flags (deps: P3.2)
 - [ ] P3.4 State machine (deps: P3.3)
