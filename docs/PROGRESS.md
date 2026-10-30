@@ -37,7 +37,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 ## P2 — Plant (deps: P0)
 
-- [ ] P2.1 Fan
+- [x] P2.1 Fan
+  2026-10-30 · sim/fan.ts (§6.1): 3,800 RPM / 0.180 A at 12 V, friction 0.3 → −7.5% RPM and ≈ 0.26 A, coast-down ≈ 9.1 s · no tuning
 - [ ] P2.2 Thermal
 - [ ] P2.3 Faults
 - [ ] P2.4 Sensors (deps: P2.1)

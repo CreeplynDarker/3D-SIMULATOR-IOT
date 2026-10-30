@@ -131,3 +131,10 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   in the wire list and follow the moved anchors. W04 now leaves NO2 at the +x end and turns back toward the fan,
   so the router keeps a rise point unless a lead is within 1 mm of travel height (it was 4 mm); otherwise the curve
   bulged 2 mm. Affects `scene/anchors.ts` (`RELAY_DIMS`), `scene/wires/route.ts`, PLAN §1.5 and §2.
+- **D-029 · 2026-10-30 · Plant code style: plain state objects mutated by `step*` functions, config passed in.**
+  Each model exposes `create*()` and `step*(state, cfg, inputs…, dt_s)`, which mutates the state, so a 2 kHz step
+  allocates nothing. The config is a parameter typed `SimConfig` (`Config` with its literal types widened,
+  `sim/types.ts`), so tests and the worker's `init{config}` can pass a tuned copy. The fan keeps both the mean
+  current (`current_A`, which drives the thermal model and `power_W`) and the instantaneous current with ripple
+  (`currentInst_A`, which the ACS712 sees). GPIO levels are `0 | 1`, with `GPIO_LOW = 0` (relay IN2 is active
+  LOW). Affects `src/sim/`.
