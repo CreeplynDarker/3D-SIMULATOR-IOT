@@ -86,7 +86,7 @@ USB-C at the bottom, module antenna at the top, viewed from the component side:
 
 | ID | Question | Default used | Where it matters |
 | --- | --- | --- | --- |
-| OPEN-1 | Is RPM a 6th RCF feature? (The report lists 5.) | **Yes**: `rcf.features` includes `rpm`. Keep it switchable in config. | §5.1, §9 |
+| OPEN-1 | Is RPM a 6th RCF feature? (The report lists 5.) | **Closed 2026-10-30 (team): yes.** `rcf.features` includes `rpm`; it stays switchable in config. | §5.1, §9 |
 | OPEN-2 | ACS712 variant (5/20/30 A) | 5 A, 0.185 V/A | §6.5 |
 | OPEN-3 | Tach pulses per revolution | 2 | §6.7 |
 | OPEN-4 | MPU6050 module on hand and its mounting | GY-521 taped flat on the frame's top edge | §13 |

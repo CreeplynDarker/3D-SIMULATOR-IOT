@@ -58,3 +58,6 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   unknown keys. **Exception to AGENTS.md rule 5:** `PROTOCOL_VERSION` stays 1, because no build has shipped and no
   fixtures exist yet. Schemas regenerated. Affects `shared/protocol.ts`, `public/schema/verdict.schema.json`,
   PLAN §9.3 and §10.1.
+- **D-019 · 2026-10-30 · OPEN-1 closed: RPM stays the 6th RCF feature (team decision).** This confirms D-006 and
+  the default in §2. `rcf.features` is unchanged, and the feature list stays switchable in config (D-018 keeps
+  verdicts valid either way). Affects PLAN §2.
