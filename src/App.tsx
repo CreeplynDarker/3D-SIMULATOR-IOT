@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { BenchViewport } from './scene/Bench.tsx';
-import type { MainToRcf, MainToSim, RcfToMain, SimToMain } from './shared/messages.ts';
-import type { Packet, Verdict } from './shared/protocol.ts';
+import { CONFIG } from './shared/config.ts';
+import type { MainToRcf, MainToSim, RcfToMain, SimToMain, Snapshot } from './shared/messages.ts';
+import { type Command, type Packet, PROTOCOL_VERSION, type Verdict } from './shared/protocol.ts';
+import { appStore } from './store/index.ts';
+import type { Speed } from './store/slices/sim.ts';
 
 type WorkerTarget = 'sim' | 'rcf';
 
@@ -9,6 +12,10 @@ type WorkerTarget = 'sim' | 'rcf';
 export interface DebugApi {
   ping(target: WorkerTarget): Promise<number>;
   play(): void;
+  pause(): void;
+  setSpeed(x: Speed): void;
+  command(cmd: Command['cmd']): void;
+  snapshot(): Snapshot | null;
   simPackets(): Packet[];
   simVerdictsIn(): Verdict[];
   rcfVerdicts(): Verdict[];
@@ -28,7 +35,7 @@ interface Workers {
   dispose(): void;
 }
 
-/** Starts both workers and joins them with the "Wi-Fi" MessageChannel (spec §10.2). */
+/** Starts both workers, joins them with the "Wi-Fi" MessageChannel and initialises the sim (spec §10.2). */
 function startWorkers(): Workers {
   const sim = new Worker(new URL('./sim/worker.ts', import.meta.url), { type: 'module', name: 'sim' });
   const rcf = new Worker(new URL('./rcf/worker.ts', import.meta.url), { type: 'module', name: 'rcf' });
@@ -37,11 +44,53 @@ function startWorkers(): Workers {
   const wifi = new MessageChannel();
   postSim({ type: 'connect', port: wifi.port1 }, [wifi.port1]);
   postRcf({ type: 'connect', port: wifi.port2 }, [wifi.port2]);
+  postSim({ type: 'init', config: CONFIG, seed: CONFIG.seed, warmStart: CONFIG.thermal.warmStart });
   const dispose = () => {
     sim.terminate();
     rcf.terminate();
   };
   return { sim, rcf, postSim, postRcf, dispose };
+}
+
+/** Copies worker output into the store; components only read the store (AGENTS.md rule 6). */
+function routeToStore(workers: Workers): void {
+  workers.sim.addEventListener('message', (event: MessageEvent<SimToMain>) => {
+    const msg = event.data;
+    const s = appStore.getState();
+    if (msg.type === 'snapshot') s.sim.setSnapshot(msg.snapshot);
+    else if (msg.type === 'packet') s.series.pushPacket(msg.packet);
+    else if (msg.type === 'event') s.series.pushEvent(msg.event);
+    else if (msg.type === 'log') s.console.append({ kind: 'log', text: msg.line });
+  });
+  workers.rcf.addEventListener('message', (event: MessageEvent<RcfToMain>) => {
+    const msg = event.data;
+    const s = appStore.getState();
+    if (msg.type === 'verdict') {
+      s.model.setLastVerdict(msg.verdict);
+      s.series.pushVerdict(msg.verdict);
+    } else if (msg.type === 'modelStatus') s.model.setStatus(msg.status, msg.progress, msg.reason);
+  });
+}
+
+/** Sim controls shared by the debug API (and, in P5, the top bar and operator panel). */
+function simControls(workers: Workers) {
+  let seq = 0;
+  return {
+    play: () => {
+      workers.postSim({ type: 'play' });
+      appStore.getState().sim.setPlaying(true);
+    },
+    pause: () => {
+      workers.postSim({ type: 'pause' });
+      appStore.getState().sim.setPlaying(false);
+    },
+    setSpeed: (x: Speed) => {
+      workers.postSim({ type: 'speed', x });
+      appStore.getState().sim.setSpeed(x);
+    },
+    command: (cmd: Command['cmd']) =>
+      workers.postSim({ type: 'command', command: { v: PROTOCOL_VERSION, kind: 'command', seq: seq++, cmd } }),
+  };
 }
 
 /** Exposes `window.__pdm` for the e2e tests; returns a function that removes it. */
@@ -58,17 +107,17 @@ function installDebugApi(workers: Workers): () => void {
     pending.delete(id);
     entry.resolve(performance.now() - entry.t0_ms);
   };
-  workers.sim.onmessage = (event: MessageEvent<SimToMain>) => {
+  workers.sim.addEventListener('message', (event: MessageEvent<SimToMain>) => {
     const msg = event.data;
     if (msg.type === 'pong') onPong(msg.id);
     else if (msg.type === 'packet') simPackets.push(msg.packet);
     else if (msg.type === 'verdictIn') simVerdictsIn.push(msg.verdict);
-  };
-  workers.rcf.onmessage = (event: MessageEvent<RcfToMain>) => {
+  });
+  workers.rcf.addEventListener('message', (event: MessageEvent<RcfToMain>) => {
     const msg = event.data;
     if (msg.type === 'pong') onPong(msg.id);
     else if (msg.type === 'verdict') rcfVerdicts.push(msg.verdict);
-  };
+  });
 
   window.__pdm = {
     ping: (target) =>
@@ -78,7 +127,8 @@ function installDebugApi(workers: Workers): () => void {
         if (target === 'sim') workers.postSim({ type: 'ping', id });
         else workers.postRcf({ type: 'ping', id });
       }),
-    play: () => workers.postSim({ type: 'play' }),
+    ...simControls(workers),
+    snapshot: () => appStore.getState().sim.snapshot,
     simPackets: () => [...simPackets],
     simVerdictsIn: () => [...simVerdictsIn],
     rcfVerdicts: () => [...rcfVerdicts],
@@ -92,6 +142,7 @@ function installDebugApi(workers: Workers): () => void {
 export function App() {
   useEffect(() => {
     const workers = startWorkers();
+    routeToStore(workers);
     const debug = new URLSearchParams(window.location.search).get('debug') === '1';
     const removeDebugApi = debug ? installDebugApi(workers) : () => undefined;
     return () => {

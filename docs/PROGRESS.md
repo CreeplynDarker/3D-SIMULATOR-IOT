@@ -49,7 +49,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-30 · sim/relay.ts (LOW = coil on, NO after 10 ms continuous, NC 5 ms after release), sim/supply.ts (sag, fan on NO2) · no tuning
 - [x] P2.6 Plant integration (deps: P2.1–P2.5)
   2026-10-30 · sim/plant.ts (§6.10 order, Controller, scheduled actions, snapshot) + sim/vibration.ts (§6.3): healthy a_RMS 0.1205 g, imbalance 0.3 g ×5.17 with I_RMS ±0.000%, 600 s in 0.70 s; sim coverage 99% · no tuning
-- [ ] P2.7 Sim worker (deps: P2.6)
+- [x] P2.7 Sim worker (deps: P2.6)
+  2026-10-30 · sim/worker.ts paces the plant (4 ms ticks, carried debt, 0.2 s cap → lagging), snapshots ≤ 60 Hz, faults/commands/raw; stand-in firmware until P3.6; App routes worker output to the store; e2e 9.95× at 10×, pause stops the clock · no tuning
 
 ## P3 — Firmware mirror (deps: P2.6)
 

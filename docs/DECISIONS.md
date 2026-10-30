@@ -158,3 +158,15 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   than Vitest's coverage-instrumented copy (0.70 s plain, about 4.6 s instrumented). Coverage now has a per-folder
   80% threshold for `src/sim/` in addition to the global one. Affects `sim/plant.ts`, `sim/vibration.ts`,
   `vite.config.ts`.
+- **D-032 · 2026-10-30 · The sim worker paces the real plant; the firmware is a stand-in until P3.6.** Every 4 ms
+  wall tick adds `elapsed · speed` to a carried sim-time debt and runs whole steps against it, so the clock does not
+  drift from rounding. More than 0.2 s owed in one tick is capped and sets `lagging`. Snapshots go out at most
+  `snapshotHz` (60/s) and on pause, reset and init. Faults, `clearFaults` and commands are scheduled at the current
+  sim time and apply on the next step. `raw{on}` streams the 1 kHz MPU samples as transferable `Float32Array`s with
+  each snapshot. Until P3.6 two stand-ins remain: a minimal controller where START drives GPIO26 LOW and RESET or
+  ESTOP drive it HIGH, and a zero placeholder packet once per sim second over the Wi-Fi channel, which keeps the
+  P0.6 channel check meaningful (D-015). `scenario{id}` logs that scenarios arrive in P4.5. The message types in
+  `shared/messages.ts` are unchanged. `App.tsx` sends `init`, routes snapshots, packets, events, logs and verdicts
+  into the store, and adds `pause`, `setSpeed`, `command` and `snapshot` to the debug-only `window.__pdm`.
+  Measured on this laptop: 9.95× at 10×, 3.99× at 4×, 1.00× at 1×, never lagging. Affects `sim/worker.ts`,
+  `App.tsx`.
