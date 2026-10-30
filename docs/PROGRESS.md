@@ -22,7 +22,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 ## P1 — 3D bench scene (deps: P0)
 
-- [ ] P1.1 Component catalogue and anchors
+- [x] P1.1 Component catalogue and anchors
+  2026-10-30 · shared/components.ts (§13.2 + breadboard grid), shared/wiring.ts data, scene/anchors.ts; nudged ds18b20/adapter/esp32 (D-020) · no tuning
 - [ ] P1.2 Models (deps: P1.1)
 - [ ] P1.3 Layout (deps: P1.2)
 - [ ] P1.4 Wires (deps: P1.1, P1.3)
