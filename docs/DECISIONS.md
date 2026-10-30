@@ -170,3 +170,13 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   into the store, and adds `pause`, `setSpeed`, `command` and `snapshot` to the debug-only `window.__pdm`.
   Measured on this laptop: 9.95× at 10×, 3.99× at 4×, 1.00× at 1×, never lagging. Affects `sim/worker.ts`,
   `App.tsx`.
+- **D-033 · 2026-10-30 · Feature fixtures and the NumPy cross-check.** `pnpm gen:fixtures`
+  (`scripts/gen-fixtures.ts`) runs the plant with a minimal firmware: calibrate 0.5 s with the relay open, then fan
+  on, with the fault set from t = 0. It captures window 20, a steady window with ≥ 10 readings for dT/dt. Each
+  fixture stores the raw window (accelerometer in integer LSB, ADC counts, PCNT edges), counts0, the valid DS18B20
+  readings and the config values the features use. `scripts/features_reference.py` recomputes the features with
+  NumPy (`polyfit` for dT/dt) and writes them into `reference`, so the Python never hard-codes the config. On this
+  machine `python3` (3.11) has no NumPy; the reference was run with `py -3.12` (NumPy 2.4.4); `python3 -m pip install
+  numpy` makes the AGENTS.md command work as written. `t_C` is the last valid reading since boot (§7.2 says "last
+  valid reading", with no age limit); staleness shows up as `sensor_fault` (§7.3). The power-on 85 °C is rejected
+  only as the very first reading after boot. Affects `firmware/features.ts`, `scripts/`, `tests/fixtures/`.

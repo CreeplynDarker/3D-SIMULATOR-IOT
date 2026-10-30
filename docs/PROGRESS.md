@@ -56,7 +56,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 - [x] P3.1 Sampler
   2026-10-30 · firmware/sampler.ts: 1 kHz window buffers (two sets, alternating), DS18B20 request/read at +0.75 s, PCNT edges per window; firmware coverage threshold on · no tuning
-- [ ] P3.2 Features (deps: P3.1)
+- [x] P3.2 Features (deps: P3.1)
+  2026-10-30 · firmware/features.ts (a_RMS, per-axis CF, I_RMS, rpm, validity, OLS dT/dt) + gen-fixtures.ts + features_reference.py; 5 fixtures match NumPy within 1e-6 · no tuning
 - [ ] P3.3 Limits and flags (deps: P3.2)
 - [ ] P3.4 State machine (deps: P3.3)
 - [ ] P3.5 Link
