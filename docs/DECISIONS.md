@@ -40,7 +40,8 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
 - **D-015 · 2026-10-29 · Until P2.7/P4.4, the worker stubs echo through the channel.** On `play` the sim stub sends one
   zero packet over the channel (and copies it to main); the RCF stub validates it with `Packet` and answers an
   unscored `UNTRAINED` verdict, which the sim forwards to main as `verdictIn`. `App.tsx` exposes
-  `window.__pdm` (ping, play and the messages seen) only for the e2e tests. Affects `sim/worker.ts`, `rcf/worker.ts`,
+  `window.__pdm` (ping, play and the messages seen) only with `?debug=1`, like `window.__sim` in §8.2, for the e2e
+  tests. Affects `sim/worker.ts`, `rcf/worker.ts`,
   `App.tsx`.
 - **D-016 · 2026-10-29 · Store shape.** A vanilla zustand store (`createAppStore`, the `appStore` singleton and a
   `useAppStore(selector)` hook), with one namespace per slice (`state.sim`, `state.series`, …) so action names can't

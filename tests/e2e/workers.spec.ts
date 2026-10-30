@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./?debug=1');
   await page.waitForFunction(() => window.__pdm !== undefined);
 });
 
@@ -19,6 +19,12 @@ for (const target of ['sim', 'rcf'] as const) {
     for (const rtt_ms of rtts) expect(rtt_ms).toBeLessThan(50);
   });
 }
+
+test('the debug API is absent without ?debug=1', async ({ page }) => {
+  await page.goto('./');
+  await page.waitForSelector('h1');
+  expect(await page.evaluate(() => window.__pdm === undefined)).toBe(true);
+});
 
 test('a packet posted by the sim stub reaches the RCF stub through the channel', async ({ page }) => {
   await page.evaluate(() => window.__pdm?.play());

@@ -4,7 +4,7 @@ import type { Packet, Verdict } from './shared/protocol.ts';
 
 type WorkerTarget = 'sim' | 'rcf';
 
-/** Debug hooks used by the e2e tests (window.__pdm); not part of the UI. Round-trip times are in ms. */
+/** Debug hooks used by the e2e tests (window.__pdm, only with `?debug=1`); not part of the UI. Times are in ms. */
 export interface DebugApi {
   ping(target: WorkerTarget): Promise<number>;
   play(): void;
@@ -91,7 +91,8 @@ function installDebugApi(workers: Workers): () => void {
 export function App() {
   useEffect(() => {
     const workers = startWorkers();
-    const removeDebugApi = installDebugApi(workers);
+    const debug = new URLSearchParams(window.location.search).get('debug') === '1';
+    const removeDebugApi = debug ? installDebugApi(workers) : () => undefined;
     return () => {
       removeDebugApi();
       workers.dispose();
