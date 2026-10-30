@@ -11,7 +11,7 @@ export default defineConfig({
     environment: 'node',
     coverage: {
       provider: 'v8',
-      include: ['src/sim/**/*.ts', 'src/firmware/**/*.ts', 'src/rcf/**/*.ts'],
+      include: ['src/sim/**/*.ts', 'src/firmware/**/*.ts', 'src/rcf/**/*.ts', 'src/harness/**/*.ts'],
       exclude: ['src/**/worker.ts'],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
     },
