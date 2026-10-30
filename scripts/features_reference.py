@@ -49,7 +49,7 @@ def main():
         with open(path, encoding="utf-8") as f:
             fx = json.load(f)
         fx["reference"] = features(fx)
-        with open(path, "w", encoding="utf-8") as f:
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(fx, separators=(",", ":")) + "\n")
         r = fx["reference"]
         print(f"{fx['name']:12s} a_rms={r['a_rms_g']:.4f} g cf={r['cf']:.3f} i_rms={r['i_rms_A']:.4f} A "
