@@ -7,7 +7,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 - [x] P0.1 Scaffold
   2026-10-29 · Vite 8 + React 19 + Tailwind 4 scaffold, Vitest in vite.config.ts, ESLint guards for rules 3–4, Playwright config, build test · no tuning
-- [ ] P0.2 Docs (deps: P0.1)
+- [x] P0.2 Docs (deps: P0.1)
+  2026-10-29 · seeded docs kept; tests/unit/docs.test.ts checks every §11 task ID is listed here · no tuning
 - [ ] P0.3 Config and units (deps: P0.1)
 - [ ] P0.4 RNG (deps: P0.1)
 - [ ] P0.5 Protocol (deps: P0.3)
