@@ -42,3 +42,12 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   unscored `UNTRAINED` verdict, which the sim forwards to main as `verdictIn`. `App.tsx` exposes
   `window.__pdm` (ping, play and the messages seen) only for the e2e tests. Affects `sim/worker.ts`, `rcf/worker.ts`,
   `App.tsx`.
+- **D-016 · 2026-10-29 · Store shape.** A vanilla zustand store (`createAppStore`, the `appStore` singleton and a
+  `useAppStore(selector)` hook), with one namespace per slice (`state.sim`, `state.series`, …) so action names can't
+  collide. Ring buffers (`store/ring.ts`) are mutable for speed; their slices bump a `rev` counter on every change,
+  and that is what components subscribe to. `series` keeps one ring of 600 window rows (packet values joined with
+  their verdict by `seq`) that all six M6 strips read, plus a ring of events for markers; 600 comes from
+  `max(ui.chartWindows_s) / firmware.window_s`. Affects `src/store/`.
+- **D-017 · 2026-10-29 · UI defaults not fixed by the plan:** camera `overview`; toggles flow and labels on, airflow
+  and heat off; vibration exaggeration 10× (clamped to the 1–50 range of `sld-vib-exaggeration`); dock tab charts;
+  theme dark. P5 may change them. Affects `store/slices/ui.ts`.

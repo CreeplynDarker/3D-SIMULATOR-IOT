@@ -17,7 +17,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-29 · shared/protocol.ts verbatim from §10.1 + inferred types; scripts/export-schema.ts; public/schema/*.schema.json generated · no tuning
 - [x] P0.6 Workers and messages (deps: P0.5)
   2026-10-29 · shared/messages.ts (§10.2 unions + Snapshot), sim/rcf worker stubs, MessageChannel wiring + window.__pdm in App.tsx; e2e ping/pong and packet→verdict pass · no tuning
-- [ ] P0.7 Store skeleton (deps: P0.5)
+- [x] P0.7 Store skeleton (deps: P0.5)
+  2026-10-29 · store/index.ts + slices sim, series, console, model, ui, testlog; store/ring.ts ring buffer (drops oldest past capacity) · no tuning
 
 ## P1 — 3D bench scene (deps: P0)
 
