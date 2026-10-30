@@ -180,3 +180,9 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   numpy` makes the AGENTS.md command work as written. `t_C` is the last valid reading since boot (§7.2 says "last
   valid reading", with no age limit); staleness shows up as `sensor_fault` (§7.3). The power-on 85 °C is rejected
   only as the very first reading after boot. Affects `firmware/features.ts`, `scripts/`, `tests/fixtures/`.
+- **D-034 · 2026-10-30 · Reading of §7.3's limits.** "Running" means STARTING, NORMAL or WARNING (the fan is
+  powered); the link timer restarts at START, so time spent OFF never counts as loss. Soft conditions (I_SOFT, T_SOFT,
+  SENSOR) are computed in every state, because WARNING needs them to hold back `clearRun`; only NORMAL turns them
+  into a transition. When several trips hold in one window, the first in table order wins (I_MAX, T_MAX, STALL), and
+  likewise for soft conditions. T_MAX uses the last valid reading, so a disconnected probe cannot trip it with −127.
+  Affects `firmware/limits.ts`.
