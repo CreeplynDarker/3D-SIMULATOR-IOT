@@ -22,7 +22,7 @@ for (const target of ['sim', 'rcf'] as const) {
 
 test('the debug API is absent without ?debug=1', async ({ page }) => {
   await page.goto('./');
-  await page.waitForSelector('h1');
+  await page.getByTestId('viewport').waitFor();
   expect(await page.evaluate(() => window.__pdm === undefined)).toBe(true);
 });
 

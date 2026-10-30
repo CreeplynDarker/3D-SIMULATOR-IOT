@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { BenchViewport } from './scene/Bench.tsx';
 import type { MainToRcf, MainToSim, RcfToMain, SimToMain } from './shared/messages.ts';
 import type { Packet, Verdict } from './shared/protocol.ts';
 
@@ -87,7 +88,7 @@ function installDebugApi(workers: Workers): () => void {
   };
 }
 
-/** Root component; the shell and modules arrive in P5. */
+/** Root component: the 3D bench for now; the shell and the other modules arrive in P5. */
 export function App() {
   useEffect(() => {
     const workers = startWorkers();
@@ -100,8 +101,8 @@ export function App() {
   }, []);
 
   return (
-    <main className="flex h-screen items-center justify-center bg-slate-950 text-slate-100">
-      <h1 className="text-xl font-semibold">IoT Predictive-Maintenance Simulator</h1>
+    <main className="h-screen w-screen bg-slate-950 text-slate-100">
+      <BenchViewport />
     </main>
   );
 }

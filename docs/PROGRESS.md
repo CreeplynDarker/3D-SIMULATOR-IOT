@@ -26,7 +26,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-30 · shared/components.ts (§13.2 + breadboard grid), shared/wiring.ts data, scene/anchors.ts; nudged ds18b20/adapter/esp32 (D-020) · no tuning
 - [x] P1.2 Models (deps: P1.1)
   2026-10-30 · procedural part lists for all 14 parts (bboxes within 5%), photo crops in public/textures (gen:textures), canvas breadboard/screen · no tuning
-- [ ] P1.3 Layout (deps: P1.2)
+- [x] P1.3 Layout (deps: P1.2)
+  2026-10-30 · scene/Bench.tsx places all parts + fan stand on a 0.90 × 0.45 m bench; App shows the viewport; e2e scene test (no console errors); laptop x 0.42 → 0.40 · no tuning
 - [ ] P1.4 Wires (deps: P1.1, P1.3)
 - [ ] P1.5 Cameras and selection (deps: P1.3)
 - [ ] P1.6 Look (deps: P1.3)
@@ -102,3 +103,4 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 List every `[human]` check here with its task ID, so a person can sign it off.
 
 - P1.2 · each part is recognisable next to its photo in `assets/photos/`
+- P1.3 · the layout reads like a tidy lab bench

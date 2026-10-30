@@ -133,6 +133,19 @@ function drawScreen(): HTMLCanvasElement {
   return canvas;
 }
 
+let photosPending = 0;
+
+/** True once every photo texture requested so far has finished loading. */
+export function photoTexturesReady(): boolean {
+  return textures.size > 0 && photosPending === 0;
+}
+
+function loadPhoto(key: TextureKey): Texture {
+  photosPending++;
+  const done = () => photosPending--;
+  return loader.load(`${import.meta.env.BASE_URL}textures/${key}.jpg`, done, undefined, done);
+}
+
 /** Texture for a key; photo crops load asynchronously and appear when ready. */
 export function getTexture(key: TextureKey): Texture {
   const cached = textures.get(key);
@@ -140,7 +153,7 @@ export function getTexture(key: TextureKey): Texture {
   let tex: Texture;
   if (key === 'breadboard') tex = new CanvasTexture(drawBreadboard());
   else if (key === 'screen') tex = new CanvasTexture(drawScreen());
-  else if (PHOTO_TEXTURES.includes(key)) tex = loader.load(`${import.meta.env.BASE_URL}textures/${key}.jpg`);
+  else if (PHOTO_TEXTURES.includes(key)) tex = loadPhoto(key);
   else throw new Error(`unknown texture ${key}`);
   tex.colorSpace = SRGBColorSpace;
   tex.anisotropy = 4;

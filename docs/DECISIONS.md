@@ -65,7 +65,8 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   −0.061 (at −0.060 its box overlapped the fan frame by 0.5 mm); `adapter` y 0.0225 → 0.015 so its 30 mm-high
   box rests on the bench; `esp32` x 0.020 → 0.01952 to sit on the breadboard's 2.54 mm grid. The probe's
   "Ø6 × 50" box is 50 × 6 × 6 mm (long axis x). The laptop gets a height of 220 mm (the plan gives only its footprint),
-  and its stored y is the box centre (0.11) rather than §13.2's bench-level 0. Affects `shared/components.ts`.
+  and its stored y is the box centre (0.11) rather than §13.2's bench-level 0. The laptop moves from x 0.42 to
+  0.40, because at 0.42 its rotated back corner hung 6 cm off the bench edge. Affects `shared/components.ts`.
 - **D-021 · 2026-10-30 · Breadboard and ESP32 placement follow the team's photos.** Column 1 is at +x and rows a–e
   are on −z (the photo turned so the ESP32's antenna points +x). The left rail (−z) has + outside, and the right
   rail has + inside. The rails are 10 groups of 5 holes. `bb.node.*` are columns 30 (dq), 25 (tach), 20 (divTop) and

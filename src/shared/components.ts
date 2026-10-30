@@ -191,7 +191,7 @@ export const COMPONENTS: readonly ComponentSpec[] = [
     id: 'laptop',
     part: 'Laptop',
     size_mm: [320, 220, 220],
-    position_m: [0.42, 0.11, 0.02],
+    position_m: [0.4, 0.11, 0.02],
     rotY_deg: -20,
     notes: '320 × 220 footprint open (§13.2); height 220 mm chosen; screen shows a mini dashboard.',
   },
