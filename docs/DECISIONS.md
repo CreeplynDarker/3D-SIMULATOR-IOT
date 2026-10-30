@@ -101,3 +101,13 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   no curve rises more than 2 mm above its travel height. The USB cable has hand-placed via points around the front of
   the breadboard. The Wi-Fi arc is a dashed quadratic Bézier 0.14 m above the screen top. Affects
   `scene/wires/route.ts`.
+- **D-026 · 2026-10-30 · Camera presets and selection.** The five `cam-*` buttons sit at the top-right of the
+  viewport, set `ui.camera`, and a rig eases the camera and orbit target there over 600 ms (ease-in-out cubic). The
+  relay preset looks from behind and to the right, because its terminals face −z. Hovering a component outlines it
+  (postprocessing `Outline`), clicking selects it (`ui.selectedId`), and clicking empty space clears the selection.
+  The MPU6050 wires run along the top of the fan frame and leave past its +x side (`exit_mm` points on their
+  anchors), so they don't hang across the fan's outlet face. The e2e tests use the full Chromium build
+  (`channel: 'chromium'`, new headless), which renders with the machine's GPU, and run one at a time. The default
+  headless shell renders WebGL in software (SwiftShader), which pushed the worker ping round trip over 50 ms. On a
+  CI runner without a GPU, the ping test may need the scene paused. Affects `scene/cameras.ts`, `scene/Bench.tsx`,
+  `playwright.config.ts`.

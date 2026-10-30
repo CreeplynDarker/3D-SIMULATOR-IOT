@@ -18,11 +18,13 @@ export interface Anchor {
   component: ComponentId;
   /** Position in the component's local frame (mm, origin at its bounding-box centre). */
   pos_mm: Vec3;
-  /** Unit direction a wire leaves the anchor, in the local frame. */
+  /** Unit direction a wire leaves the anchor, in the local frame (after any exit points). */
   out: Vec3;
+  /** Fixed points (local mm) a wire passes through right after leaving the anchor. */
+  exit_mm?: Vec3[];
 }
 
-type AnchorTable = Record<string, { pos_mm: Vec3; out: Vec3 }>;
+type AnchorTable = Record<string, Omit<Anchor, 'component'>>;
 
 const unit = (x: number, y: number, z: number): Vec3 => {
   const n = Math.hypot(x, y, z);
@@ -59,11 +61,24 @@ function esp32Anchors(): AnchorTable {
 export const MPU_PINS = ['vcc', 'gnd', 'scl', 'sda', 'xda', 'xcl', 'ad0', 'int'] as const;
 export const MPU_DIMS = { pitch: 2.54, rowZ: 6.7, topY: 0.2 } as const;
 
+/** MPU wires run along the top of the fan frame, one layer per pin, and leave past its +x side (x > 35 mm). */
+export const MPU_EXIT = { layer0_mm: 2.5, layerStep_mm: 1.8, clearX_mm: 36 } as const;
+
 function mpuAnchors(): AnchorTable {
   const t: AnchorTable = {};
+  const { layer0_mm, layerStep_mm, clearX_mm } = MPU_EXIT;
   MPU_PINS.forEach((name, i) => {
     const x = (i - (MPU_PINS.length - 1) / 2) * MPU_DIMS.pitch;
-    t[name] = { pos_mm: [x, MPU_DIMS.topY, MPU_DIMS.rowZ], out: unit(0, 0.6, 0.8) };
+    const y = layer0_mm + i * layerStep_mm;
+    const z = MPU_DIMS.rowZ;
+    t[name] = {
+      pos_mm: [x, MPU_DIMS.topY, z],
+      out: PX,
+      exit_mm: [
+        [x, y, z],
+        [clearX_mm, y, z],
+      ],
+    };
   });
   return t;
 }
@@ -191,6 +206,12 @@ export function localToWorld_m(component: ComponentId, local_mm: Vec3): Vec3 {
 export function worldAnchor_m(id: string): Vec3 {
   const a = anchor(id);
   return localToWorld_m(a.component, a.pos_mm);
+}
+
+/** World positions (m) of an anchor's fixed exit points, in order away from the anchor. */
+export function worldAnchorExits_m(id: string): Vec3[] {
+  const a = anchor(id);
+  return (a.exit_mm ?? []).map((p) => localToWorld_m(a.component, p));
 }
 
 /** World exit direction (unit) of an anchor. */

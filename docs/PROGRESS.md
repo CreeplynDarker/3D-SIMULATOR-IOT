@@ -30,7 +30,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-30 · scene/Bench.tsx places all parts + fan stand on a 0.90 × 0.45 m bench; App shows the viewport; e2e scene test (no console errors); laptop x 0.42 → 0.40 · no tuning
 - [x] P1.4 Wires (deps: P1.1, P1.3)
   2026-10-30 · W01–W29 as 0.8 mm tubes routed by scene/wires/route.ts, USB cable, dashed Wi-Fi arc; wiring.test.ts exact list + auto collision/overshoot checks · no tuning
-- [ ] P1.5 Cameras and selection (deps: P1.3)
+- [x] P1.5 Cameras and selection (deps: P1.3)
+  2026-10-30 · scene/cameras.ts (5 presets, 600 ms ease), rig + hover outline + click select in Bench.tsx, cam-* buttons; e2e on GPU Chromium; MPU wires routed along the frame · no tuning
 - [ ] P1.6 Look (deps: P1.3)
 
 ## P2 — Plant (deps: P0)

@@ -11,7 +11,7 @@ import {
   worldBox_m,
 } from '../../shared/components.ts';
 import { USB_CABLE, type Wire, WIRES } from '../../shared/wiring.ts';
-import { anchor, bbAnchorHoles_m, worldAnchor_m, worldAnchorOut } from '../anchors.ts';
+import { anchor, bbAnchorHoles_m, worldAnchor_m, worldAnchorExits_m, worldAnchorOut } from '../anchors.ts';
 
 export const WIRE_RADIUS_m = 0.0008;
 const LEAD_m = 0.01; // straight run out of a pin or clamp
@@ -92,6 +92,8 @@ function detour(a: Vec3, b: Vec3, o: Obstacle, y: number): Vec3[] {
 
 interface End {
   pos: Vec3;
+  /** Fixed exit points after the anchor (e.g. MPU wires along the fan frame). */
+  exits: Vec3[];
   out: Vec3;
   component: ComponentId;
   hole: Vec3 | null;
@@ -103,18 +105,30 @@ const key = (p: Vec3) => p.map((x) => x.toFixed(5)).join(',');
 function resolveEnd(id: string, toward: Vec3, used: Set<string>): End {
   const component = anchor(id).component;
   const holes = bbAnchorHoles_m(id).filter((h) => !used.has(key(h)));
-  if (holes.length === 0) return { pos: worldAnchor_m(id), out: worldAnchorOut(id), component, hole: null };
+  if (holes.length === 0) {
+    return { pos: worldAnchor_m(id), exits: worldAnchorExits_m(id), out: worldAnchorOut(id), component, hole: null };
+  }
   holes.sort((p, q) => lenXZ(p, toward) - lenXZ(q, toward));
   const hole = holes[0] as Vec3;
   used.add(key(hole));
-  return { pos: hole, out: [0, 1, 0], component, hole };
+  return { pos: hole, exits: [], out: [0, 1, 0], component, hole };
 }
 
-/** Lead point just outside an end, along its exit direction. */
+const isUp = (e: End) => e.out[1] > 0.99;
+
+/** Lead point just outside an end (after its exit points), along its exit direction. */
 function lead(e: End): Vec3 {
-  const up = e.out[1] > 0.99;
-  const d = up ? UP_LEAD_m : LEAD_m;
-  return [e.pos[0] + e.out[0] * d, e.pos[1] + e.out[1] * d, e.pos[2] + e.out[2] * d];
+  const p = e.exits.at(-1) ?? e.pos;
+  const d = isUp(e) ? UP_LEAD_m : LEAD_m;
+  return [p[0] + e.out[0] * d, p[1] + e.out[1] * d, p[2] + e.out[2] * d];
+}
+
+/** Anchor, exit points and a midpoint on a sideways lead (keeps the curve from dipping before the pin). */
+function endPath(e: End): Vec3[] {
+  const p = e.exits.at(-1) ?? e.pos;
+  const a = lead(e);
+  const mid: Vec3[] = isUp(e) ? [] : [[(p[0] + a[0]) / 2, (p[1] + a[1]) / 2, (p[2] + a[2]) / 2]];
+  return [e.pos, ...e.exits, ...mid, a];
 }
 
 /** Travel height: 8 mm over the tallest part it can pass over (capped at 30 mm), at least an upward lead. */
@@ -124,7 +138,7 @@ function travelHeight(a: Vec3, b: Vec3, skip: Set<Obstacle['id']>, ends: End[], 
     if (skip.has(o.id) || !crossesXZ(a, b, o, HIT_MARGIN_m)) continue;
     if (o.max[1] <= TALL_m) y = Math.max(y, o.max[1] + CLEARANCE_m);
   }
-  for (const e of ends) if (e.out[1] > 0.99) y = Math.max(y, lead(e)[1]);
+  for (const e of ends) if (isUp(e)) y = Math.max(y, lead(e)[1]);
   return Math.min(y, TRAVEL_MAX_m);
 }
 
@@ -171,7 +185,7 @@ function routeOne(w: Wire, used: Set<string>, all: Obstacle[]): WireRoute {
   const leg = withShoulders([ra, ...via, rb]);
   const near = (p: Vec3, q: Vec3) => Math.abs(p[1] - q[1]) < 0.004;
   const travel = leg.slice(near(a, ra) ? 1 : 0, near(b, rb) ? -1 : undefined);
-  const points: Vec3[] = [from.pos, a, ...travel, b, to.pos];
+  const points: Vec3[] = [...endPath(from), ...travel, ...endPath(to).reverse()];
   return {
     id: w.id,
     color: w.color,
