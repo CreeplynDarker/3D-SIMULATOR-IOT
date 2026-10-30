@@ -183,7 +183,7 @@ function routeOne(w: Wire, used: Set<string>, all: Obstacle[]): WireRoute {
   const blocker = tall.find((o) => crossesXZ(ra, rb, o, HIT_MARGIN_m));
   const via = blocker ? detour(ra, rb, blocker, y) : [];
   const leg = withShoulders([ra, ...via, rb]);
-  const near = (p: Vec3, q: Vec3) => Math.abs(p[1] - q[1]) < 0.004;
+  const near = (p: Vec3, q: Vec3) => Math.abs(p[1] - q[1]) < 0.001; // a lead already at travel height needs no rise
   const travel = leg.slice(near(a, ra) ? 1 : 0, near(b, rb) ? -1 : undefined);
   const points: Vec3[] = [...endPath(from), ...travel, ...endPath(to).reverse()];
   return {

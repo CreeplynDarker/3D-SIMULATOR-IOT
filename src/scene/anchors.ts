@@ -84,12 +84,12 @@ function mpuAnchors(): AnchorTable {
 }
 
 /**
- * Relay module (local mm): terminal clamps open toward −z, right-angle input headers point +z. Terminal order is the
- * OPEN-5 default, NO–COM–NC from left to right with the terminals facing away (left = −x). The team's board
- * silkscreen reads NC–COM–NO instead; see docs/DECISIONS.md D-023.
+ * Relay module (local mm): terminal clamps open toward −z, right-angle input headers point +z. Terminal order follows
+ * the board's silkscreen, NC–COM–NO from left to right with the terminals facing away (left = −x); OPEN-5, closed
+ * in docs/DECISIONS.md D-028.
  */
 export const RELAY_DIMS = {
-  terminalX: { no1: -17.5, com1: -12.5, nc1: -7.5, no2: 7.5, com2: 12.5, nc2: 17.5 },
+  terminalX: { nc1: -17.5, com1: -12.5, no1: -7.5, nc2: 7.5, com2: 12.5, no2: 17.5 },
   terminalY: -3,
   headerA: { jdvcc: -13.5, vcc_a: -10.96, gnd_a: -8.42 },
   headerB: { gnd: 2.5, in1: 5.04, in2: 7.58, vcc: 10.12 },

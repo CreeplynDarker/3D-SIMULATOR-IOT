@@ -124,3 +124,10 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   and contact shadows. The dark and light themes follow `ui.theme`. `@react-three/postprocessing` and
   `postprocessing` stay installed (pinned in §3) but are unused. Affects `scene/Look.tsx`, `scene/Bench.tsx`,
   `scene/models/Parts.tsx`, `scene/models/materials.ts`.
+- **D-028 · 2026-10-30 · OPEN-5 closed: relay terminals run NC–COM–NO from left to right (team decision, confirmed
+  with a continuity test).** With the terminals facing away (left = −x), each block reads NC, COM, NO, matching the
+  board's silkscreen. This replaces the earlier default (NO–COM–NC) and resolves D-023: the 3D anchors now agree
+  with the photo texture. CH2 terminals are now nc2 −x, com2 middle, no2 +x; W03 (COM2) and W04 (NO2) are unchanged
+  in the wire list and follow the moved anchors. W04 now leaves NO2 at the +x end and turns back toward the fan,
+  so the router keeps a rise point unless a lead is within 1 mm of travel height (it was 4 mm); otherwise the curve
+  bulged 2 mm. Affects `scene/anchors.ts` (`RELAY_DIMS`), `scene/wires/route.ts`, PLAN §1.5 and §2.

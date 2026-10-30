@@ -41,11 +41,10 @@ describe('anchors', () => {
     const relayZ = componentById('relay').position_m[2];
     expect(worldAnchor_m('relay.com2')[2]).toBeLessThan(relayZ);
     expect(worldAnchor_m('relay.in2')[2]).toBeGreaterThan(relayZ);
-    // OPEN-5 default: NO – COM – NC from left to right when the terminals face away (viewer on +z, left = −x).
-    const [no2, com2, nc2] = ['relay.no2', 'relay.com2', 'relay.nc2'].map((id) => worldAnchor_m(id)[0]);
-    expect(no2).toBeLessThan(com2 ?? 0);
-    expect(com2).toBeLessThan(nc2 ?? 0);
-    expect(worldAnchor_m('relay.nc1')[0]).toBeLessThan(no2 ?? 0); // CH1 on −x
+    // OPEN-5 (closed): NC – COM – NO from left to right as on the silkscreen, terminals facing away (left = −x).
+    const order = ['relay.nc1', 'relay.com1', 'relay.no1', 'relay.nc2', 'relay.com2', 'relay.no2'];
+    const xs = order.map((id) => worldAnchor_m(id)[0]);
+    expect(xs).toEqual([...xs].sort((a, b) => a - b));
   });
 
   it('puts the ACS712 terminals toward −x and its header toward +x', () => {

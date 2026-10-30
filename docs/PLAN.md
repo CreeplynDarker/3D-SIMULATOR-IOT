@@ -72,7 +72,7 @@ USB-C at the bottom, module antenna at the top, viewed from the component side:
 
 | Module | Pins (anchor names) |
 | --- | --- |
-| Relay | Input header A: `jdvcc, vcc_a, gnd_a` (jumper removed). Input header B: `gnd, in1, in2, vcc`. Terminals: `nc1, com1, no1, nc2, com2, no2` (COM is the middle screw of each block; NO/NC side order is OPEN-5). |
+| Relay | Input header A: `jdvcc, vcc_a, gnd_a` (jumper removed). Input header B: `gnd, in1, in2, vcc`. Terminals: `nc1, com1, no1, nc2, com2, no2`, in that order from left to right with the terminals facing away (CH1 on the left; COM is the middle screw of each block; OPEN-5). |
 | ACS712 | `vcc, out, gnd`; terminals `ipPlus, ipMinus` |
 | MPU6050 GY-521 | `vcc, gnd, scl, sda, xda, xcl, ad0, int` |
 | DS18B20 | `red, yellow, black` (cable ends) |
@@ -90,7 +90,7 @@ USB-C at the bottom, module antenna at the top, viewed from the component side:
 | OPEN-2 | ACS712 variant (5/20/30 A) | 5 A, 0.185 V/A | §6.5 |
 | OPEN-3 | Tach pulses per revolution | 2 | §6.7 |
 | OPEN-4 | MPU6050 module on hand and its mounting | GY-521 taped flat on the frame's top edge | §13 |
-| OPEN-5 | NO/NC terminal order on each relay block | `NO – COM – NC` from left to right, terminals facing away | §13 |
+| OPEN-5 | NO/NC terminal order on each relay block | **Closed 2026-10-30 (team, continuity test): `NC – COM – NO`** from left to right, terminals facing away, as on the board silkscreen. | §1.5, §13 |
 | OPEN-6 | How the barrel plug reaches the breadboard | Female 5.5 × 2.1 mm DC jack with screw terminals | §13 |
 | OPEN-7 | Blade count | 7 | §6.3 |
 
