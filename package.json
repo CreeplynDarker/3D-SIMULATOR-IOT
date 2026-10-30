@@ -21,7 +21,8 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm test",
     "gen:schema": "node scripts/export-schema.ts",
     "gen:model": "node scripts/train-default-model.ts",
-    "gen:fixtures": "node scripts/gen-fixtures.ts"
+    "gen:fixtures": "node scripts/gen-fixtures.ts",
+    "gen:textures": "node scripts/crop-textures.ts"
   },
   "dependencies": {
     "@react-three/drei": "10.7.9",

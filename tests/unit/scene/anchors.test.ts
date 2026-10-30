@@ -41,10 +41,11 @@ describe('anchors', () => {
     const relayZ = componentById('relay').position_m[2];
     expect(worldAnchor_m('relay.com2')[2]).toBeLessThan(relayZ);
     expect(worldAnchor_m('relay.in2')[2]).toBeGreaterThan(relayZ);
-    // OPEN-5 default: NO – COM – NC from left to right when the terminals face away from the viewer.
+    // OPEN-5 default: NO – COM – NC from left to right when the terminals face away (viewer on +z, left = −x).
     const [no2, com2, nc2] = ['relay.no2', 'relay.com2', 'relay.nc2'].map((id) => worldAnchor_m(id)[0]);
-    expect(no2).toBeGreaterThan(com2 ?? 0);
-    expect(com2).toBeGreaterThan(nc2 ?? 0);
+    expect(no2).toBeLessThan(com2 ?? 0);
+    expect(com2).toBeLessThan(nc2 ?? 0);
+    expect(worldAnchor_m('relay.nc1')[0]).toBeLessThan(no2 ?? 0); // CH1 on −x
   });
 
   it('puts the ACS712 terminals toward −x and its header toward +x', () => {

@@ -78,3 +78,16 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   NO–COM–NC per OPEN-5. The ACS712 header runs Vcc, Out, Gnd from −z to +z, and IP+ is the −z clamp (not visible in
   the photo). The GY-521 holes are on its +z edge. `shared/wiring.ts` is written in P1.1, because P1.1's test needs
   it; P1.4 adds the exact-list test. Affects `scene/anchors.ts`, `shared/wiring.ts`.
+- **D-023 · 2026-10-30 · Relay terminal order: OPEN-5 default kept, but the team's board disagrees.** With the
+  terminals facing away (left = −x), the default NO–COM–NC puts NO on the −x side of each block, and the anchors
+  follow it. The silkscreen on `assets/photos/relay-closeup.png` (printed upside-down, to be read from the terminal
+  side) reads NC1 COM1 NO1 NC2 COM2 NO2 from −x to +x, which is the reverse order. The photo texture therefore labels
+  the terminals differently from the anchors until the team closes OPEN-5. Affects `scene/anchors.ts` (`RELAY_DIMS`).
+- **D-024 · 2026-10-30 · Procedural models are part lists in mm; textures are cropped with Playwright.** Each model
+  is a list of boxes/cylinders/discs/frames (`scene/models/geometry.ts`) that Vitest measures in Node and
+  `Parts.tsx` merges into one mesh per material. `pnpm gen:textures` (`scripts/crop-textures.ts`) crops and rotates
+  the team's photos into `public/textures/*.jpg` (about 300 kB in total) using the Playwright Chromium already
+  installed, so no image library is added. The breadboard top and the laptop screen are drawn on canvases at run
+  time, so the holes line up with the anchors. The fan stand, fan leads, probe cable and coil, and resistor leads are
+  drawn outside the §13.2 bounding boxes. The ESP32's 13 mm height includes 6.5 mm of exposed pins, because its
+  §13.2 box sits just above the breadboard. Affects `scene/models/`, `scripts/crop-textures.ts`, `package.json`.

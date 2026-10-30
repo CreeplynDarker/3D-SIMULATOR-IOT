@@ -24,7 +24,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 - [x] P1.1 Component catalogue and anchors
   2026-10-30 · shared/components.ts (§13.2 + breadboard grid), shared/wiring.ts data, scene/anchors.ts; nudged ds18b20/adapter/esp32 (D-020) · no tuning
-- [ ] P1.2 Models (deps: P1.1)
+- [x] P1.2 Models (deps: P1.1)
+  2026-10-30 · procedural part lists for all 14 parts (bboxes within 5%), photo crops in public/textures (gen:textures), canvas breadboard/screen · no tuning
 - [ ] P1.3 Layout (deps: P1.2)
 - [ ] P1.4 Wires (deps: P1.1, P1.3)
 - [ ] P1.5 Cameras and selection (deps: P1.3)
@@ -100,4 +101,4 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 List every `[human]` check here with its task ID, so a person can sign it off.
 
-- (none yet)
+- P1.2 · each part is recognisable next to its photo in `assets/photos/`
