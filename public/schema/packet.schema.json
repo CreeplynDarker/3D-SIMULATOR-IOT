@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "v": {
+      "type": "number",
+      "const": 1
+    },
+    "kind": {
+      "type": "string",
+      "const": "packet"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "ts_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "win_ms": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "a_rms_g": {
+      "type": "number",
+      "minimum": 0
+    },
+    "cf": {
+      "type": "number",
+      "minimum": 0
+    },
+    "i_rms_A": {
+      "type": "number",
+      "minimum": 0
+    },
+    "t_C": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "dtdt_C_per_min": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "rpm": {
+      "type": "number",
+      "minimum": 0
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "OFF",
+        "CALIBRATING",
+        "STARTING",
+        "NORMAL",
+        "WARNING",
+        "CRITICAL"
+      ]
+    },
+    "relay_ch2": {
+      "type": "string",
+      "enum": [
+        "ON",
+        "OFF"
+      ]
+    },
+    "link_lost": {
+      "type": "boolean"
+    },
+    "sensor_fault": {
+      "type": "boolean"
+    },
+    "warn_reason": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "RCF",
+            "I_SOFT",
+            "T_SOFT",
+            "SENSOR"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "trip_reason": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "RCF",
+            "I_MAX",
+            "T_MAX",
+            "STALL",
+            "ESTOP"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "v",
+    "kind",
+    "seq",
+    "ts_ms",
+    "win_ms",
+    "a_rms_g",
+    "cf",
+    "i_rms_A",
+    "t_C",
+    "dtdt_C_per_min",
+    "rpm",
+    "state",
+    "relay_ch2",
+    "link_lost",
+    "sensor_fault",
+    "warn_reason",
+    "trip_reason"
+  ],
+  "additionalProperties": false,
+  "title": "packet",
+  "description": "PROTOCOL_VERSION 1"
+}

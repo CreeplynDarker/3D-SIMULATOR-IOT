@@ -11,3 +11,5 @@ src/shared/config.ts
 AGENTS.md
 CLAUDE.md
 assets/
+# copied verbatim from docs/PLAN.md §10.1
+src/shared/protocol.ts

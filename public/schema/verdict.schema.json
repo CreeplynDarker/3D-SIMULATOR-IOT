@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "v": {
+      "type": "number",
+      "const": 1
+    },
+    "kind": {
+      "type": "string",
+      "const": "verdict"
+    },
+    "seq_ref": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "score": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "threshold": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "alert": {
+      "type": "boolean"
+    },
+    "clear": {
+      "type": "boolean"
+    },
+    "dominant": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "a_rms_g",
+            "cf",
+            "i_rms_A",
+            "t_C",
+            "dtdt_C_per_min",
+            "rpm"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "z": {
+      "anyOf": [
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "enum": [
+              "a_rms_g",
+              "cf",
+              "i_rms_A",
+              "t_C",
+              "dtdt_C_per_min",
+              "rpm"
+            ]
+          },
+          "additionalProperties": {
+            "type": "number"
+          },
+          "required": [
+            "a_rms_g",
+            "cf",
+            "i_rms_A",
+            "t_C",
+            "dtdt_C_per_min",
+            "rpm"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "model": {
+      "type": "string",
+      "enum": [
+        "UNTRAINED",
+        "TRAINING",
+        "READY"
+      ]
+    }
+  },
+  "required": [
+    "v",
+    "kind",
+    "seq_ref",
+    "score",
+    "threshold",
+    "alert",
+    "clear",
+    "dominant",
+    "z",
+    "model"
+  ],
+  "additionalProperties": false,
+  "title": "verdict",
+  "description": "PROTOCOL_VERSION 1"
+}

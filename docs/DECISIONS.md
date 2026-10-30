@@ -28,3 +28,7 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   Affects `tsconfig.json`, every import.
 - **D-012 · 2026-10-29 · `pnpm lint` is ESLint only; Prettier runs through `pnpm format`.** `src/shared/config.ts` is
   in `.prettierignore` so it stays verbatim from §5.1. Affects `package.json`, `.prettierignore`.
+- **D-013 · 2026-10-29 · `pnpm gen:schema` writes `public/schema/{packet,verdict,command}.schema.json` (JSON Schema
+  2020-12 from `z.toJSONSchema`) and takes an optional output directory, so the test writes to a temp folder.**
+  `src/shared/protocol.ts` is kept verbatim from §10.1 (and in `.prettierignore`); `z.infer` types share each schema's
+  name. Affects `scripts/export-schema.ts`, `public/schema/`.
