@@ -41,7 +41,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-30 · sim/fan.ts (§6.1): 3,800 RPM / 0.180 A at 12 V, friction 0.3 → −7.5% RPM and ≈ 0.26 A, coast-down ≈ 9.1 s · no tuning
 - [x] P2.2 Thermal
   2026-10-30 · sim/thermal.ts (§6.2): warm start 34.072 °C, overheat 1.0 steady state 69.07 °C, 63% rise 179.9 s · no tuning
-- [ ] P2.3 Faults
+- [x] P2.3 Faults
+  2026-10-30 · sim/faults.ts (§6.9): steps, linear ramps from the current value, clearAll, FAULT_SET per change (clearAll emits one with detail "clearAll") · no tuning
 - [ ] P2.4 Sensors (deps: P2.1)
 - [ ] P2.5 Relay and supply
 - [ ] P2.6 Plant integration (deps: P2.1–P2.5)
