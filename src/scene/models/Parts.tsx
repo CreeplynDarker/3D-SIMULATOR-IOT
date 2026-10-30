@@ -2,7 +2,7 @@ import type {} from '@react-three/fiber'; // registers <mesh>, <group>, … as J
 import { useEffect, useMemo } from 'react';
 import type { BufferGeometry, Material } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { getMaterial } from './materials.ts';
+import { getGlowMaterial, getMaterial } from './materials.ts';
 import { type Part, partGeometry } from './parts.ts';
 
 interface MeshSpec {
@@ -46,6 +46,9 @@ function buildMeshes(parts: readonly Part[]): MeshSpec[] {
   return out;
 }
 
+// LED halo sprite size (mm): an additive glow in place of a bloom pass, which cost ~10 ms a frame (D-027).
+const HALO_mm = 7;
+
 /** Renders a part list given in mm; `group` names become child groups (e.g. "blades") for later animation. */
 export function Parts({ parts }: { parts: readonly Part[] }) {
   const groups = useMemo(() => {
@@ -55,6 +58,7 @@ export function Parts({ parts }: { parts: readonly Part[] }) {
   }, [parts]);
 
   useEffect(() => () => groups.forEach((g) => g.meshes.forEach((m) => m.geometry.dispose())), [groups]);
+  const leds = useMemo(() => parts.filter((p) => p.mat === 'led'), [parts]);
 
   return (
     <group scale={0.001}>
@@ -64,6 +68,14 @@ export function Parts({ parts }: { parts: readonly Part[] }) {
             <mesh key={m.key} geometry={m.geometry} material={m.material} castShadow receiveShadow />
           ))}
         </group>
+      ))}
+      {leds.map((p, i) => (
+        <sprite
+          key={`halo:${i}`}
+          position={[...p.pos]}
+          scale={[HALO_mm, HALO_mm, 1]}
+          material={getGlowMaterial(p.color)}
+        />
       ))}
     </group>
   );

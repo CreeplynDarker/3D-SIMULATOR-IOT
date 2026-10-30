@@ -32,7 +32,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-30 · W01–W29 as 0.8 mm tubes routed by scene/wires/route.ts, USB cable, dashed Wi-Fi arc; wiring.test.ts exact list + auto collision/overshoot checks · no tuning
 - [x] P1.5 Cameras and selection (deps: P1.3)
   2026-10-30 · scene/cameras.ts (5 presets, 600 ms ease), rig + hover outline + click select in Bench.tsx, cam-* buttons; e2e on GPU Chromium; MPU wires routed along the frame · no tuning
-- [ ] P1.6 Look (deps: P1.3)
+- [x] P1.6 Look (deps: P1.3)
+  2026-10-30 · scene/Look.tsx: key+fill lights, frozen 2048² shadow map, Lightformer environment, contact shadows, dark/light themes; LED halos; box highlight for hover/selection; no EffectComposer (D-027); 60 fps vsync / ~150 uncapped on Iris Xe at 1080p; screenshots in docs/screenshots/ · no tuning
 
 ## P2 — Plant (deps: P0)
 
@@ -107,3 +108,4 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - P1.2 · each part is recognisable next to its photo in `assets/photos/`
 - P1.3 · the layout reads like a tidy lab bench
 - P1.4 · no wire passes through a component (also covered by `tests/unit/scene/route.test.ts`)
+- P1.6 · at least 50 fps at 1920 × 1080 on an integrated-graphics laptop (measured 60 fps vsync-locked on Intel Iris Xe in headless Chromium; confirm in a normal browser window on the team laptop)

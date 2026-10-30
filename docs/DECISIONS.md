@@ -111,3 +111,16 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   headless shell renders WebGL in software (SwiftShader), which pushed the worker ping round trip over 50 ms. On a
   CI runner without a GPU, the ping test may need the scene paused. Affects `scene/cameras.ts`, `scene/Bench.tsx`,
   `playwright.config.ts`.
+- **D-027 · 2026-10-30 · No post-processing pass; LED glow and selection are drawn in the scene.** Measured on this
+  laptop's Intel Iris Xe at 1920 × 1080 in Chromium (uncapped): 154 fps without an `EffectComposer`, 52–67 fps with
+  one (Outline + Bloom, MSAA 2–4×), and 46–51 fps with vsync on. That fails the P1.6 target of ≥ 50 fps. The
+  composer's own render targets cost about 10 ms a frame, whichever effects it holds. So the LEDs glow with an
+  additive halo sprite (emissive LED material plus a radial-gradient sprite), and a hovered or selected part shows
+  its §13.2 box as edges over a faint fill (white for hover, sky-blue for selected). drei `Outlines` was tried and
+  drew stray edges across merged meshes. The canvas uses native MSAA, the device-pixel ratio is capped at 1.5, and
+  the shadow map is drawn for the first 3 frames and then frozen, because the bench is static. P6 must set
+  `gl.shadowMap.needsUpdate` when a shadow-casting part moves. Result: 60 fps vsync-locked on every preset, about
+  150 fps uncapped. Lighting is a key and a fill directional light, a Lightformer environment (nothing is fetched)
+  and contact shadows. The dark and light themes follow `ui.theme`. `@react-three/postprocessing` and
+  `postprocessing` stay installed (pinned in §3) but are unused. Affects `scene/Look.tsx`, `scene/Bench.tsx`,
+  `scene/models/Parts.tsx`, `scene/models/materials.ts`.

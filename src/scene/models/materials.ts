@@ -1,6 +1,15 @@
 // Shared materials and textures for the procedural models. Photo crops load from public/textures/; the breadboard
 // and the laptop screen are drawn on canvases so their holes and text line up with the model exactly.
-import { CanvasTexture, type Material, MeshStandardMaterial, SRGBColorSpace, type Texture, TextureLoader } from 'three';
+import {
+  AdditiveBlending,
+  CanvasTexture,
+  type Material,
+  MeshStandardMaterial,
+  SpriteMaterial,
+  SRGBColorSpace,
+  type Texture,
+  TextureLoader,
+} from 'three';
 import { BREADBOARD, type BbRail, bbRailColumns } from '../../shared/components.ts';
 import type { MaterialKey, TextureKey } from './parts.ts';
 
@@ -161,6 +170,34 @@ export function getTexture(key: TextureKey): Texture {
   return tex;
 }
 
+let glowTexture: CanvasTexture | null = null;
+
+/** Additive halo for an LED (radial falloff), so LEDs glow without a post-processing pass. */
+export function getGlowMaterial(color = DEFS.led.color): SpriteMaterial {
+  const id = `glow|${color}`;
+  const cached = materials.get(id);
+  if (cached instanceof SpriteMaterial) return cached;
+  if (!glowTexture) {
+    const [canvas, ctx] = canvas2d(64, 64);
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.25, 'rgba(255,255,255,0.45)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    glowTexture = new CanvasTexture(canvas);
+  }
+  const m = new SpriteMaterial({
+    map: glowTexture,
+    color,
+    blending: AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  materials.set(id, m);
+  return m;
+}
+
 /** Shared material for a key, optional colour override and optional texture map. */
 export function getMaterial(key: MaterialKey, color?: string, tex?: TextureKey): Material {
   const id = `${key}|${color ?? ''}|${tex ?? ''}`;
@@ -175,8 +212,7 @@ export function getMaterial(key: MaterialKey, color?: string, tex?: TextureKey):
   if (tex) m.map = getTexture(tex);
   if (key === 'led') {
     m.emissive.set(color ?? def.color);
-    m.emissiveIntensity = 4;
-    m.toneMapped = false; // lets Bloom pick the LEDs out
+    m.emissiveIntensity = 2;
   }
   materials.set(id, m);
   return m;

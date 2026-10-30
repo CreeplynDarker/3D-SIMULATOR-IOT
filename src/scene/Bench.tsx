@@ -1,11 +1,11 @@
-import { OrbitControls } from '@react-three/drei';
+import { Edges, OrbitControls } from '@react-three/drei';
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
-import { EffectComposer, Outline, Select, Selection } from '@react-three/postprocessing';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Vector3 } from 'three';
 import { type ComponentId, COMPONENTS, componentById, type Vec3 } from '../shared/components.ts';
 import { appStore, useAppStore } from '../store/index.ts';
 import { CAMERA_ORDER, CAMERA_PRESETS, CAMERA_TRANSITION_ms, easeInOutCubic } from './cameras.ts';
+import { Look, SCENE_THEMES } from './Look.tsx';
 import { Acs712 } from './models/Acs712.tsx';
 import { Adapter } from './models/Adapter.tsx';
 import { Breadboard } from './models/Breadboard.tsx';
@@ -29,6 +29,7 @@ export interface SceneDebug {
   cameraPosition(): Vec3;
   project(id: ComponentId): { x: number; y: number } | null;
   selectedId(): string | null;
+  setTheme(theme: 'dark' | 'light'): void;
 }
 
 declare global {
@@ -58,7 +59,22 @@ const BENCH = { size_m: [0.9, 0.02, 0.45] as const, center_m: [0.1, -0.01, 0] as
 
 const toRad = (deg: number) => (deg * Math.PI) / 180;
 
-/** Places a component at its §13.2 pose; hovering outlines it and clicking selects it (`ui.selectedId`). */
+// Hover/selection highlight: the part's §13.2 box, grown by 2 mm, drawn as edges over a faint fill.
+const HIGHLIGHT = { grow_mm: 2, hover: '#ffffff', selected: '#38bdf8', fillOpacity: 0.07 };
+
+/** Box outline around a component (local frame, metres). */
+function Highlight({ id, color }: { id: ComponentId; color: string }) {
+  const [x, y, z] = componentById(id).size_mm.map((s) => (s + HIGHLIGHT.grow_mm) / 1000) as [number, number, number];
+  return (
+    <mesh raycast={() => null}>
+      <boxGeometry args={[x, y, z]} />
+      <meshBasicMaterial color={color} transparent opacity={HIGHLIGHT.fillOpacity} depthWrite={false} />
+      <Edges color={color} />
+    </mesh>
+  );
+}
+
+/** Places a component at its §13.2 pose; hovering highlights it and clicking selects it (`ui.selectedId`). */
 function Placed({ id, children }: { id: ComponentId; children: ReactNode }) {
   const c = componentById(id);
   const selected = useAppStore((s) => s.ui.selectedId === id);
@@ -77,7 +93,7 @@ function Placed({ id, children }: { id: ComponentId; children: ReactNode }) {
     appStore.getState().ui.select(id);
   };
   return (
-    <Select enabled={hovered || selected}>
+    <>
       <group
         name={id}
         position={[...c.position_m]}
@@ -87,19 +103,21 @@ function Placed({ id, children }: { id: ComponentId; children: ReactNode }) {
         onClick={click}
       >
         {children}
+        {(hovered || selected) && <Highlight id={id} color={selected ? HIGHLIGHT.selected : HIGHLIGHT.hover} />}
       </group>
-    </Select>
+    </>
   );
 }
 
 /** The bench top, every §13.2 component at its position, the wires (§13.3) and the Wi-Fi arc. */
 export function Bench() {
   const fan = componentById('fan').position_m;
+  const benchColor = SCENE_THEMES[useAppStore((s) => s.ui.theme)].bench;
   return (
     <>
       <mesh position={[...BENCH.center_m]} receiveShadow>
         <boxGeometry args={[...BENCH.size_m]} />
-        <meshStandardMaterial color="#8f8f8b" roughness={0.9} />
+        <meshStandardMaterial color={benchColor} roughness={0.9} />
       </mesh>
       {COMPONENTS.map((c) => (
         <Placed key={c.id} id={c.id}>
@@ -175,6 +193,7 @@ function DebugProbe() {
       cameraPosition: () => [camera.position.x, camera.position.y, camera.position.z],
       project,
       selectedId: () => appStore.getState().ui.selectedId,
+      setTheme: (theme) => appStore.getState().ui.setTheme(theme),
     };
     return () => {
       delete window.__scene;
@@ -211,19 +230,12 @@ export function BenchViewport() {
     <div data-testid="viewport" className="relative h-full w-full">
       <Canvas
         shadows
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         camera={{ position: [...start.position_m], fov: 40, near: 0.005, far: 20 }}
         onPointerMissed={() => appStore.getState().ui.select(null)}
       >
-        <color attach="background" args={['#101216']} />
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[0.4, 1.2, 0.6]} intensity={2.2} castShadow />
-        <Selection>
-          <Bench />
-          <EffectComposer autoClear={false} multisampling={4}>
-            <Outline blur edgeStrength={4} visibleEdgeColor={0xffffff} hiddenEdgeColor={0x5ab0ff} />
-          </EffectComposer>
-        </Selection>
+        <Look />
+        <Bench />
         <OrbitControls makeDefault target={[...start.target_m]} />
         <CameraRig />
         <DebugProbe />
