@@ -1,0 +1,13 @@
+pnpm-lock.yaml
+dist/
+coverage/
+playwright-report/
+test-results/
+docs/
+public/schema/
+tests/fixtures/
+# copied verbatim from docs/PLAN.md §5.1; keep its hand alignment
+src/shared/config.ts
+AGENTS.md
+CLAUDE.md
+assets/

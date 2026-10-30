@@ -19,3 +19,12 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   thermal steady state keeps the baseline stationary for training and for demos.
 - **D-008 · 2026-10-29 · TypeScript pinned at 6.0.3, not 7.x.** typescript-eslint 8.71 supports TypeScript < 6.1.
 - **D-009 · 2026-10-29 · All dependency versions were published at least two weeks before the plan date.**
+- **D-010 · 2026-10-29 · Added type-only dev dependencies `@types/react` 19.3.0, `@types/react-dom` 19.3.0 and
+  `@types/node` 22.20.5.** React 19 and Node ship no bundled types; these are the latest versions published before
+  2026-10-15 for React 19 and Node 22. No runtime code. Affects `package.json`.
+- **D-011 · 2026-10-29 · `scripts/*.ts` run with Node 22's built-in type stripping (`node scripts/x.ts`), not `tsx`.**
+  Avoids a dependency. Consequences: relative imports carry the `.ts` extension (`allowImportingTsExtensions`), and
+  `erasableSyntaxOnly` + `verbatimModuleSyntax` are on (no TS enums or namespaces, `import type` for types).
+  Affects `tsconfig.json`, every import.
+- **D-012 · 2026-10-29 · `pnpm lint` is ESLint only; Prettier runs through `pnpm format`.** `src/shared/config.ts` is
+  in `.prettierignore` so it stays verbatim from §5.1. Affects `package.json`, `.prettierignore`.
