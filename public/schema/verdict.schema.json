@@ -71,15 +71,7 @@
           },
           "additionalProperties": {
             "type": "number"
-          },
-          "required": [
-            "a_rms_g",
-            "cf",
-            "i_rms_A",
-            "t_C",
-            "dtdt_C_per_min",
-            "rpm"
-          ]
+          }
         },
         {
           "type": "null"

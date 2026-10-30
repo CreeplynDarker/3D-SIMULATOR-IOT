@@ -52,3 +52,9 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
 - **D-017 · 2026-10-29 · UI defaults not fixed by the plan:** camera `overview`; toggles flow and labels on, airflow
   and heat off; vibration exaggeration 10× (clamped to the 1–50 range of `sld-vib-exaggeration`); dock tab charts;
   theme dark. P5 may change them. Affects `store/slices/ui.ts`.
+- **D-018 · 2026-10-30 · `Verdict.z` is `z.partialRecord(FeatureKey, …)`, and it holds exactly the keys in
+  `rcf.features`.** In zod 4, `z.record` with an enum key requires every key, so a model built without `rpm`
+  (OPEN-1 keeps the feature list switchable) would produce verdicts that fail to parse. `partialRecord` still rejects
+  unknown keys. **Exception to AGENTS.md rule 5:** `PROTOCOL_VERSION` stays 1, because no build has shipped and no
+  fixtures exist yet. Schemas regenerated. Affects `shared/protocol.ts`, `public/schema/verdict.schema.json`,
+  PLAN §9.3 and §10.1.

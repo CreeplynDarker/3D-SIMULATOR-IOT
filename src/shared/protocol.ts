@@ -23,7 +23,7 @@ export const Verdict = z.object({           // laptop → ESP32, one per scored 
   v: z.literal(PROTOCOL_VERSION), kind: z.literal('verdict'),
   seq_ref: z.number().int().nonnegative(), score: z.number().finite().nonnegative().nullable(),
   threshold: z.number().positive(), alert: z.boolean(), clear: z.boolean(),
-  dominant: FeatureKey.nullable(), z: z.record(FeatureKey, z.number().finite()).nullable(),
+  dominant: FeatureKey.nullable(), z: z.partialRecord(FeatureKey, z.number().finite()).nullable(),
   model: z.enum(['UNTRAINED', 'TRAINING', 'READY']),
 });
 export const Command = z.object({           // operator → ESP32

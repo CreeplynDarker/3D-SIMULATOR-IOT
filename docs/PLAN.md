@@ -545,7 +545,7 @@ Implement RRCF per Guha et al. 2016 (ICML), matching the behaviour of Python `rr
   each tree, insert z under key `"tmp"`, take `codisp("tmp")`, forget `"tmp"`.
   `score = mean(codisp) / nTrain` (≈ 0 for normal points, approaching 1 for isolated ones).
 - **Verdict:** `alert = score > threshold`; `clear = score < clearHysteresis · threshold`;
-  `dominant = argmax_k |z_k|`; include the full z map.
+  `dominant = argmax_k |z_k|`; include the full z map. z contains exactly the keys in `rcf.features`.
 - **Validate:** score the holdout; if `max ≥ holdoutMaxRatio · threshold` → `UNTRAINED` with
   `reason: "baseline unstable"`, else `READY`.
 - **Serialise:** `{ version, seed, features, mean, std, trainZ, threshold, nTrain, holdoutMax, source }`.
@@ -584,7 +584,7 @@ export const Verdict = z.object({           // laptop → ESP32, one per scored 
   v: z.literal(PROTOCOL_VERSION), kind: z.literal('verdict'),
   seq_ref: z.number().int().nonnegative(), score: z.number().finite().nonnegative().nullable(),
   threshold: z.number().positive(), alert: z.boolean(), clear: z.boolean(),
-  dominant: FeatureKey.nullable(), z: z.record(FeatureKey, z.number().finite()).nullable(),
+  dominant: FeatureKey.nullable(), z: z.partialRecord(FeatureKey, z.number().finite()).nullable(),
   model: z.enum(['UNTRAINED', 'TRAINING', 'READY']),
 });
 export const Command = z.object({           // operator → ESP32

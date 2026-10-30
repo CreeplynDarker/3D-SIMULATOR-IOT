@@ -3,6 +3,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { CONFIG } from '../../../src/shared/config.ts';
 import { Command, Packet, PROTOCOL_VERSION, Verdict } from '../../../src/shared/protocol.ts';
 
 const packet: Packet = {
@@ -51,6 +52,18 @@ describe('protocol', () => {
     expect(Packet.safeParse({ ...packet, t_C: null, dtdt_C_per_min: null, trip_reason: 'RCF' }).success).toBe(true);
     const untrained = { ...verdict, score: null, dominant: null, z: null, model: 'UNTRAINED' };
     expect(Verdict.safeParse(untrained).success).toBe(true);
+  });
+
+  it('accepts a z map with exactly the active features', () => {
+    const active = Object.fromEntries(CONFIG.rcf.features.map((k, i) => [k, i * 0.1]));
+    expect(Verdict.safeParse({ ...verdict, z: active }).success).toBe(true);
+    // rcf.features is switchable (OPEN-1), so a 5-feature model without rpm must parse too.
+    const { rpm: _rpm, ...withoutRpm } = verdict.z ?? {};
+    expect(Verdict.safeParse({ ...verdict, z: withoutRpm }).success).toBe(true);
+  });
+
+  it('rejects a z map with an unknown key', () => {
+    expect(Verdict.safeParse({ ...verdict, z: { ...verdict.z, humidity: 0.3 } }).success).toBe(false);
   });
 
   it('rejects a missing field', () => {
