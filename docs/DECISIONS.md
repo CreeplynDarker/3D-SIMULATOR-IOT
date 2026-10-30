@@ -195,3 +195,10 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   ESTOP in CRITICAL re-trips with reason ESTOP ("any except OFF"). `activeMap` is the id of the last row that fired;
   the `relay.on` and `relay.off` markers sit on the GPIO26 writes inside those rows' actions. A trip logs
   `ERR trip <reason>`, and the firmware adds the feature values (§7.7). Affects `firmware/stateMachine.ts`.
+- **D-036 · 2026-10-30 · Link model.** Each uplink packet draws two numbers from the `link` stream, the loss decision
+  and the latency jitter, even when it is dropped, so the random sequence doesn't depend on `packetLoss`. A sent
+  packet records its nominal verdict time (window end + `latency_s` + U(−jitter, +jitter)). A verdict is delivered at
+  that time, or when it reaches the firmware if the RCF answers later. A verdict with no packet on record is delivered
+  on arrival. The firmware pulls due verdicts in `afterStep(t)`, so delivery has 0.5 ms resolution. Measured: delays
+  of 10–30 ms; with `packetLoss` 1.0 from t = 30 s, `link_lost` is raised at the 36 s window end (5 s timeout + 1
+  window) and cleared by the first verdict after restore. Affects `firmware/link.ts`.

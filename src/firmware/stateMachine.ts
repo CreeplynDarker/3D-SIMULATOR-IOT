@@ -142,5 +142,11 @@ export function transition(f: Fsm, t: Trigger, cfg: SimConfig): Outcome {
   if (row.to === null || row.to === from) return { map: row.map, from, to: row.to, events, log };
   f.state = row.to;
   const why = f.tripReason && row.to === 'CRITICAL' ? ` (${f.tripReason})` : f.warnReason && row.to === 'WARNING' ? ` (${f.warnReason})` : ''; // prettier-ignore
-  return { map: row.map, from, to: row.to, events, log: [{ level: 'INFO', text: `${from} -> ${row.to}${why}` }, ...log] };
+  return {
+    map: row.map,
+    from,
+    to: row.to,
+    events,
+    log: [{ level: 'INFO', text: `${from} -> ${row.to}${why}` }, ...log],
+  };
 }
