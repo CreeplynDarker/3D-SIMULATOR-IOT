@@ -13,7 +13,14 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/sim/**/*.ts', 'src/firmware/**/*.ts', 'src/rcf/**/*.ts', 'src/harness/**/*.ts'],
       exclude: ['src/**/worker.ts'],
-      thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
+        // AGENTS.md: each pure-core folder keeps its own 80%, not just the average
+        'src/sim/**/*.ts': { lines: 80, functions: 80, branches: 80, statements: 80 },
+      },
     },
   },
 });

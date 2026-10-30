@@ -146,3 +146,15 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   caller and passed in (`acs712Out_V(i, cfg, noise_V)`, `adcCounts(v, cfg, noise_counts)`), so the noiseless
   checks pass 0. Before its first conversion completes, the DS18B20 register holds the power-on value 85 °C. A new
   reading is signalled by the `readings` counter. Affects `sim/sensors/`, `sim/vibration.ts`.
+- **D-031 · 2026-10-30 · Plant integration contract.** `plant.ts` runs §6.10 in order. It talks to the firmware
+  through a `Controller`: `tick(view)` is called on every 1 kHz sample with the sensor outputs at the end of the
+  previous step and returns GPIO26; `command(cmd)` receives operator commands at their scheduled time; `afterStep(t)`
+  covers step 4, link delivery. Scheduled work is data (`PlantAction`: fault, clearFaults, command), applied in time
+  order at the start of the matching step. Sim time is `step · dt_s`, never a running sum, so it can't drift. RNG
+  streams are `plant` (vibration phases and looseness noise), `mpu`, `acs` and `adc`, as in §6.10. The MPU's DLPF
+  starts at the resting 1 g. `toSnapshot(plant, firmwareView)` builds the §10.2 snapshot; until P3 the firmware
+  fields read OFF. `vibration.ts` (§6.3) arrives with P2.6, because no task lists it and P2.6's a_RMS check needs
+  it. The "600 s in < 3 s in Node" test times the plant in a child `node` process, so it measures plain Node rather
+  than Vitest's coverage-instrumented copy (0.70 s plain, about 4.6 s instrumented). Coverage now has a per-folder
+  80% threshold for `src/sim/` in addition to the global one. Affects `sim/plant.ts`, `sim/vibration.ts`,
+  `vite.config.ts`.

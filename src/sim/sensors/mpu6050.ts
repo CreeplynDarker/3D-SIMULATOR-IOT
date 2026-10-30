@@ -18,12 +18,13 @@ export function createMpu(cfg: MpuConfig, dt_s: number): MpuState {
   return { lp_g: new Float64Array(3), alpha };
 }
 
-/** One DLPF step towards the true acceleration (ax, ay, az) in g. */
-export function filterMpu(mpu: MpuState, ax_g: number, ay_g: number, az_g: number): void {
+/** One DLPF step towards the true acceleration `a_g` (x, y, z in g). */
+export function filterMpu(mpu: MpuState, a_g: Float64Array): void {
   const lp = mpu.lp_g;
-  lp[0] = (lp[0] ?? 0) + mpu.alpha * (ax_g - (lp[0] ?? 0));
-  lp[1] = (lp[1] ?? 0) + mpu.alpha * (ay_g - (lp[1] ?? 0));
-  lp[2] = (lp[2] ?? 0) + mpu.alpha * (az_g - (lp[2] ?? 0));
+  for (let k = 0; k < 3; k++) {
+    const y = lp[k] as number; // typed arrays of length 3: always defined
+    lp[k] = y + mpu.alpha * ((a_g[k] as number) - y);
+  }
 }
 
 /** Rounds to the sensor's LSB (1/lsbPerG g) and clips to ±range_g. */
@@ -34,5 +35,5 @@ export function quantiseMpu_g(a_g: number, cfg: MpuConfig): number {
 
 /** Firmware sample: filtered value + N(0, noise_g²), quantised, written to `out_g` (x, y, z in g). */
 export function sampleMpu(mpu: MpuState, cfg: MpuConfig, rng: RngStream, out_g: Float64Array): void {
-  for (let k = 0; k < 3; k++) out_g[k] = quantiseMpu_g((mpu.lp_g[k] ?? 0) + rng.normal(0, cfg.noise_g), cfg);
+  for (let k = 0; k < 3; k++) out_g[k] = quantiseMpu_g((mpu.lp_g[k] as number) + rng.normal(0, cfg.noise_g), cfg);
 }

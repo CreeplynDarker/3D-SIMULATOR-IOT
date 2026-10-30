@@ -47,7 +47,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-30 · sim/sensors/: MPU6050 DLPF + noise + quantise/clip, ACS712, divider + ADC with INL, DS18B20 lag/85/−127/0.75 s timing, tach 2 edges/rev · no tuning
 - [x] P2.5 Relay and supply
   2026-10-30 · sim/relay.ts (LOW = coil on, NO after 10 ms continuous, NC 5 ms after release), sim/supply.ts (sag, fan on NO2) · no tuning
-- [ ] P2.6 Plant integration (deps: P2.1–P2.5)
+- [x] P2.6 Plant integration (deps: P2.1–P2.5)
+  2026-10-30 · sim/plant.ts (§6.10 order, Controller, scheduled actions, snapshot) + sim/vibration.ts (§6.3): healthy a_RMS 0.1205 g, imbalance 0.3 g ×5.17 with I_RMS ±0.000%, 600 s in 0.70 s; sim coverage 99% · no tuning
 - [ ] P2.7 Sim worker (deps: P2.6)
 
 ## P3 — Firmware mirror (deps: P2.6)

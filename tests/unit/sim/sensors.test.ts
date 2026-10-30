@@ -51,7 +51,7 @@ describe('MPU6050 (§6.4)', () => {
     const mpu = createMpu(S.mpu, dt_s);
     const alpha = dt_s / (1 / (2 * Math.PI * S.mpu.dlpfCutoff_Hz) + dt_s);
     expect(mpu.alpha).toBeCloseTo(alpha, 15);
-    filterMpu(mpu, 1, -1, 0.5);
+    filterMpu(mpu, Float64Array.of(1, -1, 0.5));
     expect([...mpu.lp_g]).toEqual([alpha, -alpha, 0.5 * alpha]);
   });
 
@@ -67,7 +67,7 @@ describe('MPU6050 (§6.4)', () => {
 
   it('samples filtered value + noise, then quantises', () => {
     const mpu = createMpu(S.mpu, dt_s);
-    for (let k = 0; k < 400; k++) filterMpu(mpu, 0.1, 1, 0);
+    for (let k = 0; k < 400; k++) filterMpu(mpu, Float64Array.of(0.1, 1, 0));
     const out = new Float64Array(3);
     const rng = stream(CONFIG.seed, 'mpu');
     const xs: number[] = [];
