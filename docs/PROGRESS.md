@@ -60,7 +60,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-30 · firmware/features.ts (a_RMS, per-axis CF, I_RMS, rpm, validity, OLS dT/dt) + gen-fixtures.ts + features_reference.py; 5 fixtures match NumPy within 1e-6 · no tuning
 - [x] P3.3 Limits and flags (deps: P3.2)
   2026-10-30 · firmware/limits.ts: I_MAX (run + start limit), T_MAX, STALL, I_SOFT, T_SOFT, SENSOR, LINK; one truth-table test per row · no tuning
-- [ ] P3.4 State machine (deps: P3.3)
+- [x] P3.4 State machine (deps: P3.3)
+  2026-10-30 · firmware/stateMachine.ts: §7.4 as a 15-row table + transition(); one test per spec row, GPIO26 LOW only in STARTING/NORMAL/WARNING, 4+1 vs 5 alerts, dropped verdict, refusals · no tuning
 - [ ] P3.5 Link
 - [ ] P3.6 Firmware orchestrator and logs (deps: P3.1–P3.5)
 - [ ] P3.7 Reference C++ (deps: P3.6)

@@ -186,3 +186,12 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   into a transition. When several trips hold in one window, the first in table order wins (I_MAX, T_MAX, STALL), and
   likewise for soft conditions. T_MAX uses the last valid reading, so a disconnected probe cannot trip it with −127.
   Affects `firmware/limits.ts`.
+- **D-035 · 2026-10-30 · §7.4 as a table.** `TRANSITIONS` is data (from-states, trigger, guard, to, action, `@map`
+  id), and `transition()` fires the first matching row. Rows that the spec combines are split so each `@map` id has
+  exactly one row. The trip rows are split by reason (`sm.limit.imax` and `sm.limit.tmax` cover STARTING, NORMAL and
+  WARNING; `sm.limit.stall` covers NORMAL and WARNING). `sm.warn.alert` is the implied row "WARNING + alert, but
+  `alertRun` still below `nCritical`": it stays in WARNING and emits ALERT. Verdict counters update before the table
+  is matched, and only in NORMAL and WARNING, so verdicts in STARTING, OFF, CALIBRATING and CRITICAL change nothing.
+  ESTOP in CRITICAL re-trips with reason ESTOP ("any except OFF"). `activeMap` is the id of the last row that fired;
+  the `relay.on` and `relay.off` markers sit on the GPIO26 writes inside those rows' actions. A trip logs
+  `ERR trip <reason>`, and the firmware adds the feature values (§7.7). Affects `firmware/stateMachine.ts`.
