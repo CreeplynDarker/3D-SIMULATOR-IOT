@@ -407,3 +407,9 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   clicks the viewport's own corner. Screenshots of OFF, NORMAL, WARNING (DS18B20 disconnected) and CRITICAL
   (imbalance) at 1920 × 1080 and 1280 × 720 are in `docs/screenshots/p5/`. Affects `store/slices/model.ts`,
   `ui/StatusPanel.tsx`, `ui/chartData.ts`, `ui/Charts.tsx`, `tests/e2e/camera.spec.ts`.
+- **D-056 · 2026-10-31 · Chart redraws are coalesced to one per animation frame.** A store change schedules a
+  `requestAnimationFrame` instead of redrawing all six plots inside the packet message handler. On the GPU-less
+  container the main thread draws at 4–5 fps in software. There, the P4.4 e2e check (packet copy → verdict on main
+  < 20 ms) failed one run in two with 106–122 ms, because the main thread was busy between the two messages, not
+  the RCF (0.17 ms per packet in Node). The worker ping and sim-rate checks fail there for the same reason (D-026).
+  They need a rerun on a machine with a GPU. Affects `ui/Charts.tsx`.

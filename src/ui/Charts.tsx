@@ -131,14 +131,20 @@ function usePlots(hosts: RefObject<Partial<Record<StripId, HTMLDivElement | null
       }
     };
     update();
+    // Redraw at most once per animation frame, so a burst of packets (or 10× speed) costs one redraw, not one each.
+    let frame = 0;
+    const schedule = () => {
+      if (frame === 0) frame = requestAnimationFrame(() => ((frame = 0), update()));
+    };
     const unsubscribe = appStore.subscribe((s, prev) => {
-      if (s.series.rev !== prev.series.rev || s.ui.chartWindow_s !== prev.ui.chartWindow_s || s.ui.chartFrozen !== prev.ui.chartFrozen) update(); // prettier-ignore
+      if (s.series.rev !== prev.series.rev || s.ui.chartWindow_s !== prev.ui.chartWindow_s || s.ui.chartFrozen !== prev.ui.chartFrozen) schedule(); // prettier-ignore
     });
     const resize = new ResizeObserver(() => {
       for (const p of plots) p.u.setSize({ width: Math.max(100, p.host.clientWidth), height: Math.max(60, p.host.clientHeight) }); // prettier-ignore
     });
     for (const p of plots) resize.observe(p.host);
     return () => {
+      cancelAnimationFrame(frame);
       unsubscribe();
       resize.disconnect();
       for (const p of plots) p.u.destroy();
