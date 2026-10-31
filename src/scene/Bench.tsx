@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Vector3 } from 'three';
 import { type ComponentId, COMPONENTS, componentById, type Vec3 } from '../shared/components.ts';
 import { appStore, useAppStore } from '../store/index.ts';
+import { type AnimDebug, animDebug } from './animDebug.ts';
 import { CAMERA_ORDER, CAMERA_PRESETS, CAMERA_TRANSITION_ms, easeInOutCubic } from './cameras.ts';
 import { Look, SCENE_THEMES } from './Look.tsx';
 import { Acs712 } from './models/Acs712.tsx';
@@ -13,6 +14,7 @@ import { DcJack } from './models/DcJack.tsx';
 import { Ds18b20 } from './models/Ds18b20.tsx';
 import { Esp32 } from './models/Esp32.tsx';
 import { Fan, FanStand } from './models/Fan.tsx';
+import { FanMotion } from './models/FanMotion.tsx';
 import { Laptop } from './models/Laptop.tsx';
 import { photoTexturesReady } from './models/materials.ts';
 import { Mpu6050 } from './models/Mpu6050.tsx';
@@ -30,6 +32,8 @@ export interface SceneDebug {
   project(id: ComponentId): { x: number; y: number } | null;
   selectedId(): string | null;
   setTheme(theme: 'dark' | 'light'): void;
+  /** What the animated parts drew in the last frame. */
+  anim(): AnimDebug;
 }
 
 declare global {
@@ -39,7 +43,11 @@ declare global {
 }
 
 const MODELS: Record<ComponentId, () => ReactNode> = {
-  fan: () => <Fan />,
+  fan: () => (
+    <FanMotion>
+      <Fan />
+    </FanMotion>
+  ),
   mpu6050: () => <Mpu6050 />,
   ds18b20: () => <Ds18b20 />,
   breadboard: () => <Breadboard />,
@@ -194,6 +202,7 @@ function DebugProbe() {
       project,
       selectedId: () => appStore.getState().ui.selectedId,
       setTheme: (theme) => appStore.getState().ui.setTheme(theme),
+      anim: () => structuredClone(animDebug),
     };
     return () => {
       delete window.__scene;

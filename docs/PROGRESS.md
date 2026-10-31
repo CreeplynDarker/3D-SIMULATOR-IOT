@@ -111,7 +111,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 ## P6 — Animation and explanation (deps: P5)
 
-- [ ] P6.1 Blades and vibration
+- [x] P6.1 Blades and vibration
+  2026-10-31 · scene/models/FanMotion.tsx + scene/anim.ts: blades by theta_rad, crossfade to a blur disc above 600 rpm, frame jitter from a_RMS at 6 Hz (sim-time phase, capped 4 mm), airflow streaks, slowed-for-visibility label; moving parts cast no shadow; paused screenshots identical · no tuning
 - [ ] P6.2 Signal flow
 - [ ] P6.3 Relay
 - [ ] P6.4 Heat and sound

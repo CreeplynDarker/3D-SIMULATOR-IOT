@@ -413,3 +413,16 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   < 20 ms) failed one run in two with 106–122 ms, because the main thread was busy between the two messages, not
   the RCF (0.17 ms per packet in Node). The worker ping and sim-rate checks fail there for the same reason (D-026).
   They need a rerun on a machine with a GPU. Affects `ui/Charts.tsx`.
+- **D-057 · 2026-10-31 · Fan motion (P6.1).** `scene/models/FanMotion.tsx` wraps the fan model. In `useFrame` it reads
+  the snapshot and the last window's a_RMS from the store; every motion is a pure function of sim values
+  (`scene/anim.ts`), so a paused sim redraws the same frame. (a) The blades turn by `theta_rad`. Above
+  `bladeBlurRpm` they fade out while a dark translucent ring (the blur disc) fades in, linearly up to 2 ×
+  `bladeBlurRpm`. (b) The frame moves on a circle of radius min(`vibVisualMax_mm`, a_RMS · `vibVisual_mm_per_g` ·
+  exaggeration) at `vibVisual_Hz`, with its phase from sim time; it holds still when the fan is stopped. (c)
+  `tgl-airflow` shows 10 glow streaks leaving the outlet, their speed proportional to rpm. Airflow is drawn here
+  because no other task owns it. (d) Shadows: the blades, the disc and the streaks don't cast, so the frozen
+  shadow map (D-027) stays valid without a redraw. The fan frame keeps casting from its rest pose; the jitter (at
+  most 4 mm) isn't reflected in its shadow. (e) `vib-slowed-label` (extra test ID) says "Fan vibration slowed for
+  visibility: shown at 6 Hz, ×N" while the Fan camera is active or the fan is selected. (f) `window.__scene.anim()`
+  returns what the animated parts drew last frame, for the e2e tests. Affects `scene/anim.ts`,
+  `scene/animDebug.ts`, `scene/models/FanMotion.tsx`, `scene/Bench.tsx`, `ui/ViewportControls.tsx`.
