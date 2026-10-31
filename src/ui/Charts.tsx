@@ -7,7 +7,7 @@ import { CONFIG } from '../shared/config.ts';
 import type { SimEventType } from '../shared/messages.ts';
 import { appStore, useAppStore } from '../store/index.ts';
 import type { Theme } from '../store/slices/ui.ts';
-import { type ChartData, chartData, type StripId, type StripSpec, STRIPS } from './chartData.ts';
+import { type ChartData, chartData, type StripId, type StripSpec, STRIPS, yRange } from './chartData.ts';
 import { STATE_TONE, type Tone } from './format.ts';
 import { ToggleButton } from './kit.tsx';
 
@@ -76,7 +76,11 @@ function options(
     ...size,
     legend: { show: false },
     cursor: { sync: { key: SYNC_KEY }, drag: { x: false, y: false } },
-    scales: { x: { time: false, range: () => data().xRange }, y: {}, y2: {} },
+    scales: {
+      x: { time: false, range: () => data().xRange },
+      y: { range: (_u, min, max) => yRange(min, max) },
+      y2: { range: (_u, min, max) => yRange(min, max) },
+    },
     series: [
       {},
       ...spec.series.map((label, i) => ({

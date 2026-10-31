@@ -13,9 +13,12 @@ export interface ModelSlice {
     /** Alert threshold on the normalised score (unitless). */
     threshold: number;
     lastVerdict: Verdict | null;
+    /** The newest verdict that carried a score (kept through CRITICAL, when windows aren't scored). */
+    lastScored: Verdict | null;
     setStatus(status: ModelStatus, progress: number, reason?: string): void;
     setThreshold(threshold: number): void;
     setLastVerdict(verdict: Verdict): void;
+    clearVerdicts(): void;
   };
 }
 
@@ -29,9 +32,12 @@ export const createModelSlice: StateCreator<AppState, [], [], ModelSlice> = (set
       reason: null,
       threshold: CONFIG.rcf.threshold,
       lastVerdict: null,
+      lastScored: null,
       setStatus: (status, progress, reason) => patch({ status, progress, reason: reason ?? null }),
       setThreshold: (threshold) => patch({ threshold }),
-      setLastVerdict: (lastVerdict) => patch({ lastVerdict }),
+      setLastVerdict: (lastVerdict) =>
+        patch(lastVerdict.score === null ? { lastVerdict } : { lastVerdict, lastScored: lastVerdict }),
+      clearVerdicts: () => patch({ lastVerdict: null, lastScored: null }),
     },
   };
 };

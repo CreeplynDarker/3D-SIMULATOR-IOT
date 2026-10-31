@@ -106,7 +106,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · ui/TestLog.tsx + testlog.ts: runs with condition, start, duration, alerted, first alert, CRITICAL → relay ms, operator reset, notes; CSV export; worker posts each tick's events in time order · no tuning
 - [x] P5.10 M12 legend
   2026-10-31 · ui/Legend.tsx + legend.ts: legend-modal (wire key, state colours, shortcuts, §14 glossary); keyboard Space/S/E/R/1–5/?/Esc, ignored in inputs · no tuning
-- [ ] P5.G Phase gate (deps: P5.1–P5.10)
+- [x] P5.G Phase gate (deps: P5.1–P5.10)
+  2026-10-31 · tests/e2e/p5-gate.spec.ts through the real controls: imbalance 0.3 → CRITICAL (RCF) 4.3–5.0 s of sim time after the slider, reset with confirm → OFF, CSV rows = console packets (57–60); review fixes D-055; screenshots in docs/screenshots/p5/ · no tuning
 
 ## P6 — Animation and explanation (deps: P5)
 
@@ -139,4 +140,6 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - P1.3 · the layout reads like a tidy lab bench
 - P1.4 · no wire passes through a component (also covered by `tests/unit/scene/route.test.ts`)
 - P3.7 · the C++ in `src/firmware/reference-cpp/` reads as plausible ESP32 Arduino code
+- P5.G · a teammate runs a fault and a reset without instructions
+- P5.1 · the layout at 1280 × 720 and 1920 × 1080 reads well (screenshots in `docs/screenshots/p5/`); left column scrolls at 720 px
 - P1.6 · at least 50 fps at 1920 × 1080 on an integrated-graphics laptop (measured 60 fps vsync-locked on Intel Iris Xe in headless Chromium; confirm in a normal browser window on the team laptop)

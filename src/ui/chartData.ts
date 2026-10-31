@@ -73,3 +73,11 @@ export function chartData(
     markers: events.filter((e) => e.t_s > xRange[0] - WINDOW_s && e.t_s <= xRange[1]),
   };
 }
+
+/** Y range for a strip: 10 % padding, or ±0.5 around a flat line (uPlot would otherwise stretch it from 0). */
+export function yRange(min: number | null, max: number | null): [number, number] {
+  if (min === null || max === null) return [0, 1];
+  const span = max - min;
+  const pad = span > 0 ? span * 0.1 : 0.5;
+  return [min - pad, max + pad];
+}

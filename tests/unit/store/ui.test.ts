@@ -56,3 +56,18 @@ describe('console slice: filters (P5.7)', () => {
     expect(store.getState().console.filters.verdict).toBe(false);
   });
 });
+
+describe('model slice: last scored verdict (P5.G review)', () => {
+  it('keeps the last verdict with a score, so M3 can show why a trip happened; clearVerdicts empties both', () => {
+    const store = createAppStore();
+    const m = () => store.getState().model;
+    const v = (seq: number, score: number | null) => ({ v: 1 as const, kind: 'verdict' as const, seq_ref: seq, score, threshold: 0.5, alert: false, clear: false, dominant: score === null ? null : ('a_rms_g' as const), z: null, model: 'READY' as const }); // prettier-ignore
+    m().setLastVerdict(v(1, 0.93));
+    m().setLastVerdict(v(2, null));
+    expect(m().lastVerdict?.seq_ref).toBe(2);
+    expect(m().lastScored?.seq_ref).toBe(1);
+    m().clearVerdicts();
+    expect(m().lastVerdict).toBeNull();
+    expect(m().lastScored).toBeNull();
+  });
+});

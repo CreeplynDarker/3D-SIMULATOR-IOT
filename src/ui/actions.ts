@@ -60,6 +60,7 @@ export const actions = {
     toSim({ type: 'init', config: initConfig(op), seed: CONFIG.seed, warmStart: op.warmStart });
     s.series.clear();
     s.console.clear(); // seq restarts at 0, so a new run starts a new console (D-050)
+    s.model.clearVerdicts();
     s.sim.setScenario(null);
     s.ui.resetFaultTargets();
   },

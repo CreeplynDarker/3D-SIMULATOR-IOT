@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { State } from '../../../src/shared/protocol.ts';
 import type { WindowRow } from '../../../src/store/slices/series.ts';
-import { chartData, STRIPS } from '../../../src/ui/chartData.ts';
+import { chartData, STRIPS, yRange } from '../../../src/ui/chartData.ts';
 
 const row = (seq: number, state: State, score: number | null = null): WindowRow => ({
   seq,
@@ -55,5 +55,14 @@ describe('M6 chart data (§8.2)', () => {
     ]);
     expect(d.markers.map((m) => m.type)).toEqual(['CALIBRATED', 'WARNING', 'CRITICAL']);
     expect(chartData([], [], 30, 0.5)).toMatchObject({ x: [], bands: [], markers: [] });
+  });
+});
+
+describe('M6 y range (P5.G review)', () => {
+  it('pads a flat series tightly instead of stretching it from 0', () => {
+    expect(yRange(34.0625, 34.0625)).toEqual([34.0625 - 0.5, 34.0625 + 0.5]);
+    expect(yRange(0, 0)).toEqual([-0.5, 0.5]);
+    expect(yRange(3780, 3810)).toEqual([3777, 3813]);
+    expect(yRange(null, null)).toEqual([0, 1]);
   });
 });

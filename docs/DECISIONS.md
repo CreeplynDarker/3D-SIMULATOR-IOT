@@ -390,3 +390,20 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   inputs, selects or text areas, or pressed with Ctrl/Alt/Meta, are ignored. They go through the same `actions` as
   the buttons, so S and R follow the same rules. Extra test IDs: `btn-legend-close`, `legend-wire`,
   `legend-state`. Affects `ui/Legend.tsx`, `ui/legend.ts`, `App.tsx`.
+- **D-054 · 2026-10-31 · P5 phase gate.** `tests/e2e/p5-gate.spec.ts` drives only the real controls: `sel-speed` 4×,
+  `btn-start`, `btn-play`, `sld-imbalance` 0.3, `btn-reset` → `btn-reset-confirm`, then `btn-export-csv` from the
+  console tab. `window.__pdm`/`__sim` are used only to wait (NORMAL, rpm < 100 before the reset) and to read the
+  FAULT_SET and CRITICAL event times. Sim time from setting the imbalance to CRITICAL is taken from those events and
+  must be ≤ 15 s; the badge must show CRITICAL by the next snapshot. The sim is paused before exporting, so the
+  CSV's rows can be compared with the console's packet count. Measured here: CRITICAL 4.35 s of sim time after the
+  slider, trip reason RCF, 57 CSV rows = 57 console packets. M8 (code panel, P6.5) and M11 (guided card, P6.6)
+  are not part of P5; their test IDs (`code-panel`, `tab-code-*`, `tgl-follow`, `scenario-card`, `btn-scn-*`)
+  arrive with P6. Affects `tests/e2e/p5-gate.spec.ts`.
+- **D-055 · 2026-10-31 · Fixes from the P5 screenshot review.** (a) In CRITICAL every window is unscored, so M3's gauge
+  and `dominant-var` went blank exactly when the operator needs the cause. The model slice now also keeps
+  `lastScored`, the newest verdict with a score, and M3 shows that; a sim reset clears both. (b) uPlot stretches a
+  flat series from 0 (T at 34.06 °C read as 0–50), so each strip's y range is `yRange`: 10 % padding, or ±0.5 around a
+  flat line. (c) `camera.spec.ts` clicked (5, 5) to hit empty canvas, which assumed a full-page viewport; it now
+  clicks the viewport's own corner. Screenshots of OFF, NORMAL, WARNING (DS18B20 disconnected) and CRITICAL
+  (imbalance) at 1920 × 1080 and 1280 × 720 are in `docs/screenshots/p5/`. Affects `store/slices/model.ts`,
+  `ui/StatusPanel.tsx`, `ui/chartData.ts`, `ui/Charts.tsx`, `tests/e2e/camera.spec.ts`.

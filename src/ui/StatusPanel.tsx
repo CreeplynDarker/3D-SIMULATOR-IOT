@@ -25,14 +25,16 @@ function Indicator({ testId, ok, okText, badText }: { testId: string; ok: boolea
 
 /** Score bar with the threshold mark (the score runs 0…1). */
 function Gauge() {
-  const verdict = useAppStore((s) => s.model.lastVerdict);
+  const verdict = useAppStore((s) => s.model.lastScored);
   const threshold = useAppStore((s) => s.model.threshold);
   const score = verdict?.score ?? null;
   const over = score !== null && score > threshold;
   return (
     <div className="py-1">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-slate-500 dark:text-slate-400">RCF score / threshold</span>
+        <span className="text-slate-500 dark:text-slate-400" title="Last scored window">
+          RCF score / threshold
+        </span>
         <span data-testid="rcf-gauge" className={`font-mono tabular-nums ${over ? 'text-red-500' : ''}`}>
           {formatGauge(score, verdict?.threshold ?? threshold)}
         </span>
@@ -51,7 +53,7 @@ function Gauge() {
 /** The M3 panel at the top of the right column. */
 export function StatusPanel() {
   const snap = useAppStore((s) => s.sim.snapshot);
-  const dominant = useAppStore((s) => s.model.lastVerdict?.dominant ?? null);
+  const dominant = useAppStore((s) => s.model.lastScored?.dominant ?? null);
   const state = snap?.state ?? 'OFF';
   const tone = STATE_TONE[state];
   return (
