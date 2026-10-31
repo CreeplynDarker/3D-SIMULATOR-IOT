@@ -2,9 +2,13 @@ import { useEffect } from 'react';
 import { BenchViewport } from './scene/Bench.tsx';
 import { CONFIG } from './shared/config.ts';
 import type { MainToRcf, MainToSim, ModelStatus, RcfToMain, SimToMain, Snapshot } from './shared/messages.ts';
-import { type Command, type Packet, PROTOCOL_VERSION, type Verdict } from './shared/protocol.ts';
+import type { Command, Packet, Verdict } from './shared/protocol.ts';
 import { appStore } from './store/index.ts';
 import type { Speed } from './store/slices/sim.ts';
+import { actions, bindWorkers } from './ui/actions.ts';
+import { inspectStore, type StoreView } from './ui/debug.ts';
+import { AppShell } from './ui/layout/AppShell.tsx';
+import { ViewportControls } from './ui/ViewportControls.tsx';
 
 type WorkerTarget = 'sim' | 'rcf';
 
@@ -26,6 +30,8 @@ export interface DebugApi {
   verdictLatencies_ms(): number[];
   modelStatus(): { status: ModelStatus; progress: number; reason: string | null };
   train(): void;
+  /** Plain-data view of the store. */
+  inspect(): StoreView;
 }
 
 declare global {
@@ -95,27 +101,6 @@ function routeToStore(workers: Workers): void {
   });
 }
 
-/** Sim controls shared by the debug API (and, in P5, the top bar and operator panel). */
-function simControls(workers: Workers) {
-  let seq = 0;
-  return {
-    play: () => {
-      workers.postSim({ type: 'play' });
-      appStore.getState().sim.setPlaying(true);
-    },
-    pause: () => {
-      workers.postSim({ type: 'pause' });
-      appStore.getState().sim.setPlaying(false);
-    },
-    setSpeed: (x: Speed) => {
-      workers.postSim({ type: 'speed', x });
-      appStore.getState().sim.setSpeed(x);
-    },
-    command: (cmd: Command['cmd']) =>
-      workers.postSim({ type: 'command', command: { v: PROTOCOL_VERSION, kind: 'command', seq: seq++, cmd } }),
-  };
-}
-
 /** Exposes `window.__pdm` for the e2e tests; returns a function that removes it. */
 function installDebugApi(workers: Workers): () => void {
   const pending = new Map<number, { t0_ms: number; resolve: (rtt_ms: number) => void }>();
@@ -165,7 +150,10 @@ function installDebugApi(workers: Workers): () => void {
         if (target === 'sim') workers.postSim({ type: 'ping', id });
         else workers.postRcf({ type: 'ping', id });
       }),
-    ...simControls(workers),
+    play: actions.play,
+    pause: actions.pause,
+    setSpeed: (x: Speed) => actions.setSpeed(x),
+    command: (cmd: Command['cmd']) => actions.command(cmd),
     snapshot: () => appStore.getState().sim.snapshot,
     simPackets: () => [...simPackets],
     simVerdictsIn: () => [...simVerdictsIn],
@@ -176,28 +164,50 @@ function installDebugApi(workers: Workers): () => void {
       return { status, progress, reason };
     },
     train: () => workers.postRcf({ type: 'train' }),
+    inspect: () => inspectStore(appStore.getState()),
   };
   return () => {
     delete window.__pdm;
   };
 }
 
-/** Root component: the 3D bench for now; the shell and the other modules arrive in P5. */
+/** Placeholder for a module that a later P5 task fills in. */
+function Pending({ name }: { name: string }) {
+  return <p className="p-3 text-xs text-slate-500">{name}</p>;
+}
+
+/** Root component: starts the workers, routes their output into the store and lays out the modules. */
 export function App() {
   useEffect(() => {
     const workers = startWorkers();
+    bindWorkers(workers);
     routeToStore(workers);
     const debug = new URLSearchParams(window.location.search).get('debug') === '1';
     const removeDebugApi = debug ? installDebugApi(workers) : () => undefined;
     return () => {
       removeDebugApi();
+      bindWorkers(null);
       workers.dispose();
     };
   }, []);
 
   return (
-    <main className="h-screen w-screen bg-slate-950 text-slate-100">
-      <BenchViewport />
-    </main>
+    <AppShell
+      topBar={<span className="text-sm font-semibold">IoT predictive maintenance · Grupo 7</span>}
+      left={<Pending name="M4 faults · M5 operator" />}
+      viewport={
+        <>
+          <BenchViewport />
+          <ViewportControls />
+        </>
+      }
+      right={<Pending name="M3 status · M9 inspector" />}
+      dock={{
+        charts: <Pending name="M6 charts" />,
+        console: <Pending name="M7 console" />,
+        code: <Pending name="M8 code panel (P6.5)" />,
+        testlog: <Pending name="M10 test log" />,
+      }}
+    />
   );
 }

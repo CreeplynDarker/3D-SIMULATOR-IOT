@@ -291,3 +291,16 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   byte-identical feature windows; only the NumPy dT/dt reference on the constant-temperature windows moved within
   1e-13 of 0, so those files were left as committed. Affects `scripts/gen-fixtures.ts`, `scripts/rrcf_reference.py`,
   `tests/fixtures/rcf_dataset.json`.
+- **D-045 · 2026-10-31 · App shell (P5.1).** `ui/layout/AppShell.tsx` is a CSS grid on Tailwind's `xl` breakpoint,
+  which is exactly 1280 px. From 1280 px up it shows the §8.1 grid (48 px top bar, 320 px left, viewport, 340 px
+  right, dock below). Below that the page is one column: top bar, viewport (60 vh), left column, right column, dock,
+  so the side columns stack under the viewport. The dock height is dragged by the user, so it is applied through a
+  `--dock-h` CSS variable set from the store in an effect, the same exception AGENTS.md makes for computed overlay
+  positions. It is clamped to 160–480 px in the store. Extra test IDs, beyond §8.2, for layout checks only:
+  `app-shell`, `region-topbar|left|viewport|right|dock`, `dock-tab-charts|console|code|testlog` and `dock-resize`.
+  The M1 view toggles (`tgl-flow`, `tgl-labels`, `tgl-airflow`, `tgl-heat`) and `sld-vib-exaggeration` sit on the
+  viewport's bottom-right with P5.1, because no P5 task names M1; they only set `ui.toggles`/`ui.vibExaggeration`,
+  and P6 draws what they enable. Dark mode is a `dark` class on the shell (`@custom-variant dark` in
+  `index.css`), driven by `ui.theme`. Components send worker messages only through `ui/actions.ts`, which App binds
+  to the workers. The e2e tests read the store through `window.__pdm.inspect()` (`ui/debug.ts`), which grows with
+  each module. Affects `src/ui/`, `App.tsx`, `store/slices/ui.ts`, `index.css`.

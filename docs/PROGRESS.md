@@ -86,7 +86,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 ## P5 — Interface modules (deps: P1, P4)
 
-- [ ] P5.1 Shell and layout
+- [x] P5.1 Shell and layout
+  2026-10-31 · ui/layout/AppShell.tsx (§8.1 grid at ≥ 1280 px, stacked below), Dock.tsx (4 tabs, drag-resize 160–480 px), M1 view toggles + vibration slider, ui/actions.ts, __pdm.inspect(); e2e at 1280 × 720, 1920 × 1080 and 1100 px · no tuning
 - [ ] P5.2 M2 top bar
 - [ ] P5.3 M3 status
 - [ ] P5.4 M4 faults

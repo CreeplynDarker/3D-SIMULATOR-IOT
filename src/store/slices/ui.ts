@@ -12,6 +12,9 @@ export type Theme = 'dark' | 'light';
 /** Range of `sld-vib-exaggeration` (×, spec §8.2). */
 export const VIB_EXAGGERATION_RANGE = { min: 1, max: 50, initial: 10 } as const;
 
+/** Bottom dock height: 280 px, resizable 160–480 px (spec §8.1). */
+export const DOCK_HEIGHT_px = { min: 160, max: 480, initial: 280 } as const;
+
 export interface UiSlice {
   ui: {
     selectedId: string | null;
@@ -20,12 +23,14 @@ export interface UiSlice {
     vibExaggeration: number;
     dockTab: DockTab;
     theme: Theme;
+    dockHeight_px: number;
     select(id: string | null): void;
     setCamera(camera: CameraPreset): void;
     setToggle(toggle: ViewToggle, on: boolean): void;
     setVibExaggeration(x: number): void;
     setDockTab(tab: DockTab): void;
     setTheme(theme: Theme): void;
+    setDockHeight(px: number): void;
   };
 }
 
@@ -41,12 +46,14 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       vibExaggeration: initial,
       dockTab: 'charts',
       theme: 'dark',
+      dockHeight_px: DOCK_HEIGHT_px.initial,
       select: (selectedId) => patch({ selectedId }),
       setCamera: (camera) => patch({ camera }),
       setToggle: (toggle, on) => set((s) => ({ ui: { ...s.ui, toggles: { ...s.ui.toggles, [toggle]: on } } })),
       setVibExaggeration: (x) => patch({ vibExaggeration: Math.min(max, Math.max(min, x)) }),
       setDockTab: (dockTab) => patch({ dockTab }),
       setTheme: (theme) => patch({ theme }),
+      setDockHeight: (px) => patch({ dockHeight_px: Math.min(DOCK_HEIGHT_px.max, Math.max(DOCK_HEIGHT_px.min, px)) }),
     },
   };
 };
