@@ -47,3 +47,12 @@ describe('ui slice: charts (P5.6)', () => {
     expect(ui().chartFrozen).toBe(true);
   });
 });
+
+describe('console slice: filters (P5.7)', () => {
+  it('starts with every kind shown and toggles each', () => {
+    const store = createAppStore();
+    expect(store.getState().console.filters).toEqual({ packet: true, verdict: true, command: true, log: true });
+    store.getState().console.setFilter('verdict', false);
+    expect(store.getState().console.filters.verdict).toBe(false);
+  });
+});

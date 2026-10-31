@@ -58,6 +58,7 @@ export const actions = {
     const op = s.ui.operator;
     toSim({ type: 'init', config: initConfig(op), seed: CONFIG.seed, warmStart: op.warmStart });
     s.series.clear();
+    s.console.clear(); // seq restarts at 0, so a new run starts a new console (D-050)
     s.sim.setScenario(null);
     s.ui.resetFaultTargets();
   },
@@ -104,6 +105,11 @@ export const actions = {
   confirmReset() {
     actions.command('RESET');
     appStore.getState().ui.setResetDialogOpen(false);
+  },
+  /** Streams the raw 1 kHz MPU6050 samples from the sim (`tgl-raw-mpu`). */
+  setRawMpu(on: boolean) {
+    toSim({ type: 'raw', on });
+    appStore.getState().sim.setRawOn(on);
   },
   toggleTheme() {
     const ui = appStore.getState().ui;

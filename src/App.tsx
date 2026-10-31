@@ -8,6 +8,8 @@ import type { Speed } from './store/slices/sim.ts';
 import { actions, bindWorkers } from './ui/actions.ts';
 import { inspectStore, type SimDebug, simDebug, type StoreView } from './ui/debug.ts';
 import { Charts } from './ui/Charts.tsx';
+import { Console } from './ui/Console.tsx';
+import { packetLine, verdictLine } from './ui/consoleFormat.ts';
 import { FaultPanel } from './ui/FaultPanel.tsx';
 import { OperatorPanel, ResetDialog } from './ui/OperatorPanel.tsx';
 import { StatusPanel } from './ui/StatusPanel.tsx';
@@ -91,8 +93,15 @@ function routeToStore(workers: Workers): void {
     const msg = event.data;
     const s = appStore.getState();
     if (msg.type === 'snapshot') s.sim.setSnapshot(msg.snapshot);
-    else if (msg.type === 'packet') s.series.pushPacket(msg.packet);
-    else if (msg.type === 'event') s.series.pushEvent(msg.event);
+    else if (msg.type === 'packet') {
+      s.series.pushPacket(msg.packet);
+      s.console.append({ kind: 'packet', text: packetLine(msg.packet), json: msg.packet });
+    } else if (msg.type === 'verdictIn') {
+      s.console.append({ kind: 'verdict', text: verdictLine(msg.verdict), json: msg.verdict });
+    } else if (msg.type === 'raw') {
+      const n = msg.ax.length;
+      if (n > 0) s.sim.addRaw(n, [msg.ax[n - 1] ?? 0, msg.ay[n - 1] ?? 0, msg.az[n - 1] ?? 0]);
+    } else if (msg.type === 'event') s.series.pushEvent(msg.event);
     else if (msg.type === 'log') s.console.append({ kind: 'log', text: msg.line });
     else if (msg.type === 'scenario') {
       s.sim.setScenario({ id: msg.id, done: msg.done });
@@ -229,7 +238,7 @@ export function App() {
       }
       dock={{
         charts: <Charts />,
-        console: <Pending name="M7 console" />,
+        console: <Console />,
         code: <Pending name="M8 code panel (P6.5)" />,
         testlog: <Pending name="M10 test log" />,
       }}

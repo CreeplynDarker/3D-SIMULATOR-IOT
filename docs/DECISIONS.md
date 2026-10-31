@@ -351,3 +351,16 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   `setData` directly, and a ResizeObserver keeps the plots sized. Each strip's element carries `data-points` and
   `data-last-t` for the e2e tests. The chart window takes only the `ui.chartWindows_s` values (default 120 s).
   Affects `ui/Charts.tsx`, `ui/chartData.ts`, `store/slices/ui.ts`.
+- **D-050 · 2026-10-31 · Data console and exports (P5.7).** Main appends a console line for every uplink packet
+  (from the sim's packet copy) and every verdict as the ESP32 received it (`verdictIn`), as well as commands and log
+  lines. The formats are in `ui/consoleFormat.ts`. A verdict line ends in ALERT, clear, hold (neither) or unscored,
+  then `dom=`. The ring keeps `ui.consoleMaxLines`; the view shows the newest 400 that pass the `flt-*` filters.
+  `btn-console-pause` freezes the view while lines keep arriving, and `btn-console-copy` copies the visible lines.
+  Clicking a line shows its JSON. `btn-export-csv` writes the §8.2 columns: the `Packet` fields in protocol order,
+  then `score, threshold, alert, clear, dominant` from the verdict with the same seq, empty when there is none. There
+  is one row per console packet. `btn-export-json` writes `{ packets, verdicts, commands, logs }`. Downloads use an
+  object URL; nothing is sent anywhere. `btn-sim-reset` and `sel-scenario` clear the console, because seq restarts at
+  0 and a join by seq would mix two runs. `tgl-raw-mpu` sends `raw{on}`; the console header counts the 1 kHz samples
+  and shows the newest x/y/z (extra test ID `raw-mpu`). Extra test IDs: `console-line` (with `data-kind`) and
+  `console-json`. Affects `ui/Console.tsx`, `ui/consoleFormat.ts`, `ui/download.ts`, `store/slices/{console,sim}.ts`,
+  `App.tsx`.

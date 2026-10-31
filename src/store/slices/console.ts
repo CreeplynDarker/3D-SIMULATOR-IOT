@@ -12,14 +12,19 @@ export interface ConsoleEntry {
   json?: unknown;
 }
 
+export type ConsoleKind = ConsoleEntry['kind'];
+
 export interface ConsoleSlice {
   console: {
     lines: Ring<ConsoleEntry>;
     paused: boolean;
+    /** Which kinds of line M7 shows (`flt-*`). */
+    filters: Record<ConsoleKind, boolean>;
     /** Bumped on every change; subscribe to it to redraw. */
     rev: number;
     append(entry: ConsoleEntry): void;
     setPaused(paused: boolean): void;
+    setFilter(kind: ConsoleKind, on: boolean): void;
     clear(): void;
   };
 }
@@ -32,12 +37,14 @@ export const createConsoleSlice: StateCreator<AppState, [], [], ConsoleSlice> = 
     console: {
       lines,
       paused: false,
+      filters: { packet: true, verdict: true, command: true, log: true },
       rev: 0,
       append: (entry) => {
         lines.push(entry);
         bump();
       },
       setPaused: (paused) => set((s) => ({ console: { ...s.console, paused } })),
+      setFilter: (kind, on) => set((s) => ({ console: { ...s.console, filters: { ...s.console.filters, [kind]: on } } })), // prettier-ignore
       clear: () => {
         lines.clear();
         bump();

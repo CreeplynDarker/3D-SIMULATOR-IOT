@@ -27,6 +27,13 @@ export function inspectStore(s: AppState) {
     },
     faults: { targets: { ...s.ui.faultTargets }, ramp: { ...s.ui.ramp }, live: s.sim.snapshot ? { ...s.sim.snapshot.faults } : null }, // prettier-ignore
     operator: { ...s.ui.operator, resetDialogOpen: s.ui.resetDialogOpen },
+    console: {
+      paused: s.console.paused,
+      filters: { ...s.console.filters },
+      packets: s.console.lines.toArray().filter((e) => e.kind === 'packet').length,
+      lines: s.console.lines.size,
+    },
+    raw: { ...s.sim.raw },
     model: { status: s.model.status, progress: s.model.progress, threshold: s.model.threshold },
   };
 }
