@@ -1,7 +1,9 @@
-// RCF worker — P0.6 stub. P4.4 replaces the body with model loading, training and scoring (spec §9, §10.2).
+// RCF worker (spec §9, §10.2): a thin wrapper around the pure RCF service. Packets arrive over the "Wi-Fi"
+// MessageChannel from the sim; every packet is answered with a verdict on the channel and a copy to main.
 import { CONFIG } from '../shared/config.ts';
 import type { MainToRcf, RcfToMain, RcfToSim, SimToRcf } from '../shared/messages.ts';
-import { Packet, PROTOCOL_VERSION, type Verdict } from '../shared/protocol.ts';
+import { Packet } from '../shared/protocol.ts';
+import { createRcfService, type StatusMsg } from './service.ts';
 
 interface WorkerScope {
   postMessage(message: RcfToMain): void;
@@ -9,31 +11,20 @@ interface WorkerScope {
 }
 
 const scope = self as unknown as WorkerScope;
-let threshold: number = CONFIG.rcf.threshold;
+const rcf = createRcfService(CONFIG);
 
-/** Unscored verdict for a received packet: there is no model before P4. */
-function stubVerdict(seqRef: number): Verdict {
-  return {
-    v: PROTOCOL_VERSION,
-    kind: 'verdict',
-    seq_ref: seqRef,
-    score: null,
-    threshold,
-    alert: false,
-    clear: false,
-    dominant: null,
-    z: null,
-    model: 'UNTRAINED',
-  };
+function postStatus(s: StatusMsg): void {
+  scope.postMessage({ type: 'modelStatus', ...s });
 }
 
 function connect(port: MessagePort): void {
   port.onmessage = (event: MessageEvent<SimToRcf>) => {
     const parsed = Packet.safeParse(event.data.packet);
     if (!parsed.success) return;
-    const verdict = stubVerdict(parsed.data.seq);
+    const { verdict, status } = rcf.packet(parsed.data);
     port.postMessage({ type: 'verdict', verdict } satisfies RcfToSim);
     scope.postMessage({ type: 'verdict', verdict });
+    if (status) postStatus(status);
   };
 }
 
@@ -47,11 +38,14 @@ scope.onmessage = (event) => {
       connect(msg.port);
       break;
     case 'setThreshold':
-      threshold = msg.x;
+      rcf.setThreshold(msg.x);
       break;
     case 'loadModel':
+      postStatus(rcf.load(msg.json));
+      break;
     case 'train':
-      scope.postMessage({ type: 'modelStatus', status: 'UNTRAINED', progress: 0, reason: 'RCF arrives in P4.4' });
+      postStatus(rcf.train());
       break;
   }
 };
+postStatus(rcf.status());

@@ -1,12 +1,15 @@
 import { useEffect } from 'react';
 import { BenchViewport } from './scene/Bench.tsx';
 import { CONFIG } from './shared/config.ts';
-import type { MainToRcf, MainToSim, RcfToMain, SimToMain, Snapshot } from './shared/messages.ts';
+import type { MainToRcf, MainToSim, ModelStatus, RcfToMain, SimToMain, Snapshot } from './shared/messages.ts';
 import { type Command, type Packet, PROTOCOL_VERSION, type Verdict } from './shared/protocol.ts';
 import { appStore } from './store/index.ts';
 import type { Speed } from './store/slices/sim.ts';
 
 type WorkerTarget = 'sim' | 'rcf';
+
+/** Relative to the page, so the build works from any static path (`base: './'`). */
+const DEFAULT_MODEL_URL = './models/default-model.json';
 
 /** Debug hooks used by the e2e tests (window.__pdm, only with `?debug=1`); not part of the UI. Times are in ms. */
 export interface DebugApi {
@@ -19,6 +22,10 @@ export interface DebugApi {
   simPackets(): Packet[];
   simVerdictsIn(): Verdict[];
   rcfVerdicts(): Verdict[];
+  /** Wall time from each packet reaching main to its verdict reaching main, 0 if the verdict came first (ms). */
+  verdictLatencies_ms(): number[];
+  modelStatus(): { status: ModelStatus; progress: number; reason: string | null };
+  train(): void;
 }
 
 declare global {
@@ -35,6 +42,17 @@ interface Workers {
   dispose(): void;
 }
 
+/** Fetches the default model shipped in `public/models/` (spec §9.4) and hands it to the RCF worker. */
+function loadDefaultModel(postRcf: (message: MainToRcf) => void): void {
+  fetch(DEFAULT_MODEL_URL)
+    .then((res) => (res.ok ? res.text() : Promise.reject(new Error(`HTTP ${res.status}`))))
+    .then((json) => postRcf({ type: 'loadModel', json }))
+    .catch((err: unknown) => {
+      const reason = `default model not loaded: ${(err as Error).message}`;
+      appStore.getState().model.setStatus('UNTRAINED', 0, reason);
+    });
+}
+
 /** Starts both workers, joins them with the "Wi-Fi" MessageChannel and initialises the sim (spec §10.2). */
 function startWorkers(): Workers {
   const sim = new Worker(new URL('./sim/worker.ts', import.meta.url), { type: 'module', name: 'sim' });
@@ -45,6 +63,7 @@ function startWorkers(): Workers {
   postSim({ type: 'connect', port: wifi.port1 }, [wifi.port1]);
   postRcf({ type: 'connect', port: wifi.port2 }, [wifi.port2]);
   postSim({ type: 'init', config: CONFIG, seed: CONFIG.seed, warmStart: CONFIG.thermal.warmStart });
+  loadDefaultModel(postRcf);
   const dispose = () => {
     sim.terminate();
     rcf.terminate();
@@ -68,7 +87,11 @@ function routeToStore(workers: Workers): void {
     if (msg.type === 'verdict') {
       s.model.setLastVerdict(msg.verdict);
       s.series.pushVerdict(msg.verdict);
-    } else if (msg.type === 'modelStatus') s.model.setStatus(msg.status, msg.progress, msg.reason);
+    } else if (msg.type === 'modelStatus') {
+      s.model.setStatus(msg.status, msg.progress, msg.reason);
+      // §9.3: an aborted or rejected training is logged as a warning.
+      if (msg.status === 'UNTRAINED' && msg.reason) s.console.append({ kind: 'log', text: `WARN rcf: ${msg.reason}` });
+    }
   });
 }
 
@@ -100,6 +123,16 @@ function installDebugApi(workers: Workers): () => void {
   const simPackets: Packet[] = [];
   const simVerdictsIn: Verdict[] = [];
   const rcfVerdicts: Verdict[] = [];
+  // Packet copy (from the sim) and verdict (from the RCF) reach main on different queues, in either order.
+  const firstAt_ms = new Map<number, { kind: 'packet' | 'verdict'; t_ms: number }>();
+  const latencies_ms: number[] = [];
+  const pair = (seq: number, kind: 'packet' | 'verdict') => {
+    const now_ms = performance.now();
+    const first = firstAt_ms.get(seq);
+    if (first === undefined || first.kind === kind) return void firstAt_ms.set(seq, { kind, t_ms: now_ms });
+    firstAt_ms.delete(seq);
+    latencies_ms.push(kind === 'verdict' ? now_ms - first.t_ms : 0);
+  };
 
   const onPong = (id: number) => {
     const entry = pending.get(id);
@@ -110,13 +143,18 @@ function installDebugApi(workers: Workers): () => void {
   workers.sim.addEventListener('message', (event: MessageEvent<SimToMain>) => {
     const msg = event.data;
     if (msg.type === 'pong') onPong(msg.id);
-    else if (msg.type === 'packet') simPackets.push(msg.packet);
-    else if (msg.type === 'verdictIn') simVerdictsIn.push(msg.verdict);
+    else if (msg.type === 'packet') {
+      simPackets.push(msg.packet);
+      pair(msg.packet.seq, 'packet');
+    } else if (msg.type === 'verdictIn') simVerdictsIn.push(msg.verdict);
   });
   workers.rcf.addEventListener('message', (event: MessageEvent<RcfToMain>) => {
     const msg = event.data;
     if (msg.type === 'pong') onPong(msg.id);
-    else if (msg.type === 'verdict') rcfVerdicts.push(msg.verdict);
+    else if (msg.type === 'verdict') {
+      rcfVerdicts.push(msg.verdict);
+      pair(msg.verdict.seq_ref, 'verdict');
+    }
   });
 
   window.__pdm = {
@@ -132,6 +170,12 @@ function installDebugApi(workers: Workers): () => void {
     simPackets: () => [...simPackets],
     simVerdictsIn: () => [...simVerdictsIn],
     rcfVerdicts: () => [...rcfVerdicts],
+    verdictLatencies_ms: () => [...latencies_ms],
+    modelStatus: () => {
+      const { status, progress, reason } = appStore.getState().model;
+      return { status, progress, reason };
+    },
+    train: () => workers.postRcf({ type: 'train' }),
   };
   return () => {
     delete window.__pdm;

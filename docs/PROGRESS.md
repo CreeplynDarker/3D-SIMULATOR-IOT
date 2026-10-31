@@ -77,7 +77,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · rcf/normalise.ts: fitNormaliser (μ, population σ), floorsFor, normalise with max(σ, floor); NumPy fixture matches to 1e-12 · no tuning
 - [x] P4.3 Model (deps: P4.1, P4.2)
   2026-10-31 · rcf/model.ts: fitModel (μ/σ, 40 trees, holdout validation), scorePacket → Verdict (score = mean CoDisp ÷ nTrain, dominant, z map), zod-checked JSON, loadModel, trainer for the §9.3 flow · no tuning
-- [ ] P4.4 RCF worker (deps: P4.3, P0.6)
+- [x] P4.4 RCF worker (deps: P4.3, P0.6)
+  2026-10-31 · rcf/service.ts (load, score, live train with n/180 progress) + thin rcf/worker.ts; main loads default-model.json at boot → READY; e2e: READY at boot, a verdict per packet, every main-side latency < 20 ms; 0.17 ms per packet in Node · no tuning
 - [x] P4.5 Harness, scenarios and default model (deps: P4.3)
   2026-10-31 · harness/runScenario.ts (plant + createFirmware + model in one loop, verdicts through the link), shared/scenarios.ts (S1–S9), harness/trainDefault.ts + gen:model; default model trained on a run with one stop and restart (D-041); S1–S8 tests in tests/scenario/, determinism check on a 40 s run · no tuning
 - [ ] P4.6 Python cross-check (deps: P4.5)

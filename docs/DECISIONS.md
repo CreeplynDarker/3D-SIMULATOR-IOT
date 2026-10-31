@@ -264,3 +264,16 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   worker. (g) P4.5 went before P4.4, because the worker's e2e check loads the model P4.5 generates.
   (h) The `rcf_dataset.json` fixture in `gen:fixtures` arrives with P4.6, the task that uses it. Affects
   `harness/runScenario.ts`, `firmware/firmware.ts`.
+- **D-043 · 2026-10-31 · RCF worker (P4.4).** The logic is a pure `rcf/service.ts` (unit-tested); `rcf/worker.ts`
+  only wires messages. Main fetches `./models/default-model.json` (the app's own static file, relative to the page
+  so `base: './'` works; no external service, like the textures) and sends it with the existing `loadModel{json}`,
+  which answers `modelStatus` READY or UNTRAINED with a reason. Every packet gets a verdict (D-040). `train` drops
+  the current model, reports TRAINING with progress n/180 on every collected window, and ends READY, or UNTRAINED
+  with `training aborted: …` or `baseline unstable`. Main logs an UNTRAINED reason to the console as `WARN rcf: …`
+  (§9.3's "log WARN"; the RCF worker has no log message). `setThreshold` applies to the current and any later
+  model. The `model-status` element is M5 (P5.5), so the e2e check reads the store's model slice through the
+  debug API (`modelStatus()`, `verdictLatencies_ms()`, `train()`). Building the forest blocks the worker once at
+  boot (30–40 ms in Node, about 2.6 s cold in a GPU-less container), so the RCF ping test waits for READY.
+  `playwright.config.ts` takes an optional `PW_CHROMIUM_PATH` for a preinstalled Chromium when the pinned
+  Playwright's own build is missing. Messages in `shared/messages.ts` are unchanged. Affects `rcf/service.ts`,
+  `rcf/worker.ts`, `App.tsx`, `tests/e2e/`, `playwright.config.ts`.

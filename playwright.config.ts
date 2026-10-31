@@ -14,7 +14,15 @@ export default defineConfig({
       name: 'chromium',
       // Full Chromium in new-headless mode uses the machine's GPU; the default headless shell falls back to
       // SwiftShader software rendering.
-      use: { ...devices['Desktop Chrome'], channel: 'chromium', launchOptions: { args: ['--ignore-gpu-blocklist'] } },
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chromium',
+        // PW_CHROMIUM_PATH points at a preinstalled Chromium when the pinned Playwright's own build is absent.
+        launchOptions: {
+          args: ['--ignore-gpu-blocklist'],
+          ...(process.env['PW_CHROMIUM_PATH'] ? { executablePath: process.env['PW_CHROMIUM_PATH'] } : {}),
+        },
+      },
     },
   ],
   webServer: {
