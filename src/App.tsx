@@ -7,6 +7,7 @@ import { appStore } from './store/index.ts';
 import type { Speed } from './store/slices/sim.ts';
 import { actions, bindWorkers } from './ui/actions.ts';
 import { inspectStore, type SimDebug, simDebug, type StoreView } from './ui/debug.ts';
+import { Charts } from './ui/Charts.tsx';
 import { FaultPanel } from './ui/FaultPanel.tsx';
 import { OperatorPanel, ResetDialog } from './ui/OperatorPanel.tsx';
 import { StatusPanel } from './ui/StatusPanel.tsx';
@@ -227,7 +228,7 @@ export function App() {
         </>
       }
       dock={{
-        charts: <Pending name="M6 charts" />,
+        charts: <Charts />,
         console: <Pending name="M7 console" />,
         code: <Pending name="M8 code panel (P6.5)" />,
         testlog: <Pending name="M10 test log" />,

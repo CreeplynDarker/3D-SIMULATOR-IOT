@@ -22,6 +22,8 @@ export function inspectStore(s: AppState) {
       dockHeight_px: s.ui.dockHeight_px,
       theme: s.ui.theme,
       legendOpen: s.ui.legendOpen,
+      chartWindow_s: s.ui.chartWindow_s,
+      chartFrozen: s.ui.chartFrozen,
     },
     faults: { targets: { ...s.ui.faultTargets }, ramp: { ...s.ui.ramp }, live: s.sim.snapshot ? { ...s.sim.snapshot.faults } : null }, // prettier-ignore
     operator: { ...s.ui.operator, resetDialogOpen: s.ui.resetDialogOpen },

@@ -59,6 +59,9 @@ export interface UiSlice {
     operator: OperatorParams;
     /** `dlg-reset-confirm` is open. */
     resetDialogOpen: boolean;
+    /** M6 chart window (s), one of `ui.chartWindows_s`, and whether the charts are frozen. */
+    chartWindow_s: number;
+    chartFrozen: boolean;
     select(id: string | null): void;
     setCamera(camera: CameraPreset): void;
     setToggle(toggle: ViewToggle, on: boolean): void;
@@ -73,6 +76,8 @@ export interface UiSlice {
     setRamp(ramp: { on: boolean; ramp_s: number }): void;
     setOperator(p: Partial<OperatorParams>): void;
     setResetDialogOpen(open: boolean): void;
+    setChartWindow(window_s: number): void;
+    setChartFrozen(frozen: boolean): void;
   };
 }
 
@@ -100,6 +105,8 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
         warmStart: CONFIG.thermal.warmStart,
       },
       resetDialogOpen: false,
+      chartWindow_s: CONFIG.ui.chartWindowDefault_s,
+      chartFrozen: false,
       select: (selectedId) => patch({ selectedId }),
       setCamera: (camera) => patch({ camera }),
       setToggle: (toggle, on) => set((s) => ({ ui: { ...s.ui, toggles: { ...s.ui.toggles, [toggle]: on } } })),
@@ -112,6 +119,10 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       resetFaultTargets: () => patch({ faultTargets: { ...NO_FAULTS } }),
       setOperator: (p) => set((s) => ({ ui: { ...s.ui, operator: { ...s.ui.operator, ...p } } })),
       setResetDialogOpen: (resetDialogOpen) => patch({ resetDialogOpen }),
+      setChartWindow: (w) => {
+        if ((CONFIG.ui.chartWindows_s as readonly number[]).includes(w)) patch({ chartWindow_s: w });
+      },
+      setChartFrozen: (chartFrozen) => patch({ chartFrozen }),
       setRamp: ({ on, ramp_s }) => patch({ ramp: { on, ramp_s: Math.max(0, ramp_s) } }),
       setDockHeight: (px) => patch({ dockHeight_px: Math.min(DOCK_HEIGHT_px.max, Math.max(DOCK_HEIGHT_px.min, px)) }),
     },

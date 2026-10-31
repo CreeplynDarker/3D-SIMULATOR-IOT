@@ -33,3 +33,17 @@ describe('ui slice: fault controls (P5.4)', () => {
     expect(ui().faultTargets).toMatchObject({ friction: 0, ds18b20Disconnect: false });
   });
 });
+
+describe('ui slice: charts (P5.6)', () => {
+  it('chart window starts at 120 s and only takes the §5.1 choices; freeze toggles', () => {
+    const store = createAppStore();
+    const ui = () => store.getState().ui;
+    expect(ui().chartWindow_s).toBe(120);
+    ui().setChartWindow(30);
+    expect(ui().chartWindow_s).toBe(30);
+    ui().setChartWindow(45);
+    expect(ui().chartWindow_s).toBe(30);
+    ui().setChartFrozen(true);
+    expect(ui().chartFrozen).toBe(true);
+  });
+});

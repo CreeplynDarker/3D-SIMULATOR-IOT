@@ -340,3 +340,14 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   `latched-indicator` (extra test ID) reads LATCHED in CRITICAL. (f) Input ranges: threshold 0.05–1, N 1–20,
   I_MAX 0.05–1 A, T_MAX 20–100 °C. They are UI bounds, not §5.2 tuning. Affects `ui/OperatorPanel.tsx`,
   `ui/rules.ts`, `ui/actions.ts`, `shared/messages.ts`, `sim/worker.ts`, `store/slices/ui.ts`.
+- **D-049 · 2026-10-31 · Live charts (P5.6).** `ui/chartData.ts` (pure, unit-tested) cuts the series slice to the
+  chart window and lays it out as uPlot columns. Every strip shares an x range that ends at the newest window. It
+  also builds state bands (consecutive windows in the same state, §8.1 colours) and event markers (FAULT_SET,
+  WARNING, CRITICAL, RELAY_OPEN, RESET, LINK_LOST, SENSOR_FAULT). `ui/Charts.tsx` builds six uPlot instances, one
+  per strip, in a 3 × 2 grid. They share the cursor sync key `m6`, and every strip reserves the same right-hand
+  gutter (the temperature strip uses it for dT/dt), so the plot areas and cursors line up. Bands are drawn in
+  `drawClear`, markers in `draw`, and the score strip shows its threshold as a dashed line. React renders the frame
+  once and re-renders only when the window, freeze or theme changes. A `store.subscribe` on `series.rev` calls
+  `setData` directly, and a ResizeObserver keeps the plots sized. Each strip's element carries `data-points` and
+  `data-last-t` for the e2e tests. The chart window takes only the `ui.chartWindows_s` values (default 120 s).
+  Affects `ui/Charts.tsx`, `ui/chartData.ts`, `store/slices/ui.ts`.

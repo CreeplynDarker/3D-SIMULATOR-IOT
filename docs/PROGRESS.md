@@ -96,7 +96,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · ui/FaultPanel.tsx: six sliders (CONFIG.faults ranges) with live values, DS18B20 switch, ramp toggle + seconds, clear all; e2e step, ramp and clear · no tuning
 - [x] P5.5 M5 operator
   2026-10-31 · ui/OperatorPanel.tsx + ui/rules.ts: model-status (n/180), latched indicator, START/E-STOP/RESET (confirm dialog)/TRAIN with the §8.2 rules; threshold to the RCF, N/I_MAX/T_MAX live to the firmware (params message), warm start on sim reset · no tuning
-- [ ] P5.6 M6 charts
+- [x] P5.6 M6 charts
+  2026-10-31 · ui/Charts.tsx: six uPlot strips (T with dT/dt on a 2nd axis, score with dashed threshold), synced cursors, state bands, event markers, 30/120/600 s window, freeze; imperative setData from a store subscription; ui/chartData.ts unit-tested · no tuning
 - [ ] P5.7 M7 console and exports
 - [ ] P5.8 M9 inspector
 - [ ] P5.9 M10 test log
