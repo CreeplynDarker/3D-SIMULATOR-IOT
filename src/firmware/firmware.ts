@@ -21,6 +21,8 @@ export interface FirmwareOptions {
   uplink: (packet: Packet) => void;
   /** Current packet loss (0–1) of the "Wi-Fi" — an environment fault, not something the ESP32 measures. */
   packetLoss: () => number;
+  /** Optional tap on each verdict as the link delivers it (sim time in s); the harness records delivery times. */
+  onVerdictDelivered?: (verdict: Verdict, t_s: number) => void;
 }
 
 export interface Firmware extends Controller {
@@ -151,6 +153,7 @@ export function createFirmware(opts: FirmwareOptions): Firmware {
     },
     afterStep(t_s) {
       for (const v of dueVerdicts(link, t_s)) {
+        opts.onVerdictDelivered?.(v, t_s);
         if (noteVerdict(limits, t_s)) {
           logger.log(t_s, 'INFO', 'link', 'link restored');
           emit(t_s, 'LINK_RESTORED');
