@@ -553,8 +553,11 @@ Implement RRCF per Guha et al. 2016 (ICML), matching the behaviour of Python `rr
 
 ### 9.4 Default model
 
-`pnpm gen:model` runs `harness/trainDefault.ts`: warm start, START at t = 0, train on windows 16…195 (after
-calibration, grace and 5 s settling), seed `CONFIG.seed`. The UI loads `public/models/default-model.json` at boot
+`pnpm gen:model` runs `harness/trainDefault.ts`: warm start, seed `CONFIG.seed`, a healthy run with one stop and
+restart (`DEFAULT_TRAINING` in `shared/scenarios.ts`: START at t = 0, ESTOP at 100 s, RESET at 120 s, START at 121 s,
+end 240 s). Training takes the NORMAL windows from 16 (after calibration, grace and 5 s settling) up to the stop,
+interleaved one-to-one with the windows that start after the run is NORMAL again, until `nTrain + nHoldout` are
+collected, so a restart's thermal transient is part of the baseline (D-041). The UI loads `public/models/default-model.json` at boot
 (status READY); `btn-train` retrains on the live sim.
 
 ---

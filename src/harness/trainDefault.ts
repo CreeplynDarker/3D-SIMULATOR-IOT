@@ -1,31 +1,40 @@
-// Default model (spec §9.4): warm start, START at t = 0, train on windows 16…195 (after calibration, grace and 5 s of
-// settling) with seed CONFIG.seed, through the same trainer the RCF worker uses.
+// Default model (spec §9.4, D-041): a healthy warm-start run with one stop and restart, seed CONFIG.seed. The steady
+// windows before the stop and the windows after the restart are interleaved and fed to the trainer the RCF worker
+// uses, so a restart's thermal transient is part of the baseline.
 import { createTrainer, type FitResult, trainerAdd } from '../rcf/model.ts';
-import type { Scenario } from '../shared/scenarios.ts';
+import type { Packet } from '../shared/protocol.ts';
+import { DEFAULT_TRAINING } from '../shared/scenarios.ts';
 import type { SimConfig } from '../sim/types.ts';
 import { runScenario } from './runScenario.ts';
 
-/** First training window (§9.4): 0.5 s calibration + 10 s grace + 5 s settling, rounded up to a window. */
-export const DEFAULT_FIRST_WINDOW = 16;
+const untrained = (reason: string): FitResult => ({ status: 'UNTRAINED', model: null, holdoutMax: 0, reason });
 
-/** Trains the default model on a healthy run of the plant and firmware (no RCF answers are scored). */
+/** Steady and post-restart NORMAL packets, alternating, from a healthy run (window start times in s). */
+function trainingPackets(cfg: SimConfig, seed: number): Packet[] | null {
+  const { scenario, firstWindow } = DEFAULT_TRAINING;
+  const r = runScenario(scenario, { seed, config: cfg, model: null });
+  const restart_s = r.events.filter((e) => e.type === 'NORMAL')[1]?.t_s;
+  if (restart_s === undefined) return null;
+  const start_s = (p: Packet) => p.seq * cfg.firmware.window_s;
+  const normal = r.packets.filter((p) => p.state === 'NORMAL');
+  const steady = normal.filter((p) => p.seq >= firstWindow && start_s(p) < restart_s);
+  const post = normal.filter((p) => start_s(p) >= restart_s);
+  const out: Packet[] = [];
+  for (let i = 0; i < Math.max(steady.length, post.length); i++) {
+    for (const p of [steady[i], post[i]]) if (p) out.push(p);
+  }
+  return out;
+}
+
+/** Trains the default model; UNTRAINED if the run has no restart, too few windows, or an unstable holdout. */
 export function trainDefault(cfg: SimConfig, seed: number = cfg.seed): FitResult {
-  const windows = cfg.rcf.nTrain + cfg.rcf.nHoldout;
-  const last = DEFAULT_FIRST_WINDOW + windows - 1;
-  const healthy: Scenario = {
-    id: 'train-default',
-    title: 'healthy run for the default model',
-    guided: false,
-    end_s: (last + 1) * cfg.firmware.window_s,
-    steps: [{ at_s: 0, action: { kind: 'command', cmd: 'START' } }],
-  };
-  const { packets } = runScenario(healthy, { seed, config: cfg, model: null });
-  const source = `harness/trainDefault: warm start, seed ${seed}, windows ${DEFAULT_FIRST_WINDOW}-${last}`;
+  const packets = trainingPackets(cfg, seed);
+  if (packets === null) return untrained('no restart in the training run');
+  const source = `harness/trainDefault: warm start, seed ${seed}, steady windows from ${DEFAULT_TRAINING.firstWindow} interleaved with post-restart windows`; // prettier-ignore
   const trainer = createTrainer(cfg);
-  for (const p of packets.filter((x) => x.seq >= DEFAULT_FIRST_WINDOW && x.seq <= last)) {
+  for (const p of packets) {
     const step = trainerAdd(trainer, p, cfg, seed, source);
     if (step.kind === 'done') return step.result;
-    if (step.kind === 'aborted') return { status: 'UNTRAINED', model: null, holdoutMax: 0, reason: step.reason };
   }
-  return { status: 'UNTRAINED', model: null, holdoutMax: 0, reason: 'not enough healthy windows' };
+  return untrained('not enough healthy windows');
 }

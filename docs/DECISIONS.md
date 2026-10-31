@@ -240,3 +240,27 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   needs these: its link timer runs in STARTING too (D-034). (d) The trainer waits for the first NORMAL packet,
   skips packets with a null feature, and aborts (`state left NORMAL (<state>)`) when a later packet isn't NORMAL.
   (e) `clear` uses `firmware.clearHysteresis`, the only hysteresis key in §5.1. Affects `rcf/model.ts`.
+- **D-041 · 2026-10-31 · The default model is trained on a healthy run with one stop and restart (team decision,
+  changes PLAN §9.4).** Trained on the warm-start steady state alone (windows 16…195), t_C sat at 34.0625 °C and
+  dT/dt at exactly 0, so both had zero spread. After S8's 20 s stop the probe reads ~0.7 °C cooler with dT/dt
+  ≈ −0.8 °C/min (z ≈ −7 and −15), the RCF alerts on every window, and the fan trips again at 101.0 s, 4.5 s after
+  NORMAL. No §5.2 setting fixed this at threshold 0.5. The only passing set (threshold 0.70, t_C and dT/dt floors
+  3×, nCritical 6) passed only with the canonical seed: 4 of 5 other seeds tripped again. The same would happen in
+  the demo after every RESET → START. The run in `DEFAULT_TRAINING` (ESTOP 100 s, RESET 120 s, START 121 s, the
+  same off time as S8) gives t_C σ 0.32 °C and dT/dt σ 0.38 °C/min, holdout max 0.171. With it every S1–S8 row
+  passes at the §5.1 defaults; seeds 1–5 all pass S8, with S1 max 0.16–0.39 and S5 CRITICAL at 75–78 s. Cost:
+  overheat is caught later (S5 69 → 76 s). Live retraining (`btn-train`, §9.3) is unchanged. No tuning. Affects
+  `harness/trainDefault.ts`, `shared/scenarios.ts`, `public/models/default-model.json`, PLAN §9.4.
+- **D-042 · 2026-10-31 · Harness details (§10.4).** (a) `FirmwareOptions` gains an optional
+  `onVerdictDelivered(verdict, t_s)` tap, so the harness can record when the link delivers each verdict (S6: "no
+  verdict delivered after 30.1 s"). The firmware's logic is unchanged and the workers don't use it. (b) The RCF
+  scores each uplink packet synchronously, and the verdict enters `receiveVerdict(v, now_s)` at the window end, so
+  the link alone sets the delivery time (D-036). Each run loads a fresh forest from the model JSON, because scoring
+  advances the trees' streams (D-040). (c) `verdicts` are `{ sent_s, delivered_s, verdict }`. `packets` holds only
+  the packets that reached the RCF, so the per-second `timeline` also carries the firmware's state, `linkLost`,
+  `sensorFault` and `tripReason`. (d) The end is inclusive: the step at `end_s` runs, so the window closing at
+  `end_s` is sent. (e) Steps with `after: 'CRITICAL'` are scheduled when the first CRITICAL event appears, and
+  `endAfterCritical_s` ends S8 at +45. (f) `RELAY_OPEN`/`RELAY_CLOSED` come from the plant's contact, as in the sim
+  worker. (g) P4.5 went before P4.4, because the worker's e2e check loads the model P4.5 generates.
+  (h) The `rcf_dataset.json` fixture in `gen:fixtures` arrives with P4.6, the task that uses it. Affects
+  `harness/runScenario.ts`, `firmware/firmware.ts`.

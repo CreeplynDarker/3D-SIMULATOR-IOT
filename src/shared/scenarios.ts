@@ -73,3 +73,25 @@ export function scenarioById(id: string): Scenario {
   if (!s) throw new Error(`unknown scenario ${id}`);
   return s;
 }
+
+/**
+ * Healthy run for the default model (spec §9.4, D-041): START at 0, an operator stop at 100 s, RESET at 120 s and
+ * START at 121 s, the same 20 s off and restart as S8. No fault is injected. Training uses the NORMAL windows from
+ * `firstWindow` up to the stop, interleaved one-to-one with the windows that start after the run is NORMAL again.
+ */
+export const DEFAULT_TRAINING: { scenario: Scenario; firstWindow: number } = {
+  scenario: {
+    id: 'train-default',
+    title: 'healthy run with one stop and restart',
+    guided: false,
+    end_s: 240,
+    steps: [
+      START,
+      { at_s: 100, action: { kind: 'command', cmd: 'ESTOP' } },
+      { at_s: 120, action: { kind: 'command', cmd: 'RESET' } },
+      { at_s: 121, action: { kind: 'command', cmd: 'START' } },
+    ],
+  },
+  // 0.5 s calibration + 10 s grace + 5 s settling, rounded up to a whole window
+  firstWindow: 16,
+};

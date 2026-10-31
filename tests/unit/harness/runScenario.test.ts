@@ -112,4 +112,18 @@ describe('default model (§9.4)', () => {
     expect(MODEL).toMatchObject({ seed: CONFIG.seed, nTrain: CONFIG.rcf.nTrain, numTrees: CONFIG.rcf.numTrees });
     expect(MODEL.holdoutMax).toBeLessThan(CONFIG.rcf.holdoutMaxRatio * CONFIG.rcf.threshold);
   });
+
+  it('the baseline includes the restart transient (D-041): temperature has a spread and a cooler mean', () => {
+    const t = MODEL.features.indexOf('t_C');
+    const d = MODEL.features.indexOf('dtdt_C_per_min');
+    expect(MODEL.std[t]).toBeGreaterThan(CONFIG.rcf.stdFloor.t_C);
+    expect(MODEL.std[d]).toBeGreaterThan(CONFIG.rcf.stdFloor.dtdt_C_per_min);
+    expect(MODEL.mean[d]).toBeLessThan(0);
+    expect(MODEL.source).toMatch(/post-restart/);
+  });
+
+  it('too few healthy windows leave the default model UNTRAINED', () => {
+    const noRestart = { ...CONFIG, rcf: { ...CONFIG.rcf, nTrain: 240, nHoldout: 120 } };
+    expect(trainDefault(noRestart)).toMatchObject({ status: 'UNTRAINED', reason: 'not enough healthy windows' });
+  });
 });

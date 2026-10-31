@@ -22,6 +22,7 @@ export default defineConfig({
         'src/sim/**/*.ts': { lines: 80, functions: 80, branches: 80, statements: 80 },
         'src/firmware/**/*.ts': { lines: 80, functions: 80, branches: 80, statements: 80 },
         'src/rcf/**/*.ts': { lines: 80, functions: 80, branches: 80, statements: 80 },
+        'src/harness/**/*.ts': { lines: 80, functions: 80, branches: 80, statements: 80 },
       },
     },
   },
