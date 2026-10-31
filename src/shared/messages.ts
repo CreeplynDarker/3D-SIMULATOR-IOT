@@ -1,4 +1,4 @@
-import type { Config } from './config.ts';
+import type { SimConfig } from '../sim/types.ts';
 import type { Command, Packet, State, TripReason, Verdict } from './protocol.ts';
 
 // Worker message shapes (spec §10.2). Every message is a plain object discriminated by `type`.
@@ -62,12 +62,27 @@ export interface Snapshot {
   sensorFault: boolean;
   tripReason: TripReason | null;
   activeMap: string | null;
+  /** Link and 1-Wire traffic for the P6.2 signal-flow view (D-058). Not part of the §10.1 protocol. */
+  traffic: {
+    packets: number;
+    dropped: number;
+    verdicts: number;
+    dsReads: number;
+    lastPacket_s: number;
+    lastDrop_s: number;
+    lastVerdict_s: number;
+    lastDsRead_s: number;
+  };
   lagging: boolean;
 }
 
-/** Main → sim worker. `connect` hands over the sim end of the "Wi-Fi" MessageChannel. */
+/**
+ * Main → sim worker. `connect` hands over the sim end of the "Wi-Fi" MessageChannel; `params` changes the M5 firmware
+ * limits on the running firmware (D-048).
+ */
 export type MainToSim =
-  | { type: 'init'; config: Config; seed: number; warmStart: boolean }
+  | { type: 'init'; config: SimConfig; seed: number; warmStart: boolean }
+  | { type: 'params'; nCritical: number; iMax_A: number; tMax_C: number }
   | { type: 'connect'; port: MessagePort }
   | { type: 'play' }
   | { type: 'pause' }
@@ -80,7 +95,7 @@ export type MainToSim =
   | { type: 'raw'; on: boolean }
   | { type: 'ping'; id: number };
 
-/** Sim worker → main. `raw` buffers are transferred, not copied. */
+/** Sim worker → main. `raw` buffers are transferred, not copied; `scenario` reports a script's start and end. */
 export type SimToMain =
   | { type: 'snapshot'; snapshot: Snapshot }
   | { type: 'packet'; packet: Packet }
@@ -88,6 +103,7 @@ export type SimToMain =
   | { type: 'log'; line: string }
   | { type: 'event'; event: SimEvent }
   | { type: 'raw'; ax: Float32Array; ay: Float32Array; az: Float32Array }
+  | { type: 'scenario'; id: string; done: boolean }
   | { type: 'pong'; id: number };
 
 /** Sim → RCF over the MessageChannel ("Wi-Fi" uplink). */

@@ -1,9 +1,10 @@
-import { Edges, OrbitControls } from '@react-three/drei';
+import { Edges, Html, OrbitControls } from '@react-three/drei';
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Vector3 } from 'three';
 import { type ComponentId, COMPONENTS, componentById, type Vec3 } from '../shared/components.ts';
 import { appStore, useAppStore } from '../store/index.ts';
+import { type AnimDebug, animDebug } from './animDebug.ts';
 import { CAMERA_ORDER, CAMERA_PRESETS, CAMERA_TRANSITION_ms, easeInOutCubic } from './cameras.ts';
 import { Look, SCENE_THEMES } from './Look.tsx';
 import { Acs712 } from './models/Acs712.tsx';
@@ -13,11 +14,15 @@ import { DcJack } from './models/DcJack.tsx';
 import { Ds18b20 } from './models/Ds18b20.tsx';
 import { Esp32 } from './models/Esp32.tsx';
 import { Fan, FanStand } from './models/Fan.tsx';
+import { FanMotion } from './models/FanMotion.tsx';
 import { Laptop } from './models/Laptop.tsx';
 import { photoTexturesReady } from './models/materials.ts';
 import { Mpu6050 } from './models/Mpu6050.tsx';
 import { Relay } from './models/Relay.tsx';
 import { Resistor } from './models/Resistor.tsx';
+import { inspectorFor } from '../ui/inspectorData.ts';
+import { Labels } from './Labels.tsx';
+import { SignalFlow } from './wires/SignalFlow.tsx';
 import { WifiArc } from './wires/WifiArc.tsx';
 import { Wires } from './wires/Wires.tsx';
 
@@ -30,6 +35,8 @@ export interface SceneDebug {
   project(id: ComponentId): { x: number; y: number } | null;
   selectedId(): string | null;
   setTheme(theme: 'dark' | 'light'): void;
+  /** What the animated parts drew in the last frame. */
+  anim(): AnimDebug;
 }
 
 declare global {
@@ -39,7 +46,11 @@ declare global {
 }
 
 const MODELS: Record<ComponentId, () => ReactNode> = {
-  fan: () => <Fan />,
+  fan: () => (
+    <FanMotion>
+      <Fan />
+    </FanMotion>
+  ),
   mpu6050: () => <Mpu6050 />,
   ds18b20: () => <Ds18b20 />,
   breadboard: () => <Breadboard />,
@@ -74,6 +85,29 @@ function Highlight({ id, color }: { id: ComponentId; color: string }) {
   );
 }
 
+/** M1 hover tooltip: the part's name and its first live pin value (the inspector's text). */
+function HoverTip({ id }: { id: ComponentId }) {
+  const snap = useAppStore((s) => s.sim.snapshot);
+  const status = useAppStore((s) => s.model.status);
+  const score = useAppStore((s) => s.model.lastScored?.score ?? null);
+  if (!snap) return null;
+  const info = inspectorFor(id, snap, { status, score });
+  const y_m = componentById(id).size_mm[1] / 2000 + TIP_GAP_m;
+  return (
+    <Html position={[0, y_m, 0]} center zIndexRange={[20, 0]} wrapperClass="pointer-events-none">
+      <div
+        data-testid="scene-tooltip"
+        className="whitespace-nowrap rounded bg-slate-900/90 px-2 py-1 font-mono text-[11px] text-slate-100 shadow"
+      >
+        <div className="font-sans font-semibold">{info.name}</div>
+        {info.pins[0]?.text}
+      </div>
+    </Html>
+  );
+}
+
+const TIP_GAP_m = 0.02;
+
 /** Places a component at its §13.2 pose; hovering highlights it and clicking selects it (`ui.selectedId`). */
 function Placed({ id, children }: { id: ComponentId; children: ReactNode }) {
   const c = componentById(id);
@@ -104,6 +138,7 @@ function Placed({ id, children }: { id: ComponentId; children: ReactNode }) {
       >
         {children}
         {(hovered || selected) && <Highlight id={id} color={selected ? HIGHLIGHT.selected : HIGHLIGHT.hover} />}
+        {hovered && <HoverTip id={id} />}
       </group>
     </>
   );
@@ -128,7 +163,9 @@ export function Bench() {
         <FanStand />
       </group>
       <Wires />
+      <SignalFlow />
       <WifiArc />
+      <Labels />
     </>
   );
 }
@@ -194,11 +231,29 @@ function DebugProbe() {
       project,
       selectedId: () => appStore.getState().ui.selectedId,
       setTheme: (theme) => appStore.getState().ui.setTheme(theme),
+      anim: () => structuredClone(animDebug),
     };
     return () => {
       delete window.__scene;
     };
   }, [camera, gl]);
+  return null;
+}
+
+const FPS_SAMPLE_ms = 500;
+
+/** Counts drawn frames and writes the rate to `ui.fps` twice a second (M2 `fps`). */
+function FpsProbe() {
+  const acc = useRef({ frames: 0, since_ms: performance.now() });
+  useFrame(() => {
+    const a = acc.current;
+    a.frames++;
+    const now_ms = performance.now();
+    if (now_ms - a.since_ms < FPS_SAMPLE_ms) return;
+    appStore.getState().ui.setFps((a.frames * 1000) / (now_ms - a.since_ms));
+    a.frames = 0;
+    a.since_ms = now_ms;
+  });
   return null;
 }
 
@@ -239,6 +294,7 @@ export function BenchViewport() {
         <OrbitControls makeDefault target={[...start.target_m]} />
         <CameraRig />
         <DebugProbe />
+        <FpsProbe />
       </Canvas>
       <CameraButtons />
     </div>

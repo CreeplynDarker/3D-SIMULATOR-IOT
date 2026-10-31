@@ -7,6 +7,8 @@ test.beforeEach(async ({ page }) => {
 
 for (const target of ['sim', 'rcf'] as const) {
   test(`${target} worker answers ping with pong in under 50 ms`, async ({ page }) => {
+    // Building the default model's forest at boot blocks the RCF worker once (D-043); measure after it.
+    if (target === 'rcf') await page.waitForFunction(() => window.__pdm?.modelStatus().status === 'READY');
     const rtts = await page.evaluate(async (t) => {
       const api = window.__pdm;
       if (!api) throw new Error('debug API missing');

@@ -200,6 +200,14 @@ function routeOne(w: Wire, used: Set<string>, all: Obstacle[]): WireRoute {
 const COVERED_HOLES_m: Vec3[] = [bbRailHole_m('L.n', BB_NODE_COLUMNS.dq), bbRailHole_m('L.n', BB_NODE_COLUMNS.tach)];
 
 /** Routes W01–W29 in order; breadboard holes are never shared (resistor holes are taken first). */
+let cached: WireRoute[] | null = null;
+
+/** `routeWires()` computed once and shared by the wires and the signal-flow pulses. */
+export function benchRoutes(): WireRoute[] {
+  cached ??= routeWires();
+  return cached;
+}
+
 export function routeWires(): WireRoute[] {
   const taken = [...Object.values(RESISTOR_HOLES_m).flat(), ...COVERED_HOLES_m];
   const used = new Set<string>(taken.map(key));

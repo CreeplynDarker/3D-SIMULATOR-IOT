@@ -1,0 +1,76 @@
+// M1 viewport overlay (spec §8.2): view toggles and the vibration exaggeration slider. P6 draws what they enable.
+import { CONFIG } from '../shared/config.ts';
+import { appStore, useAppStore } from '../store/index.ts';
+import { VIB_EXAGGERATION_RANGE, type ViewToggle } from '../store/slices/ui.ts';
+import { disableSound, enableSound } from './audio.ts';
+import { ToggleButton } from './kit.tsx';
+
+const TOGGLES: { key: ViewToggle; label: string }[] = [
+  { key: 'flow', label: 'Flow' },
+  { key: 'labels', label: 'Labels' },
+  { key: 'airflow', label: 'Airflow' },
+  { key: 'heat', label: 'Heat' },
+];
+
+/** P6.1: the frame jitter is slowed and exaggerated, so say so when the fan is in focus. */
+function SlowedLabel() {
+  const show = useAppStore((s) => s.ui.camera === 'fan' || s.ui.selectedId === 'fan');
+  const vib = useAppStore((s) => s.ui.vibExaggeration);
+  if (!show) return null;
+  return (
+    <div
+      data-testid="vib-slowed-label"
+      className="absolute left-3 top-12 rounded bg-white/80 px-2 py-1 text-xs text-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
+    >
+      Fan vibration slowed for visibility: shown at {CONFIG.ui.vibVisual_Hz} Hz, ×{vib}
+    </div>
+  );
+}
+
+/** Toggles `tgl-*` and `sld-vib-exaggeration` over the bottom-right of the viewport, and the slowed-motion label. */
+export function ViewportControls() {
+  const toggles = useAppStore((s) => s.ui.toggles);
+  const vib = useAppStore((s) => s.ui.vibExaggeration);
+  const sound = useAppStore((s) => s.ui.soundOn);
+  const ui = appStore.getState().ui;
+  return (
+    <>
+      <SlowedLabel />
+      <div className="absolute bottom-3 right-3 flex items-center gap-2 rounded bg-white/80 px-2 py-1 dark:bg-slate-900/80">
+        {TOGGLES.map((t) => (
+          <ToggleButton
+            key={t.key}
+            testId={`tgl-${t.key}`}
+            label={t.label}
+            on={toggles[t.key]}
+            onChange={(on) => ui.setToggle(t.key, on)}
+          />
+        ))}
+        <ToggleButton
+          testId="tgl-sound"
+          label="Sound"
+          on={sound}
+          onChange={(on) => {
+            // The click is the user gesture that lets the AudioContext start (P6.3/P6.4).
+            if (on) enableSound();
+            else disableSound();
+            ui.setSoundOn(on);
+          }}
+        />
+        <label className="flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
+          Vibration ×{vib}
+          <input
+            data-testid="sld-vib-exaggeration"
+            type="range"
+            min={VIB_EXAGGERATION_RANGE.min}
+            max={VIB_EXAGGERATION_RANGE.max}
+            step={1}
+            value={vib}
+            onChange={(e) => ui.setVibExaggeration(Number(e.target.value))}
+            className="w-24"
+          />
+        </label>
+      </div>
+    </>
+  );
+}

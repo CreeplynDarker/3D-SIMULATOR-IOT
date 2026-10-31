@@ -224,3 +224,282 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   the C++; `tests/unit/firmware/mapMarkers.test.ts` checks both against PLAN §7.6. There is no shared header, so
   each file declares what it uses from the others (`extern`, forward declarations), which keeps the set at the four
   files the plan lists. Affects `src/firmware/reference-cpp/`.
+- **D-039 · 2026-10-31 · Normalisation keeps the raw σ and the floor separately.** `rcf/normalise.ts` fits μ and
+  the population σ (ddof = 0) and divides by `max(σ, stdFloor)` at use, so a saved model can report the measured
+  spread of each feature. `tests/fixtures/normalise.json` holds 120 six-column rows drawn with NumPy
+  (`default_rng(20261029)`; the dT/dt column is constant, so its floor applies) and NumPy's mean and std; the TS fit
+  matches to 1e-12 relative. The fixture is static, so the test needs no Python. Affects `rcf/normalise.ts`,
+  `tests/fixtures/normalise.json`.
+- **D-040 · 2026-10-31 · RCF model details that §9.3 leaves open.** (a) The saved model adds `numTrees` and
+  `stdFloor` to the §9.3 fields, so loading never depends on the current config; `std` is the raw population σ
+  (D-039). It is not a protocol shape, so `PROTOCOL_VERSION` is unchanged. (b) Scoring draws cuts from each tree's
+  `rcf-tree-<i>` stream, as Python `rrcf` does, so a score depends on the packets scored before it. To keep "train →
+  serialise → load" bit-for-bit, `fitModel` validates the holdout on a probe forest and returns a forest rebuilt from
+  the saved JSON, which is exactly what a load gives. (c) Every packet gets a verdict; packets outside
+  NORMAL/WARNING, with a null feature, or with no model get `score = null`, `alert = clear = false`. The firmware
+  needs these: its link timer runs in STARTING too (D-034). (d) The trainer waits for the first NORMAL packet,
+  skips packets with a null feature, and aborts (`state left NORMAL (<state>)`) when a later packet isn't NORMAL.
+  (e) `clear` uses `firmware.clearHysteresis`, the only hysteresis key in §5.1. Affects `rcf/model.ts`.
+- **D-041 · 2026-10-31 · The default model is trained on a healthy run with one stop and restart (team decision,
+  changes PLAN §9.4).** Trained on the warm-start steady state alone (windows 16…195), t_C sat at 34.0625 °C and
+  dT/dt at exactly 0, so both had zero spread. After S8's 20 s stop the probe reads ~0.7 °C cooler with dT/dt
+  ≈ −0.8 °C/min (z ≈ −7 and −15), the RCF alerts on every window, and the fan trips again at 101.0 s, 4.5 s after
+  NORMAL. No §5.2 setting fixed this at threshold 0.5. The only passing set (threshold 0.70, t_C and dT/dt floors
+  3×, nCritical 6) passed only with the canonical seed: 4 of 5 other seeds tripped again. The same would happen in
+  the demo after every RESET → START. The run in `DEFAULT_TRAINING` (ESTOP 100 s, RESET 120 s, START 121 s, the
+  same off time as S8) gives t_C σ 0.32 °C and dT/dt σ 0.38 °C/min, holdout max 0.171. With it every S1–S8 row
+  passes at the §5.1 defaults; seeds 1–5 all pass S8, with S1 max 0.16–0.39 and S5 CRITICAL at 75–78 s. Cost:
+  overheat is caught later (S5 69 → 76 s). Live retraining (`btn-train`, §9.3) is unchanged. No tuning. Affects
+  `harness/trainDefault.ts`, `shared/scenarios.ts`, `public/models/default-model.json`, PLAN §9.4.
+- **D-042 · 2026-10-31 · Harness details (§10.4).** (a) `FirmwareOptions` gains an optional
+  `onVerdictDelivered(verdict, t_s)` tap, so the harness can record when the link delivers each verdict (S6: "no
+  verdict delivered after 30.1 s"). The firmware's logic is unchanged and the workers don't use it. (b) The RCF
+  scores each uplink packet synchronously, and the verdict enters `receiveVerdict(v, now_s)` at the window end, so
+  the link alone sets the delivery time (D-036). Each run loads a fresh forest from the model JSON, because scoring
+  advances the trees' streams (D-040). (c) `verdicts` are `{ sent_s, delivered_s, verdict }`. `packets` holds only
+  the packets that reached the RCF, so the per-second `timeline` also carries the firmware's state, `linkLost`,
+  `sensorFault` and `tripReason`. (d) The end is inclusive: the step at `end_s` runs, so the window closing at
+  `end_s` is sent. (e) Steps with `after: 'CRITICAL'` are scheduled when the first CRITICAL event appears, and
+  `endAfterCritical_s` ends S8 at +45. (f) `RELAY_OPEN`/`RELAY_CLOSED` come from the plant's contact, as in the sim
+  worker. (g) P4.5 went before P4.4, because the worker's e2e check loads the model P4.5 generates.
+  (h) The `rcf_dataset.json` fixture in `gen:fixtures` arrives with P4.6, the task that uses it. Affects
+  `harness/runScenario.ts`, `firmware/firmware.ts`.
+- **D-043 · 2026-10-31 · RCF worker (P4.4).** The logic is a pure `rcf/service.ts` (unit-tested); `rcf/worker.ts`
+  only wires messages. Main fetches `./models/default-model.json` (the app's own static file, relative to the page
+  so `base: './'` works; no external service, like the textures) and sends it with the existing `loadModel{json}`,
+  which answers `modelStatus` READY or UNTRAINED with a reason. Every packet gets a verdict (D-040). `train` drops
+  the current model, reports TRAINING with progress n/180 on every collected window, and ends READY, or UNTRAINED
+  with `training aborted: …` or `baseline unstable`. Main logs an UNTRAINED reason to the console as `WARN rcf: …`
+  (§9.3's "log WARN"; the RCF worker has no log message). `setThreshold` applies to the current and any later
+  model. The `model-status` element is M5 (P5.5), so the e2e check reads the store's model slice through the
+  debug API (`modelStatus()`, `verdictLatencies_ms()`, `train()`). Building the forest blocks the worker once at
+  boot (30–40 ms in Node, about 2.6 s cold in a GPU-less container), so the RCF ping test waits for READY.
+  `playwright.config.ts` takes an optional `PW_CHROMIUM_PATH` for a preinstalled Chromium when the pinned
+  Playwright's own build is missing. Messages in `shared/messages.ts` are unchanged. Affects `rcf/service.ts`,
+  `rcf/worker.ts`, `App.tsx`, `tests/e2e/`, `playwright.config.ts`.
+- **D-044 · 2026-10-31 · Python rrcf cross-check (P4.6).** `pnpm gen:fixtures` also writes
+  `tests/fixtures/rcf_dataset.json` from harness runs with no RCF scoring. Training is 120 healthy windows
+  (16…135). The test set is 20 healthy windows (136…155) plus windows 61…70 after a t = 60 s step of imbalance 0.3,
+  looseness 0.6, friction 0.3 or overheat 1.0. Friction is 0.3 rather than §12's 0.5, so the current stays under
+  I_SOFT and the windows stay NORMAL. `scripts/rrcf_reference.py` normalises as §9.2 does, builds 40
+  `rrcf.RCTree(random_state=seed + i)` trees and scores as §9.3 does. Its RNG differs from the TS `rcf-tree-<i>`
+  streams, so the check compares ranks, not values. Measured Spearman: 0.944. The test always checks the stored
+  reference. When a Python with rrcf 0.4.4 is found (`RRCF_PYTHON`, else `python3`), it also re-runs the script on a
+  copy and matches the stored scores to 1e-9. On Debian/Ubuntu `pip install rrcf==0.4.4` fails against the system
+  setuptools, and rrcf 0.4.4 needs `pkg_resources`; a venv works: `python3 -m venv .venv && .venv/bin/pip install
+  numpy rrcf==0.4.4 "setuptools<81"`, then `RRCF_PYTHON=.venv/bin/python`. Regenerating the fixtures here gave
+  byte-identical feature windows; only the NumPy dT/dt reference on the constant-temperature windows moved within
+  1e-13 of 0, so those files were left as committed. Affects `scripts/gen-fixtures.ts`, `scripts/rrcf_reference.py`,
+  `tests/fixtures/rcf_dataset.json`.
+- **D-045 · 2026-10-31 · App shell (P5.1).** `ui/layout/AppShell.tsx` is a CSS grid on Tailwind's `xl` breakpoint,
+  which is exactly 1280 px. From 1280 px up it shows the §8.1 grid (48 px top bar, 320 px left, viewport, 340 px
+  right, dock below). Below that the page is one column: top bar, viewport (60 vh), left column, right column, dock,
+  so the side columns stack under the viewport. The dock height is dragged by the user, so it is applied through a
+  `--dock-h` CSS variable set from the store in an effect, the same exception AGENTS.md makes for computed overlay
+  positions. It is clamped to 160–480 px in the store. Extra test IDs, beyond §8.2, for layout checks only:
+  `app-shell`, `region-topbar|left|viewport|right|dock`, `dock-tab-charts|console|code|testlog` and `dock-resize`.
+  The M1 view toggles (`tgl-flow`, `tgl-labels`, `tgl-airflow`, `tgl-heat`) and `sld-vib-exaggeration` sit on the
+  viewport's bottom-right with P5.1, because no P5 task names M1; they only set `ui.toggles`/`ui.vibExaggeration`,
+  and P6 draws what they enable. Dark mode is a `dark` class on the shell (`@custom-variant dark` in
+  `index.css`), driven by `ui.theme`. Components send worker messages only through `ui/actions.ts`, which App binds
+  to the workers. The e2e tests read the store through `window.__pdm.inspect()` (`ui/debug.ts`), which grows with
+  each module. Affects `src/ui/`, `App.tsx`, `store/slices/ui.ts`, `index.css`.
+- **D-046 · 2026-10-31 · Top bar and scenario playback (P5.2).** (a) The worker's `scenario{id}` handler schedules
+  the script's steps as plant actions from the current sim time. Steps with `after: 'CRITICAL'` are scheduled when
+  the first CRITICAL event comes through the worker's event flush, which is timed from that event's own `t_s`. At
+  the script's end the worker pauses. The logic is in `sim/script.ts` (`startScript`, `scriptEvent`, `scriptDone`),
+  which the harness now uses as well, so there is no second copy; the S1–S8 results and the default model are
+  unchanged. (b) `sel-scenario` resets the sim first (`reset`, charts cleared), then sends `scenario{id}` and plays,
+  so a script starts from OFF at t = 0 as §12 assumes, and S9 also sets 10×. (c) `shared/messages.ts` gains
+  `SimToMain { type: 'scenario'; id; done }`, so main knows when a script has ended (`window.__sim.scenarioDone`,
+  §8.2). Worker messages aren't the §10.1 protocol, so `PROTOCOL_VERSION` stays 1. (d) `fps` comes from an
+  `FpsProbe` in the canvas that writes `ui.fps` every 500 ms. (e) `btn-sim-reset` keeps the play state. `btn-help`
+  sets `ui.legendOpen`; the modal itself is M12 (P5.10). The mode label is an extra test ID, `mode-label`. `sel-mode`
+  is disabled until P8. (f) With `?debug=1`, `window.__sim` exposes live getters for `fps`, `state`, `t_s`,
+  `scenarioDone` and `lastEvent` (the newest series event), and `__pdm.events()` returns the series events.
+  Affects `sim/script.ts`, `sim/worker.ts`, `harness/runScenario.ts`, `shared/messages.ts`, `ui/TopBar.tsx`,
+  `ui/actions.ts`, `scene/Bench.tsx`, `store/slices/{sim,ui}.ts`.
+- **D-047 · 2026-10-31 · Fault panel (P5.4).** The M4 controls keep what the operator asked for in `ui.faultTargets`;
+  each row shows the plant's live value from the snapshot (extra test IDs `val-imbalance|looseness|friction|overheat|sag|loss`
+  and `val-ds-disconnect`). Sliders use the `CONFIG.faults` ranges and send `fault{key, value, ramp_s}` on every
+  change. With `tgl-ramp` on, numeric faults ramp over `inp-ramp-s` seconds of sim time (default 30 s, S4's ramp;
+  negative values clamp to 0). The DS18B20 switch always steps. `btn-clear-faults` and `btn-sim-reset` zero the
+  targets. Affects `ui/FaultPanel.tsx`, `ui/actions.ts`, `store/slices/ui.ts`.
+- **D-048 · 2026-10-31 · Operator panel (P5.5).** (a) The enable rules are pure functions in `ui/rules.ts`. `btn-start`
+  is enabled in OFF. `btn-reset` is enabled in CRITICAL; it opens `dlg-reset-confirm`, and `btn-reset-confirm`
+  sends RESET (`btn-reset-cancel` is an extra test ID). The firmware still refuses a RESET while the fan turns.
+  `btn-train` is enabled in NORMAL with every fault off and the last window's |dT/dt| ≤ `warmDtdtMax_C_per_min`. A
+  null dT/dt (fewer than 10 readings) counts as not settled. `btn-estop` is enabled in every state but OFF ("any
+  except OFF", §7.4). One consequence: a warm-started motor that sits OFF while the sim plays cools down, so TRAIN
+  stays disabled until dT/dt settles. (b) `inp-n-critical`, `inp-i-max` and `inp-t-max` apply to the running
+  firmware at once. The new `MainToSim` message `params{nCritical, iMax_A, tMax_C}` edits the worker's own copy of
+  the config, which the firmware reads live, so the snapshot's `nCritical` (and so `persistence`) follow. To
+  carry an edited config, `init.config` is now typed `SimConfig`. (c) `tgl-warm-start` applies at the next
+  `btn-sim-reset`, which now sends `init` with the §5.1 config plus the operator's limits and warm start, rather
+  than `reset`. (d) `inp-threshold` sends `setThreshold` to the RCF and updates the model slice. (e)
+  `latched-indicator` (extra test ID) reads LATCHED in CRITICAL. (f) Input ranges: threshold 0.05–1, N 1–20,
+  I_MAX 0.05–1 A, T_MAX 20–100 °C. They are UI bounds, not §5.2 tuning. Affects `ui/OperatorPanel.tsx`,
+  `ui/rules.ts`, `ui/actions.ts`, `shared/messages.ts`, `sim/worker.ts`, `store/slices/ui.ts`.
+- **D-049 · 2026-10-31 · Live charts (P5.6).** `ui/chartData.ts` (pure, unit-tested) cuts the series slice to the
+  chart window and lays it out as uPlot columns. Every strip shares an x range that ends at the newest window. It
+  also builds state bands (consecutive windows in the same state, §8.1 colours) and event markers (FAULT_SET,
+  WARNING, CRITICAL, RELAY_OPEN, RESET, LINK_LOST, SENSOR_FAULT). `ui/Charts.tsx` builds six uPlot instances, one
+  per strip, in a 3 × 2 grid. They share the cursor sync key `m6`, and every strip reserves the same right-hand
+  gutter (the temperature strip uses it for dT/dt), so the plot areas and cursors line up. Bands are drawn in
+  `drawClear`, markers in `draw`, and the score strip shows its threshold as a dashed line. React renders the frame
+  once and re-renders only when the window, freeze or theme changes. A `store.subscribe` on `series.rev` calls
+  `setData` directly, and a ResizeObserver keeps the plots sized. Each strip's element carries `data-points` and
+  `data-last-t` for the e2e tests. The chart window takes only the `ui.chartWindows_s` values (default 120 s).
+  Affects `ui/Charts.tsx`, `ui/chartData.ts`, `store/slices/ui.ts`.
+- **D-050 · 2026-10-31 · Data console and exports (P5.7).** Main appends a console line for every uplink packet
+  (from the sim's packet copy) and every verdict as the ESP32 received it (`verdictIn`), as well as commands and log
+  lines. The formats are in `ui/consoleFormat.ts`. A verdict line ends in ALERT, clear, hold (neither) or unscored,
+  then `dom=`. The ring keeps `ui.consoleMaxLines`; the view shows the newest 400 that pass the `flt-*` filters.
+  `btn-console-pause` freezes the view while lines keep arriving, and `btn-console-copy` copies the visible lines.
+  Clicking a line shows its JSON. `btn-export-csv` writes the §8.2 columns: the `Packet` fields in protocol order,
+  then `score, threshold, alert, clear, dominant` from the verdict with the same seq, empty when there is none. There
+  is one row per console packet. `btn-export-json` writes `{ packets, verdicts, commands, logs }`. Downloads use an
+  object URL; nothing is sent anywhere. `btn-sim-reset` and `sel-scenario` clear the console, because seq restarts at
+  0 and a join by seq would mix two runs. `tgl-raw-mpu` sends `raw{on}`; the console header counts the 1 kHz samples
+  and shows the newest x/y/z (extra test ID `raw-mpu`). Extra test IDs: `console-line` (with `data-kind`) and
+  `console-json`. Affects `ui/Console.tsx`, `ui/consoleFormat.ts`, `ui/download.ts`, `store/slices/{console,sim}.ts`,
+  `App.tsx`.
+- **D-051 · 2026-10-31 · Inspector (P5.8).** `ui/inspectorData.ts` holds, for each of the 14 parts, the key specs
+  (from §1.2/§1.3 and §5.1), the photo crop where `public/textures/` has one (fan, ESP32, ACS712, relay, adapter;
+  the others show none), and live pin lines formatted from the snapshot. The ACS712 line is the §8.2 example,
+  `ACS712 OUT 2.533 V → GPIO34 1965 counts`; the laptop shows the model status and last score. "Its wires" means the
+  §13.3 wires on the part's anchors; for resistors, the wires on their two breadboard holes' nodes; for the
+  breadboard, every `bb.*` wire. Each wire shows its colour swatch and net. The adapter and jack show the sag fault
+  and the fan-side voltage instead of computing a supply voltage, because the UI computes nothing physical. Extra test
+  ID: `inspector-pin`. The debug API gains `select(id)`. Affects `ui/Inspector.tsx`, `ui/inspectorData.ts`.
+- **D-052 · 2026-10-31 · Test log (P5.9).** `btn-run-start` opens a run at the current sim time, named after the
+  scenario being played or, otherwise, `manual:` and the injected faults. While it is open, each event updates it
+  through `ui/testlog.ts` (`runPatch`, pure). The first ALERT sets alerted and the time to first alert, counted from
+  the run's start. The first CRITICAL and the next RELAY_OPEN give the delay in ms. A RESET counts as reset by
+  operator (the firmware emits RESET only for an accepted operator RESET). `btn-run-stop` sets the duration.
+  `inp-run-notes` edits the open run, or the last one. `btn-testlog-export` saves the table as CSV. The test-log
+  slice gains `active` and each run a `critical_s`. To keep CRITICAL ahead of its RELAY_OPEN in main, the sim worker
+  now posts each tick's plant, firmware and relay events together, sorted by sim time; before this, relay events
+  went out while the tick was still stepping. Extra test ID: `testlog-row`. Affects `ui/TestLog.tsx`,
+  `ui/testlog.ts`, `store/slices/testlog.ts`, `sim/worker.ts`, `App.tsx`.
+- **D-053 · 2026-10-31 · Legend and shortcuts (P5.10).** `legend-modal` shows the §13.3 colour key (11 swatches
+  from `WIRE_COLORS`), the six §8.1 state colours, the shortcut list and the §14 glossary verbatim
+  (`ui/legend.ts`). It closes with `btn-legend-close`, Escape or a click outside. The §8.2 keys are handled by one
+  window listener (`useShortcuts`): Space play/pause, S START, E ESTOP, R opens the reset confirmation (only in
+  CRITICAL), 1–5 the camera presets in `CAMERA_ORDER`, ? the legend, and Escape closes either dialog. Keys typed into
+  inputs, selects or text areas, or pressed with Ctrl/Alt/Meta, are ignored. They go through the same `actions` as
+  the buttons, so S and R follow the same rules. Extra test IDs: `btn-legend-close`, `legend-wire`,
+  `legend-state`. Affects `ui/Legend.tsx`, `ui/legend.ts`, `App.tsx`.
+- **D-054 · 2026-10-31 · P5 phase gate.** `tests/e2e/p5-gate.spec.ts` drives only the real controls: `sel-speed` 4×,
+  `btn-start`, `btn-play`, `sld-imbalance` 0.3, `btn-reset` → `btn-reset-confirm`, then `btn-export-csv` from the
+  console tab. `window.__pdm`/`__sim` are used only to wait (NORMAL, rpm < 100 before the reset) and to read the
+  FAULT_SET and CRITICAL event times. Sim time from setting the imbalance to CRITICAL is taken from those events and
+  must be ≤ 15 s; the badge must show CRITICAL by the next snapshot. The sim is paused before exporting, so the
+  CSV's rows can be compared with the console's packet count. Measured here: CRITICAL 4.35 s of sim time after the
+  slider, trip reason RCF, 57 CSV rows = 57 console packets. M8 (code panel, P6.5) and M11 (guided card, P6.6)
+  are not part of P5; their test IDs (`code-panel`, `tab-code-*`, `tgl-follow`, `scenario-card`, `btn-scn-*`)
+  arrive with P6. Affects `tests/e2e/p5-gate.spec.ts`.
+- **D-055 · 2026-10-31 · Fixes from the P5 screenshot review.** (a) In CRITICAL every window is unscored, so M3's gauge
+  and `dominant-var` went blank exactly when the operator needs the cause. The model slice now also keeps
+  `lastScored`, the newest verdict with a score, and M3 shows that; a sim reset clears both. (b) uPlot stretches a
+  flat series from 0 (T at 34.06 °C read as 0–50), so each strip's y range is `yRange`: 10 % padding, or ±0.5 around a
+  flat line. (c) `camera.spec.ts` clicked (5, 5) to hit empty canvas, which assumed a full-page viewport; it now
+  clicks the viewport's own corner. Screenshots of OFF, NORMAL, WARNING (DS18B20 disconnected) and CRITICAL
+  (imbalance) at 1920 × 1080 and 1280 × 720 are in `docs/screenshots/p5/`. Affects `store/slices/model.ts`,
+  `ui/StatusPanel.tsx`, `ui/chartData.ts`, `ui/Charts.tsx`, `tests/e2e/camera.spec.ts`.
+- **D-056 · 2026-10-31 · Chart redraws are coalesced to one per animation frame.** A store change schedules a
+  `requestAnimationFrame` instead of redrawing all six plots inside the packet message handler. On the GPU-less
+  container the main thread draws at 4–5 fps in software. There, the P4.4 e2e check (packet copy → verdict on main
+  < 20 ms) failed one run in two with 106–122 ms, because the main thread was busy between the two messages, not
+  the RCF (0.17 ms per packet in Node). The worker ping and sim-rate checks fail there for the same reason (D-026).
+  They need a rerun on a machine with a GPU. Affects `ui/Charts.tsx`.
+- **D-057 · 2026-10-31 · Fan motion (P6.1).** `scene/models/FanMotion.tsx` wraps the fan model. In `useFrame` it reads
+  the snapshot and the last window's a_RMS from the store; every motion is a pure function of sim values
+  (`scene/anim.ts`), so a paused sim redraws the same frame. (a) The blades turn by `theta_rad`. Above
+  `bladeBlurRpm` they fade out while a dark translucent ring (the blur disc) fades in, linearly up to 2 ×
+  `bladeBlurRpm`. (b) The frame moves on a circle of radius min(`vibVisualMax_mm`, a_RMS · `vibVisual_mm_per_g` ·
+  exaggeration) at `vibVisual_Hz`, with its phase from sim time; it holds still when the fan is stopped. (c)
+  `tgl-airflow` shows 10 glow streaks leaving the outlet, their speed proportional to rpm. Airflow is drawn here
+  because no other task owns it. (d) Shadows: the blades, the disc and the streaks don't cast, so the frozen
+  shadow map (D-027) stays valid without a redraw. The fan frame keeps casting from its rest pose; the jitter (at
+  most 4 mm) isn't reflected in its shadow. (e) `vib-slowed-label` (extra test ID) says "Fan vibration slowed for
+  visibility: shown at 6 Hz, ×N" while the Fan camera is active or the fan is selected. (f) `window.__scene.anim()`
+  returns what the animated parts drew last frame, for the e2e tests. Affects `scene/anim.ts`,
+  `scene/animDebug.ts`, `scene/models/FanMotion.tsx`, `scene/Bench.tsx`, `ui/ViewportControls.tsx`.
+- **D-058 · 2026-10-31 · Signal flow, labels and tooltip (P6.2).** (a) The internal `Snapshot` (not the §10.1
+  protocol) gains `traffic`: packets sent, packets dropped, verdicts delivered and DS18B20 reads, with the sim time
+  of the last of each (−Infinity before the first). The firmware counts them where they happen (link send result,
+  link delivery, sampler read) and reports them through `FirmwareView`. The plant's OFF view has zeros. (b) Each
+  wire now has its own material. `scene/wires/SignalFlow.tsx` applies §13.3's energised rules
+  (`anim.wireEnergised`): V12_SW (W04) dims when the CH2 contact is NC, RELAY_IN (W29) dims while GPIO26 is HIGH,
+  and every other net stays live. A wire is repainted only when its state changes, and each change is logged with
+  the snapshot's sim time (`__scene.anim().flow.log`). Dimming always shows; with `tgl-flow` on, energised V12,
+  V12_SW, V5, V3V3 and RELAY_IN wires also glow (GND doesn't). (c) Pulses with `tgl-flow`: I²C (W19/W20) and ADC
+  (W25/W26) run continuously, as the ESP32 samples at 1 kHz whenever it is powered. Tach (W27/W28) runs at a rate
+  proportional to rpm and stops with the fan. One 1-Wire pulse crosses W23 then W24 for each DS18B20 read. (d) On the
+  Wi-Fi arc, a pulse runs up from each packet's send time and a pulse runs down after each delivered verdict, once
+  the up pulse has arrived; the real 20 ms latency would hide it. A dropped packet turns the arc red, fading back.
+  Travel and fade times are a fixed share of wall time at the current speed, capped below one window, so pulses
+  stay visible at 4–10× without overlapping. They depend only on sim time and the speed setting, so a paused sim
+  freezes them. (e) `tgl-labels` draws canvas name tags over the 10 main parts (no font is fetched). (f) The M1
+  hover tooltip (`scene-tooltip`, drei `Html`) shows the part's name and its first live pin line from M9's data.
+  Pulses, tags and the tooltip cast no shadows. Affects `firmware/firmware.ts`, `sim/plant.ts`,
+  `shared/messages.ts`, `scene/wires/*`, `scene/Labels.tsx`, `scene/Bench.tsx`, `scene/anim.ts`.
+- **D-059 · 2026-10-31 · Relay animation and sound (P6.3).** (a) Spec conflict: P6.3 says "W03 dims when open", but
+  §13.3 makes W03 (ACS712 IP− → COM2) a V12 wire, always energised, and the switched wire is W04 (NO2 → fan red,
+  V12_SW). §13.3's energised rules win (as the team's P6 notes also say W04): W04 dims while the contact is NC (D-058).
+  (b) A gold arm on the CH2 terminal block pivots above COM2 and points at NC2 or NO2, following the plant's
+  `contact` directly. The 10 ms pull-in is far too short to animate. The arm casts no shadow. (c) The CH2 LED is
+  lit while the coil is energised; the CH1 LED is always off (CH1 dead, IN1 unconnected); the power LED stays on.
+  To allow this, `Parts` now puts each LED's halo inside its part's group. (d) Sound: `tgl-sound` (extra test ID)
+  turns on a Web Audio context from that click, which is the user gesture browsers require; it is off by default.
+  Each contact change then plays a 12 ms square-wave click (`ui/audio.ts`, no audio files). With sound off the
+  change is still counted (`__scene.anim().relay.changes`) but makes no sound. (e) Measured in the e2e test, S2 at
+  4×: CRITICAL 65.013 s → RELAY_OPEN 65.018 s → W04 dimmed 65.375 s → rpm < 100 at 75.214 s. W04's time is the
+  first rendered frame that showed the open contact, so it includes this GPU-less container's ~4 fps (about 0.8 s
+  of sim time per frame at 4×). Affects `scene/models/Relay.tsx`, `scene/models/Parts.tsx`, `ui/audio.ts`,
+  `ui/ViewportControls.tsx`, `store/slices/ui.ts`.
+- **D-060 · 2026-10-31 · Heat tint and hum (P6.4).** (a) With `tgl-heat` on, the hub label is tinted by
+  `tMotor_C`, linearly from #3b82f6 at 25 °C to #ef4444 at 70 °C and clamped (`anim.heatColor`). The hub disc is now
+  its own part group (`hub`) with its own material, so the tint touches nothing else. Its colour is set only when it
+  changes, and it casts no new shadow. (b) With sound on, the hum is a sawtooth oscillator at the blade-pass
+  frequency (rpm/60 · 7 blades, ≈ 443 Hz at 3,800 rpm). Its gain is 0.03 + 0.25 · a_RMS (capped at 0.2), scaled
+  by rpm/rated. It falls silent when the fan stops or the sim is paused, so pausing freezes the sound as well. Gain
+  and pitch glide over 50 ms (`setTargetAtTime`), so window steps don't crackle. Sound stays muted until
+  `tgl-sound` (D-059). Affects `scene/anim.ts`, `scene/models/FanMotion.tsx`, `scene/models/geometry.ts`,
+  `ui/audio.ts`.
+- **D-061 · 2026-10-31 · Code panel (P6.5).** M8 loads its sources with Vite `?raw` imports: the four reference C++
+  files (tab-code-firmware), `src/shared/protocol.ts` for the protocol (tab-code-schema; it is the contract the JSON
+  Schemas are generated from), and `src/rcf/model.ts` and `rrcf.ts` for the laptop RCF (tab-code-rcf). Files in
+  `public/` can't be imported, so the generated JSON isn't shown. `ui/highlight.ts` is a small tokenizer, about 60
+  lines and no library: line and block comments (across lines), strings with escapes (and TS template strings),
+  numbers with C suffixes, keywords per language, and `#` preprocessor lines. Joining the tokens gives back the
+  source exactly. The active line is the firmware line whose `// @map <id>` equals the snapshot's `activeMap`
+  (exact id); it carries `data-active="true"`, `data-map` and a highlight. With `tgl-follow` on (the default), a
+  new `activeMap` switches to the firmware tab and that file and scrolls the line into view; with it off the view
+  stays where the operator put it. At boot nothing has run yet, so no line is active. The panel re-renders only
+  when `activeMap`, the tab or the file changes. Extra test IDs: `code-file-<name>`. Affects `ui/CodePanel.tsx`,
+  `ui/highlight.ts`, `store/slices/ui.ts`, `App.tsx`.
+- **D-062 · 2026-10-31 · Guided scenarios (P6.6).** (a) `src/shared/guided.ts` holds the M11 text as data for every
+  `guided: true` scenario (S1, S2, S4, S5, S6, S9), so the team can edit it without touching a component. Each step
+  has a trigger (a sim time, the first event of a type with an optional offset, or the end of the run), a camera
+  preset, the M6 strip to watch, and three texts: what to watch, what was injected, and what the state means.
+  `reachedStep` (pure) returns the furthest step whose trigger has fired, so a step whose event never happens
+  (e.g. a WARNING skipped by a local trip) can't stall the card. (b) Each run has its own speed, chosen to stay
+  under about 90 s of wall time: S1, S6 and S9 at 10× (60, 42, 60 s), S2, S4 and S5 at 4× (30, 35, 35 s). Measured
+  here: 32.7–62.9 s. (c) `sel-scenario` on a guided scenario opens `scenario-card` over the viewport's bottom-left.
+  A store subscription (no re-render per snapshot) moves the card to each newly reached step and applies its camera
+  preset, the charts tab and a ring on the strip to watch (`data-watched`). `btn-scn-back` and `btn-scn-next`
+  revisit steps with their camera and chart; `btn-scn-exit` closes the card and the run continues. (d) A sim reset
+  now clears the stored snapshot until the worker sends its fresh one, so no trigger fires on the previous run's
+  sim time. (e) Name tags (P6.2) keep a constant size on screen (`sizeAttenuation: false`), because at the relay
+  and fan presets world-sized tags covered the parts. Screenshots of each S2 step (sim paused for each shot) are in
+  `docs/screenshots/p6/`. Affects `shared/guided.ts`, `ui/Scenarios.tsx`, `ui/actions.ts`, `ui/Charts.tsx`,
+  `store/slices/{ui,sim}.ts`, `scene/Labels.tsx`, `App.tsx`.
+- **D-063 · 2026-10-31 · Guided steps no longer switch the dock tab.** The full e2e run found that each guided step
+  set the dock to Charts. That hid `btn-run-start` from an operator recording a guided run in M10, and broke the S2
+  test-log spec, since S2 is now guided. A step now sets only its camera and outlines its strip (visible when the
+  Charts tab is open); the card already names the chart. Separately, the three M7 console specs were near
+  Playwright's default 30 s test timeout on this GPU-less container (26–28 s in P5); with the P6 animations they
+  went over, so they now allow 90 s. Their checks are unchanged. Affects `ui/actions.ts`,
+  `tests/e2e/p5-console.spec.ts`.

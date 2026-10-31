@@ -71,35 +71,58 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 ## P4 — RCF and harness (deps: P3.6)
 
-- [ ] P4.1 RRCF
-- [ ] P4.2 Normalise
-- [ ] P4.3 Model (deps: P4.1, P4.2)
-- [ ] P4.4 RCF worker (deps: P4.3, P0.6)
-- [ ] P4.5 Harness, scenarios and default model (deps: P4.3)
-- [ ] P4.6 Python cross-check (deps: P4.5)
+- [x] P4.1 RRCF
+  2026-10-31 · rcf/rrcf.ts: RCTree class (insert/forget/codisp/query, duplicates share a leaf, parent links); property test of 1,000 ops checks n, exact boxes and cuts; rcf/ coverage threshold on · no tuning
+- [x] P4.2 Normalise
+  2026-10-31 · rcf/normalise.ts: fitNormaliser (μ, population σ), floorsFor, normalise with max(σ, floor); NumPy fixture matches to 1e-12 · no tuning
+- [x] P4.3 Model (deps: P4.1, P4.2)
+  2026-10-31 · rcf/model.ts: fitModel (μ/σ, 40 trees, holdout validation), scorePacket → Verdict (score = mean CoDisp ÷ nTrain, dominant, z map), zod-checked JSON, loadModel, trainer for the §9.3 flow · no tuning
+- [x] P4.4 RCF worker (deps: P4.3, P0.6)
+  2026-10-31 · rcf/service.ts (load, score, live train with n/180 progress) + thin rcf/worker.ts; main loads default-model.json at boot → READY; e2e: READY at boot, a verdict per packet, every main-side latency < 20 ms; 0.17 ms per packet in Node · no tuning
+- [x] P4.5 Harness, scenarios and default model (deps: P4.3)
+  2026-10-31 · harness/runScenario.ts (plant + createFirmware + model in one loop, verdicts through the link), shared/scenarios.ts (S1–S9), harness/trainDefault.ts + gen:model; default model trained on a run with one stop and restart (D-041); S1–S8 tests in tests/scenario/, determinism check on a 40 s run · no tuning
+- [x] P4.6 Python cross-check (deps: P4.5)
+  2026-10-31 · gen:fixtures writes rcf_dataset.json (120 healthy train, 60 test: healthy + 4 faults); scripts/rrcf_reference.py (rrcf 0.4.4, 40 trees) fills the reference; Spearman TS vs Python 0.944; re-run test when rrcf is installed · no tuning
 
 ## P5 — Interface modules (deps: P1, P4)
 
-- [ ] P5.1 Shell and layout
-- [ ] P5.2 M2 top bar
-- [ ] P5.3 M3 status
-- [ ] P5.4 M4 faults
-- [ ] P5.5 M5 operator
-- [ ] P5.6 M6 charts
-- [ ] P5.7 M7 console and exports
-- [ ] P5.8 M9 inspector
-- [ ] P5.9 M10 test log
-- [ ] P5.10 M12 legend
-- [ ] P5.G Phase gate (deps: P5.1–P5.10)
+- [x] P5.1 Shell and layout
+  2026-10-31 · ui/layout/AppShell.tsx (§8.1 grid at ≥ 1280 px, stacked below), Dock.tsx (4 tabs, drag-resize 160–480 px), M1 view toggles + vibration slider, ui/actions.ts, __pdm.inspect(); e2e at 1280 × 720, 1920 × 1080 and 1100 px · no tuning
+- [x] P5.2 M2 top bar
+  2026-10-31 · ui/TopBar.tsx (sim-clock, fps, mode, play, speed, sim reset, scenario, mode, theme, help); worker scenario{id} via shared sim/script.ts (harness uses it too); window.__sim; e2e plays S2 to scenarioDone · no tuning
+- [x] P5.3 M3 status
+  2026-10-31 · ui/StatusPanel.tsx: status-badge (state colours §8.1, data-tone), rcf-gauge (score / threshold + bar), dominant-var, persistence k/N, relay-state, rpm-readout, link/sensor indicators (data-ok), trip-reason; e2e OFF → NORMAL → ESTOP · no tuning
+- [x] P5.4 M4 faults
+  2026-10-31 · ui/FaultPanel.tsx: six sliders (CONFIG.faults ranges) with live values, DS18B20 switch, ramp toggle + seconds, clear all; e2e step, ramp and clear · no tuning
+- [x] P5.5 M5 operator
+  2026-10-31 · ui/OperatorPanel.tsx + ui/rules.ts: model-status (n/180), latched indicator, START/E-STOP/RESET (confirm dialog)/TRAIN with the §8.2 rules; threshold to the RCF, N/I_MAX/T_MAX live to the firmware (params message), warm start on sim reset · no tuning
+- [x] P5.6 M6 charts
+  2026-10-31 · ui/Charts.tsx: six uPlot strips (T with dT/dt on a 2nd axis, score with dashed threshold), synced cursors, state bands, event markers, 30/120/600 s window, freeze; imperative setData from a store subscription; ui/chartData.ts unit-tested · no tuning
+- [x] P5.7 M7 console and exports
+  2026-10-31 · ui/Console.tsx + consoleFormat.ts: ↑/↓/→/log lines in the §8.2 formats, filters, pause, copy, expand JSON, CSV (packet fields + verdict by seq) and JSON exports, raw MPU stream; e2e CSV rows = console packets · no tuning
+- [x] P5.8 M9 inspector
+  2026-10-31 · ui/Inspector.tsx + inspectorData.ts: name, photo crop, specs, live pin lines (ACS712 OUT … → GPIO34 … counts), wires with colours; unit + e2e · no tuning
+- [x] P5.9 M10 test log
+  2026-10-31 · ui/TestLog.tsx + testlog.ts: runs with condition, start, duration, alerted, first alert, CRITICAL → relay ms, operator reset, notes; CSV export; worker posts each tick's events in time order · no tuning
+- [x] P5.10 M12 legend
+  2026-10-31 · ui/Legend.tsx + legend.ts: legend-modal (wire key, state colours, shortcuts, §14 glossary); keyboard Space/S/E/R/1–5/?/Esc, ignored in inputs · no tuning
+- [x] P5.G Phase gate (deps: P5.1–P5.10)
+  2026-10-31 · tests/e2e/p5-gate.spec.ts through the real controls: imbalance 0.3 → CRITICAL (RCF) 4.3–5.0 s of sim time after the slider, reset with confirm → OFF, CSV rows = console packets (57–60); review fixes D-055; screenshots in docs/screenshots/p5/ · no tuning
 
 ## P6 — Animation and explanation (deps: P5)
 
-- [ ] P6.1 Blades and vibration
-- [ ] P6.2 Signal flow
-- [ ] P6.3 Relay
-- [ ] P6.4 Heat and sound
-- [ ] P6.5 M8 code panel
-- [ ] P6.6 M11 guided scenarios
+- [x] P6.1 Blades and vibration
+  2026-10-31 · scene/models/FanMotion.tsx + scene/anim.ts: blades by theta_rad, crossfade to a blur disc above 600 rpm, frame jitter from a_RMS at 6 Hz (sim-time phase, capped 4 mm), airflow streaks, slowed-for-visibility label; moving parts cast no shadow; paused screenshots identical · no tuning
+- [x] P6.2 Signal flow
+  2026-10-31 · traffic counters in the snapshot; scene/wires/SignalFlow.tsx (power glow, §13.3 energised rules, I²C/ADC/tach/1-Wire pulses), Wi-Fi arc up/down pulses and red drop flash, name tags, hover tooltip · no tuning
+- [x] P6.3 Relay
+  2026-10-31 · CH2 arm follows contact, CH2 LED with the coil (CH1 off), Web Audio click per change behind tgl-sound, W04 dims when open (§13.3, D-059); e2e S2 order CRITICAL 65.013 → RELAY_OPEN 65.018 → W04 dim 65.375 → rpm < 100 75.214 s · no tuning
+- [x] P6.4 Heat and sound
+  2026-10-31 · hub tint from tMotor_C with tgl-heat (blue 25 °C → red 70 °C); Web Audio hum at blade-pass pitch, gain from a_RMS, muted by default, silent when paused · no tuning
+- [x] P6.5 M8 code panel
+  2026-10-31 · ui/CodePanel.tsx + highlight.ts: C++/protocol/RCF sources via ?raw, own tokenizer, active @map line (data-active) with follow; e2e checks the active marker in CALIBRATING, STARTING, NORMAL, WARNING, CRITICAL and OFF · no tuning
+- [x] P6.6 M11 guided scenarios
+  2026-10-31 · shared/guided.ts (S1, S2, S4, S5, S6, S9: trigger, camera, chart, watch/injected/state per step) + ui/Scenarios.tsx card with auto-advance, back/next/exit; every guided run reaches its last step with scenarioDone in 33–63 s wall · no tuning
 
 ## P7 — Verification and delivery (deps: P6)
 
@@ -123,4 +146,9 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - P1.3 · the layout reads like a tidy lab bench
 - P1.4 · no wire passes through a component (also covered by `tests/unit/scene/route.test.ts`)
 - P3.7 · the C++ in `src/firmware/reference-cpp/` reads as plausible ESP32 Arduino code
+- P5.G · a teammate runs a fault and a reset without instructions
+- P5.1 · the layout at 1280 × 720 and 1920 × 1080 reads well (screenshots in `docs/screenshots/p5/`); left column scrolls at 720 px
+- P6 · the animations make the cause and the effect obvious to someone who hasn't read the report (S2 step screenshots in `docs/screenshots/p6/`)
+- P6 · at least 50 fps at 1920 × 1080 with every view toggle on, on the team laptop (this container renders WebGL in software: 2–5 fps before and after P6)
+- P6.3/P6.4 · the relay click and the fan hum sound right (Sound toggle; muted by default)
 - P1.6 · at least 50 fps at 1920 × 1080 on an integrated-graphics laptop (measured 60 fps vsync-locked on Intel Iris Xe in headless Chromium; confirm in a normal browser window on the team laptop)

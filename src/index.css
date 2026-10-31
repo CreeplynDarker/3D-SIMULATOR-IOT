@@ -1,1 +1,4 @@
 @import 'tailwindcss';
+
+/* Dark mode follows ui.theme (a `dark` class on the app shell), not the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));

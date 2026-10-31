@@ -40,7 +40,9 @@ test('clicking the fan selects it', async ({ page }) => {
   if (!point) throw new Error('fan is not on screen');
   await page.mouse.click(point.x, point.y);
   await expect.poll(() => page.evaluate(() => window.__scene?.selectedId())).toBe('fan');
-  // clicking empty space clears the selection
-  await page.mouse.click(5, 5);
+  // clicking empty space in the viewport (its top-left corner shows only background) clears the selection
+  const vp = await page.getByTestId('viewport').boundingBox();
+  if (!vp) throw new Error('no viewport');
+  await page.mouse.click(vp.x + 5, vp.y + 5);
   await expect.poll(() => page.evaluate(() => window.__scene?.selectedId())).toBeNull();
 });

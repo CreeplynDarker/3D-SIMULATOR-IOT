@@ -3,7 +3,7 @@
 // verdict delivered by the link drives the RCF rows. It sees only what a real ESP32 sees.
 import type { SimEvent, SimEventType } from '../shared/messages.ts';
 import { type Command, type Packet, PROTOCOL_VERSION, type Verdict } from '../shared/protocol.ts';
-import type { Controller, FirmwareView, SensorsView } from '../sim/plant.ts';
+import { type Controller, type FirmwareView, NO_TRAFFIC, type SensorsView, type TrafficView } from '../sim/plant.ts';
 import type { GpioLevel, SimConfig } from '../sim/types.ts';
 import { GPIO_LOW } from '../sim/types.ts';
 import { addTempReading, computeFeatures, createTempTracker, tempFeatures, type WindowFeatures } from './features.ts';
@@ -21,6 +21,8 @@ export interface FirmwareOptions {
   uplink: (packet: Packet) => void;
   /** Current packet loss (0–1) of the "Wi-Fi" — an environment fault, not something the ESP32 measures. */
   packetLoss: () => number;
+  /** Optional tap on each verdict as the link delivers it (sim time in s); the harness records delivery times. */
+  onVerdictDelivered?: (verdict: Verdict, t_s: number) => void;
 }
 
 export interface Firmware extends Controller {
@@ -56,6 +58,7 @@ export function createFirmware(opts: FirmwareOptions): Firmware {
   let enteredAt_s = 0;
   let lastValidTemp_s = 0;
   let lastFeatures: (WindowFeatures & { t_C: number | null }) | null = null;
+  const traffic: TrafficView = { ...NO_TRAFFIC };
 
   const emit = (t_s: number, type: SimEventType, detail?: string) =>
     events.push(detail === undefined ? { t_s, type } : { t_s, type, detail });
@@ -130,14 +133,24 @@ export function createFirmware(opts: FirmwareOptions): Firmware {
     fsm.softActive = r.soft !== null;
     if (r.trip) fire({ kind: 'trip', reason: r.trip }, t_s);
     else if (r.soft) fire({ kind: 'soft', reason: r.soft }, t_s);
-    sendPacket(link, buildPacket(w, f, temp), t_s, opts.packetLoss(), opts.uplink);
+    if (sendPacket(link, buildPacket(w, f, temp), t_s, opts.packetLoss(), opts.uplink)) {
+      traffic.packets++;
+      traffic.lastPacket_s = t_s;
+    } else {
+      traffic.dropped++;
+      traffic.lastDrop_s = t_s;
+    }
   };
 
   return {
     tick(view: SensorsView): GpioLevel {
       const t_s = view.t_s;
       const s = samplerTick(sampler, view);
-      if (s.dsRead && addTempReading(temps, s.dsRead, cfg)) lastValidTemp_s = s.dsRead.t_s;
+      if (s.dsRead) {
+        traffic.dsReads++;
+        traffic.lastDsRead_s = s.dsRead.t_s;
+        if (addTempReading(temps, s.dsRead, cfg)) lastValidTemp_s = s.dsRead.t_s;
+      }
       if (s.window) windowEnd(s.window, t_s);
       runTimers(t_s);
       if (fsm.state === 'CALIBRATING') {
@@ -151,6 +164,9 @@ export function createFirmware(opts: FirmwareOptions): Firmware {
     },
     afterStep(t_s) {
       for (const v of dueVerdicts(link, t_s)) {
+        opts.onVerdictDelivered?.(v, t_s);
+        traffic.verdicts++;
+        traffic.lastVerdict_s = t_s;
         if (noteVerdict(limits, t_s)) {
           logger.log(t_s, 'INFO', 'link', 'link restored');
           emit(t_s, 'LINK_RESTORED');
@@ -170,6 +186,7 @@ export function createFirmware(opts: FirmwareOptions): Firmware {
       sensorFault: limits.sensorFault,
       tripReason: fsm.tripReason,
       activeMap: fsm.activeMap,
+      traffic: { ...traffic },
     }),
     drainLogs: () => logger.lines.splice(0),
     drainEvents: () => {
