@@ -693,3 +693,14 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   a_RMS, crest factor, i_RMS, t_C) of a new run with the proposed config within 1 % of the recording's (accept: 10 %).
   Affects `src/harness/{calibrate,configDiff}.ts`, `src/shared/calibration.ts`, `scripts/calibrate.ts`,
   `package.json` (script only).
+
+- **D-077 · 2026-10-31 · CI e2e on GitHub's GPU-less runners.** The pull-request e2e job had not passed since it was
+  added (P7.4): the P7 run failed 5 tests and the P8 run 7, all of which pass in this container. They check app
+  logic through the store, not pixels, but on the runner software WebGL kept the main thread busy, so clicks,
+  evaluates and waits ran seconds late (timeouts), and two short windows were missed: CALIBRATING (2 s of wall time
+  at 0.25×) between two assertions in the M8 code spec, and "hold at the start" of S2 in the M11 Back/Next spec,
+  where the card reached step 2 before the pause landed. As in D-068, the specs that don't check rendering stop
+  the 3D loop after load (`__pdm.setRendering(false)`): p5-faults, p5-operator, p5-shell, p5-topbar, p6-code and
+  p6-guided. The M8 spec now reads the active line's marker and text in one call; the M11 spec steps Back to the
+  first step before checking that Back is disabled there. No limit or accept item changed; the rendering specs
+  (camera, scene, p6-fan, p6-flow, p6-heat, p6-relay, p7-perf) still render.

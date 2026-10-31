@@ -6,6 +6,7 @@ async function open(page: Page, play = true) {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('./?debug=1');
   await page.waitForFunction(() => window.__sim !== undefined && window.__pdm?.modelStatus().status === 'READY');
+  await page.evaluate(() => window.__pdm?.setRendering(false)); // logic only: no software-WebGL load (D-077)
   await page.getByTestId('sel-speed').selectOption('4');
   if (play) await page.getByTestId('btn-play').click();
 }

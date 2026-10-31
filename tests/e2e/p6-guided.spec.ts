@@ -4,6 +4,7 @@ async function open(page: Page) {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('./?debug=1');
   await page.waitForFunction(() => window.__pdm?.modelStatus().status === 'READY', undefined, { timeout: 60_000 });
+  await page.evaluate(() => window.__pdm?.setRendering(false)); // logic only: no software-WebGL load (D-077)
 }
 const card = (page: Page) => page.getByTestId('scenario-card');
 
@@ -42,7 +43,11 @@ test('M11: Back and Next revisit steps with their camera and chart; Exit closes 
   await page.getByTestId('sel-scenario').selectOption('S2');
   await page.getByTestId('btn-play').click(); // hold at the start
   for (const id of ['scenario-card', 'btn-scn-next', 'btn-scn-back', 'btn-scn-exit']) await expect(page.getByTestId(id), id).toBeVisible(); // prettier-ignore
-  await expect(page.getByTestId('btn-scn-back')).toBeDisabled();
+  // A slow runner may reach step 2 (NORMAL) before the pause lands: go back to the first step, where Back stops.
+  const back = page.getByTestId('btn-scn-back');
+  for (let i = 0; i < 3 && (await back.isEnabled()); i++) await back.click();
+  await expect(card(page)).toHaveAttribute('data-step', '1');
+  await expect(back).toBeDisabled();
   await page.getByTestId('btn-scn-next').click();
   await page.getByTestId('btn-scn-next').click();
   await expect(card(page)).toHaveAttribute('data-step', '3');
