@@ -17,7 +17,7 @@ for (const id of ['S1', 'S2', 'S4', 'S5', 'S6', 'S9']) {
     await expect(card(page)).toBeVisible();
     await expect(card(page)).toHaveAttribute('data-step', '1');
     const steps = Number(await card(page).getAttribute('data-steps'));
-    const seen = new Set<string>();
+    const seen = new Set<string>(['1']); // step 1 was seen just above; at 10× it can be over before the first sample
     while (!(await page.evaluate(() => window.__sim?.scenarioDone === true))) {
       seen.add((await card(page).getAttribute('data-step')) ?? '');
       await page.waitForTimeout(250);
