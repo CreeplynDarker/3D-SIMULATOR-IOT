@@ -8,6 +8,7 @@ import type { Speed } from './store/slices/sim.ts';
 import { actions, bindWorkers } from './ui/actions.ts';
 import { inspectStore, type SimDebug, simDebug, type StoreView } from './ui/debug.ts';
 import { Charts } from './ui/Charts.tsx';
+import { CodePanel } from './ui/CodePanel.tsx';
 import { Console } from './ui/Console.tsx';
 import { packetLine, verdictLine } from './ui/consoleFormat.ts';
 import { runPatch } from './ui/testlog.ts';
@@ -205,11 +206,6 @@ function installDebugApi(workers: Workers): () => void {
   };
 }
 
-/** Placeholder for a module that a later P5 task fills in. */
-function Pending({ name }: { name: string }) {
-  return <p className="p-3 text-xs text-slate-500">{name}</p>;
-}
-
 /** Root component: starts the workers, routes their output into the store and lays out the modules. */
 export function App() {
   useShortcuts();
@@ -250,7 +246,7 @@ export function App() {
       dock={{
         charts: <Charts />,
         console: <Console />,
-        code: <Pending name="M8 code panel (P6.5)" />,
+        code: <CodePanel />,
         testlog: <TestLog />,
       }}
       overlays={

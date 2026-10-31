@@ -468,3 +468,15 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   and pitch glide over 50 ms (`setTargetAtTime`), so window steps don't crackle. Sound stays muted until
   `tgl-sound` (D-059). Affects `scene/anim.ts`, `scene/models/FanMotion.tsx`, `scene/models/geometry.ts`,
   `ui/audio.ts`.
+- **D-061 · 2026-10-31 · Code panel (P6.5).** M8 loads its sources with Vite `?raw` imports: the four reference C++
+  files (tab-code-firmware), `src/shared/protocol.ts` for the protocol (tab-code-schema; it is the contract the JSON
+  Schemas are generated from), and `src/rcf/model.ts` and `rrcf.ts` for the laptop RCF (tab-code-rcf). Files in
+  `public/` can't be imported, so the generated JSON isn't shown. `ui/highlight.ts` is a small tokenizer, about 60
+  lines and no library: line and block comments (across lines), strings with escapes (and TS template strings),
+  numbers with C suffixes, keywords per language, and `#` preprocessor lines. Joining the tokens gives back the
+  source exactly. The active line is the firmware line whose `// @map <id>` equals the snapshot's `activeMap`
+  (exact id); it carries `data-active="true"`, `data-map` and a highlight. With `tgl-follow` on (the default), a
+  new `activeMap` switches to the firmware tab and that file and scrolls the line into view; with it off the view
+  stays where the operator put it. At boot nothing has run yet, so no line is active. The panel re-renders only
+  when `activeMap`, the tab or the file changes. Extra test IDs: `code-file-<name>`. Affects `ui/CodePanel.tsx`,
+  `ui/highlight.ts`, `store/slices/ui.ts`, `App.tsx`.

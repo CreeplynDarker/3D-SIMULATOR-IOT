@@ -64,6 +64,8 @@ export interface UiSlice {
     chartFrozen: boolean;
     /** Relay click and fan hum (`tgl-sound`); off until the operator turns it on. */
     soundOn: boolean;
+    /** M8: which tab and file are shown, and whether the view follows the firmware's active `@map` line. */
+    code: { tab: 'firmware' | 'schema' | 'rcf'; file: string; follow: boolean };
     select(id: string | null): void;
     setCamera(camera: CameraPreset): void;
     setToggle(toggle: ViewToggle, on: boolean): void;
@@ -81,6 +83,7 @@ export interface UiSlice {
     setChartWindow(window_s: number): void;
     setChartFrozen(frozen: boolean): void;
     setSoundOn(on: boolean): void;
+    setCode(p: Partial<UiSlice['ui']['code']>): void;
   };
 }
 
@@ -111,6 +114,7 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       chartWindow_s: CONFIG.ui.chartWindowDefault_s,
       chartFrozen: false,
       soundOn: false,
+      code: { tab: 'firmware', file: 'state_machine.cpp', follow: true },
       select: (selectedId) => patch({ selectedId }),
       setCamera: (camera) => patch({ camera }),
       setToggle: (toggle, on) => set((s) => ({ ui: { ...s.ui, toggles: { ...s.ui.toggles, [toggle]: on } } })),
@@ -128,6 +132,7 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       },
       setChartFrozen: (chartFrozen) => patch({ chartFrozen }),
       setSoundOn: (soundOn) => patch({ soundOn }),
+      setCode: (p) => set((s) => ({ ui: { ...s.ui, code: { ...s.ui.code, ...p } } })),
       setRamp: ({ on, ramp_s }) => patch({ ramp: { on, ramp_s: Math.max(0, ramp_s) } }),
       setDockHeight: (px) => patch({ dockHeight_px: Math.min(DOCK_HEIGHT_px.max, Math.max(DOCK_HEIGHT_px.min, px)) }),
     },
