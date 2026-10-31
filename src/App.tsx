@@ -26,6 +26,7 @@ import { FaultPanel } from './ui/FaultPanel.tsx';
 import { Inspector } from './ui/Inspector.tsx';
 import { Legend, useShortcuts } from './ui/Legend.tsx';
 import { LiveBanner } from './ui/LiveBanner.tsx';
+import { ReplayBar } from './ui/ReplayBar.tsx';
 import { OperatorPanel, ResetDialog } from './ui/OperatorPanel.tsx';
 import { Scenarios } from './ui/Scenarios.tsx';
 import { StatusPanel } from './ui/StatusPanel.tsx';
@@ -257,6 +258,7 @@ export function App() {
           <BenchViewport />
           <ViewportControls />
           <LiveBanner />
+          <ReplayBar />
           <Scenarios />
         </>
       }

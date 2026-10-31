@@ -12,6 +12,8 @@ import { conditionText } from './testlog.ts';
 import { appStore } from '../store/index.ts';
 import type { SimSource, Speed } from '../store/slices/sim.ts';
 import { type LiveSession, startLive } from '../bridge/live.ts';
+import { type ReplaySession, startReplay } from '../bridge/replay.ts';
+import { parseSession, type Session } from '../bridge/session.ts';
 
 export interface WorkerPorts {
   postSim(message: MainToSim, transfer?: Transferable[]): void;
@@ -22,6 +24,8 @@ let ports: WorkerPorts | null = null;
 let commandSeq = 0;
 /** The live session while `sim.source` is 'live' (P8.2). */
 let live: LiveSession | null = null;
+/** The replay while `sim.source` is 'replay' (P8.3). */
+let replay: ReplaySession | null = null;
 
 /** Forgets the last run: charts, console, verdicts and snapshot (a new data source starts from nothing). */
 function clearRun(): void {
@@ -52,11 +56,13 @@ export function initConfig(op: OperatorParams): SimConfig {
 
 export const actions = {
   play() {
-    toSim({ type: 'play' });
+    const sim = appStore.getState().sim;
+    if (sim.source === 'live' || (sim.source === 'replay' && !sim.replay?.total) || sim.replay?.done) return;
+    if (sim.source === 'sim') toSim({ type: 'play' });
     appStore.getState().sim.setPlaying(true);
   },
   pause() {
-    toSim({ type: 'pause' });
+    if (appStore.getState().sim.source === 'sim') toSim({ type: 'pause' });
     appStore.getState().sim.setPlaying(false);
   },
   togglePlay() {
@@ -64,7 +70,7 @@ export const actions = {
     else actions.play();
   },
   setSpeed(x: Speed) {
-    toSim({ type: 'speed', x });
+    toSim({ type: 'speed', x }); // the paused sim keeps it for when Simulation is back
     appStore.getState().sim.setSpeed(x);
   },
   /** Rebuilds plant and firmware at t = 0 (the sim keeps its play state); the charts start over. */
@@ -144,11 +150,27 @@ export const actions = {
   /** Opens the reset confirmation (only in CRITICAL, like `btn-reset`). */
   requestReset() {
     const s = appStore.getState();
-    if (canReset(s.sim.snapshot?.state ?? 'OFF')) s.ui.setResetDialogOpen(true);
+    if (s.sim.source !== 'replay' && canReset(s.sim.snapshot?.state ?? 'OFF')) s.ui.setResetDialogOpen(true);
   },
   confirmReset() {
     actions.command('RESET');
     appStore.getState().ui.setResetDialogOpen(false);
+  },
+  /** Replays a session file (P8.3) through the live path: a bridge session or an M7 JSON export. */
+  loadReplay(text: string, name: string) {
+    const s = appStore.getState();
+    if (s.sim.source !== 'replay' || !ports) return;
+    replay?.stop();
+    replay = null;
+    clearRun();
+    let session: Session;
+    try {
+      session = parseSession(text);
+    } catch (err) {
+      s.sim.setReplay({ name, total: 0, sent: 0, skipped: 0, done: false, error: (err as Error).message });
+      return;
+    }
+    replay = startReplay(ports.postRcf, session, name);
   },
   /** Streams the raw 1 kHz MPU6050 samples from the sim (`tgl-raw-mpu`). */
   setRawMpu(on: boolean) {
@@ -187,16 +209,23 @@ export const actions = {
   },
   /**
    * `sel-mode` (§8.2 M2, P8): Simulation runs the sim worker; Live pauses it and takes packets from the board
-   * through the bridge (D-070 to D-072).
+   * through the bridge (D-070 to D-072); Replay plays a recorded session through the same path (P8.3).
    */
   setMode(mode: SimSource) {
     const s = appStore.getState();
     if (mode === s.sim.source || !ports) return;
     live?.stop();
     live = null;
-    actions.pause();
+    replay?.stop();
+    replay = null;
+    s.sim.setReplay(null);
+    if (s.sim.source === 'sim') actions.pause();
     actions.exitGuided();
-    if (mode === 'live') {
+    if (mode === 'replay') {
+      clearRun();
+      s.sim.setSource('replay');
+      s.sim.setPlaying(false);
+    } else if (mode === 'live') {
       clearRun();
       s.sim.setSource('live');
       live = startLive(ports.postRcf, window.location);

@@ -141,7 +141,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · bridge-py/app.py (UDP 4211 ↔ WebSocket /ui, schema validation, drop counts, JSON-lines session, serves dist/ at :8765), fake_esp32.py over the real TS firmware (scripts/esp32-emulator.ts), C++ packet now matches §10.1; pytest 10/10, end-to-end START → CRITICAL (RCF) → RESET through the bridge · no tuning
 - [x] P8.2 Live mode
   2026-10-31 · src/bridge/ (wsClient, live path through the browser RCF worker, liveSnapshot with "—" fields), sel-mode Live, scene on display time, M4 off, E-STOP note, no-bridge banner; e2e without and with the bridge + fake ESP32 · no tuning
-- [ ] P8.3 Replay
+- [x] P8.3 Replay
+  2026-10-31 · src/bridge/{session,replay}.ts: bridge JSON-lines sessions and M7 JSON exports replay through createPacketPath (browser RCF rescoring) at the top bar's speed, pausable; sel-mode Replay, inp-replay-file, replay-status; fixture session_s2.jsonl; e2e 10× NORMAL → CRITICAL (RCF) · no tuning
 - [ ] P8.4 Calibration
 
 ## Waiting for human review

@@ -9,6 +9,15 @@ export type Speed = (typeof CONFIG.ui.speeds)[number];
 export type SimSource = 'sim' | 'live' | 'replay';
 export type LiveStatus = 'off' | 'connecting' | 'open' | 'closed';
 
+export interface ReplayInfo {
+  name: string;
+  total: number;
+  sent: number;
+  skipped: number;
+  done: boolean;
+  error: string | null;
+}
+
 export interface SimSlice {
   sim: {
     snapshot: Snapshot | null;
@@ -25,6 +34,8 @@ export interface SimSlice {
     live: { status: LiveStatus; message: string | null };
     /** performance.now() when the last snapshot arrived (live and replay draw between packets from it, ms). */
     snapshotWall_ms: number;
+    /** The session being replayed (P8.3): its name, packets sent so far of the total, skipped entries, or an error. */
+    replay: ReplayInfo | null;
     setSnapshot(snapshot: Snapshot): void;
     /** Forgets the last snapshot (a sim reset is under way; the worker sends a fresh one). */
     clearSnapshot(): void;
@@ -37,6 +48,7 @@ export interface SimSlice {
     setLive(status: LiveStatus, message?: string): void;
     /** A snapshot from live or replay data, stamped with the wall time it arrived (ms). */
     setLiveSnapshot(snapshot: Snapshot, wall_ms: number): void;
+    setReplay(replay: ReplayInfo | null): void;
   };
 }
 
@@ -54,12 +66,14 @@ export const createSimSlice: StateCreator<AppState, [], [], SimSlice> = (set) =>
       source: 'sim',
       live: { status: 'off', message: null },
       snapshotWall_ms: 0,
+      replay: null,
       setSnapshot: (snapshot) => patch({ snapshot, lagging: snapshot.lagging }),
       clearSnapshot: () => patch({ snapshot: null }),
       setPlaying: (playing) => patch({ playing }),
       setSpeed: (speed) => patch({ speed }),
       setScenario: (scenario) => patch({ scenario }),
       setSource: (source) => patch({ source }),
+      setReplay: (replay) => patch({ replay }),
       setLive: (status, message) => patch({ live: { status, message: message ?? null } }),
       setLiveSnapshot: (snapshot, snapshotWall_ms) => patch({ snapshot, snapshotWall_ms, lagging: false }),
       setRawOn: (on) => patch({ raw: { on, samples: 0, last: null } }),

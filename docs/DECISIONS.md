@@ -651,3 +651,20 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   at 4×, scored by the app's own RCF worker. Affects `src/bridge/`, `src/scene/time.ts`, `scene/models/FanMotion.tsx`,
   `scene/wires/*`, `ui/{TopBar,FaultPanel,OperatorPanel,StatusPanel,LiveBanner}.tsx`, `ui/inspectorData.ts`,
   `ui/actions.ts`, `store/slices/sim.ts`, `shared/messages.ts`, `App.tsx`.
+
+- **D-075 · 2026-10-31 · Replay (P8.3).** (a) `sel-mode` gains a third option, Replay. Like Live it pauses the sim
+  worker and clears the run; `inp-replay-file` (a file input over the viewport, extra test ID) takes a bridge
+  session (JSON lines; only `dir: "up"` packet lines count) or the M7 JSON export (`{packets: [...]}`). Each entry
+  is checked with the protocol's `Packet` schema; bad ones are skipped and counted, and a file with no packet is
+  refused with a message in `replay-status` (extra test ID; `data-done` when finished). (b) The packets go through
+  the same `createPacketPath` as Live, so the browser's RCF worker scores them again (the recorded verdicts are not
+  reused, so a changed threshold or model shows its effect). A main-thread timer (UI side, not the pure core) advances
+  a replay clock by wall time × the top bar's speed while playing and sends every packet whose `ts_ms` (relative to
+  the first) is due. `btn-play` and `sel-speed` work in Replay (all four speeds, which include the 1×/4×/10× asked
+  for); paused, nothing is fed and the scene's display time stops (D-074 c). At the end it pauses and shows "done".
+  M4 and M5's commands are disabled: a recording can't be commanded. (c) `pnpm gen:fixtures` also writes
+  `tests/fixtures/session_s2.jsonl` (S2 with the default model, as the bridge would log it); `--only=session`
+  writes just that file, so the Python-filled references aren't reset. `fake_esp32.py --replay` reads the same
+  files. (d) The P5 top-bar e2e now expects `sel-mode` enabled (§8.2: "disabled until P8"). Affects `src/bridge/`,
+  `ui/{TopBar,OperatorPanel,ReplayBar}.tsx`, `ui/actions.ts`, `ui/debug.ts` (console verdict count),
+  `store/slices/sim.ts`, `App.tsx`, `scripts/gen-fixtures.ts`.

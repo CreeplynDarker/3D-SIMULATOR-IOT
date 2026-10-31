@@ -12,7 +12,7 @@ const view = (page: Page) => page.evaluate(() => window.__pdm?.inspect());
 test('M2: every test ID exists and is visible', async ({ page }) => {
   await open(page);
   for (const id of IDS) await expect(page.getByTestId(id), id).toBeVisible();
-  await expect(page.getByTestId('sel-mode')).toBeDisabled();
+  await expect(page.getByTestId('sel-mode')).toBeEnabled(); // §8.2: disabled until P8
   await expect(page.getByTestId('sim-clock')).toHaveText(/^\d{2}:\d{2}\.\d$/);
 });
 

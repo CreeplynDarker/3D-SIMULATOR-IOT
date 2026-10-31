@@ -43,6 +43,7 @@ function ModeLabel() {
 /** Play/pause, speed, sim reset and the §12 scenario picker. */
 function SimControls() {
   const sim = useAppStore((s) => s.sim.source === 'sim');
+  const replay = useAppStore((s) => s.sim.source === 'replay');
   const playing = useAppStore((s) => s.sim.playing);
   const speed = useAppStore((s) => s.sim.speed);
   const scenario = useAppStore((s) => s.sim.scenario);
@@ -52,7 +53,7 @@ function SimControls() {
         type="button"
         data-testid="btn-play"
         aria-pressed={playing}
-        disabled={!sim}
+        disabled={!sim && !replay}
         onClick={actions.togglePlay}
         title="Play / pause (Space)"
         className="w-16 rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-40"
@@ -64,7 +65,7 @@ function SimControls() {
         <select
           data-testid="sel-speed"
           value={speed}
-          disabled={!sim}
+          disabled={!sim && !replay}
           onChange={(e) => actions.setSpeed(Number(e.target.value) as Speed)}
           className={SELECT}
         >
@@ -100,7 +101,7 @@ function SimControls() {
   );
 }
 
-/** `sel-mode`: Simulation or Live (P8.2, the board through the bridge). */
+/** `sel-mode`: Simulation, Live (P8.2, the board through the bridge) or Replay (P8.3, a recorded session). */
 function ModeSelect() {
   const source = useAppStore((s) => s.sim.source);
   return (
@@ -111,10 +112,11 @@ function ModeSelect() {
         value={source}
         onChange={(e) => actions.setMode(e.target.value as SimSource)}
         className={SELECT}
-        title="Live: the real board through the bridge (bridge-py)"
+        title="Live: the real board through the bridge (bridge-py). Replay: a recorded session file."
       >
         <option value="sim">Simulation</option>
         <option value="live">Live</option>
+        <option value="replay">Replay</option>
       </select>
     </label>
   );

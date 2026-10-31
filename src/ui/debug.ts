@@ -33,6 +33,7 @@ export function inspectStore(s: AppState) {
       paused: s.console.paused,
       filters: { ...s.console.filters },
       packets: s.console.lines.toArray().filter((e) => e.kind === 'packet').length,
+      verdicts: s.console.lines.toArray().filter((e) => e.kind === 'verdict').length,
       lines: s.console.lines.size,
     },
     raw: { ...s.sim.raw },
