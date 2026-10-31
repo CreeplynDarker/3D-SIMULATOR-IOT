@@ -62,6 +62,17 @@ export interface Snapshot {
   sensorFault: boolean;
   tripReason: TripReason | null;
   activeMap: string | null;
+  /** Link and 1-Wire traffic for the P6.2 signal-flow view (D-058). Not part of the §10.1 protocol. */
+  traffic: {
+    packets: number;
+    dropped: number;
+    verdicts: number;
+    dsReads: number;
+    lastPacket_s: number;
+    lastDrop_s: number;
+    lastVerdict_s: number;
+    lastDsRead_s: number;
+  };
   lagging: boolean;
 }
 

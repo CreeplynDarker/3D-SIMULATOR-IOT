@@ -1,6 +1,6 @@
 import type {} from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
-import { CatmullRomCurve3, TubeGeometry, Vector3 } from 'three';
+import { CatmullRomCurve3, type Material, TubeGeometry, Vector3 } from 'three';
 import type { Vec3 } from '../../shared/components.ts';
 import { getMaterial } from '../models/materials.ts';
 import { WIRE_RADIUS_m } from './route.ts';
@@ -11,10 +11,12 @@ interface WireProps {
   color: string;
   radius_m?: number;
   name?: string;
+  /** Own material (P6.2 gives each wire one, so it can glow or dim on its own). */
+  material?: Material;
 }
 
 /** One wire: a tube along a centripetal Catmull–Rom curve through its route points. */
-export function Wire({ points_m, color, radius_m = WIRE_RADIUS_m, name = 'wire' }: WireProps) {
+export function Wire({ points_m, color, radius_m = WIRE_RADIUS_m, name = 'wire', material }: WireProps) {
   const geometry = useMemo(() => {
     const curve = new CatmullRomCurve3(
       points_m.map((p) => new Vector3(...p)),
@@ -24,5 +26,5 @@ export function Wire({ points_m, color, radius_m = WIRE_RADIUS_m, name = 'wire' 
     return new TubeGeometry(curve, 96, radius_m, 8, false);
   }, [points_m, radius_m]);
   useEffect(() => () => geometry.dispose(), [geometry]);
-  return <mesh name={name} geometry={geometry} material={getMaterial('paint', color)} castShadow />;
+  return <mesh name={name} geometry={geometry} material={material ?? getMaterial('paint', color)} castShadow />;
 }

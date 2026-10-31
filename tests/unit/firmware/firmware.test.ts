@@ -186,3 +186,25 @@ describe('firmware orchestrator (P3.6)', () => {
     expect(fw.view()).toMatchObject({ state: 'OFF', nCritical: CONFIG.firmware.nCritical, activeMap: null });
   });
 });
+
+describe('traffic counters for the signal-flow view (P6.2)', () => {
+  it('counts packets sent and dropped, verdicts delivered and DS18B20 reads, with the sim time of the last of each', () => {
+    const b = bench();
+    b.run(20.05); // past the delivery of the verdict for the window ending at 20 s
+    const v = b.firmware.view().traffic;
+    expect(v.packets).toBe(20);
+    expect(v.dropped).toBe(0);
+    expect(v.verdicts).toBe(20);
+    expect(v.lastPacket_s).toBeCloseTo(20, 6);
+    expect(v.lastVerdict_s).toBeGreaterThanOrEqual(20.01 - 1e-9); // window end + 20 ± 10 ms on the link
+    expect(v.lastVerdict_s).toBeLessThanOrEqual(20.03 + 1e-9);
+    expect(v.dsReads).toBe(20);
+    expect(v.lastDsRead_s).toBeCloseTo(19.75, 6);
+    schedule(b.plant, { at_s: b.plant.t_s, kind: 'fault', key: 'packetLoss', value: 1, ramp_s: 0 });
+    b.run(2.96);
+    const w = b.firmware.view().traffic;
+    expect(w.packets).toBe(20);
+    expect(w.dropped).toBe(3);
+    expect(w.lastDrop_s).toBeCloseTo(23, 6);
+  });
+});

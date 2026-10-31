@@ -179,6 +179,18 @@ export function runPlant(p: Plant, controller: Controller, duration_s: number): 
 }
 
 /** Firmware fields of the snapshot; P3 fills them, the plant alone reports a firmware that is OFF. */
+/** What crossed the ESP32's links (counts, and sim time in s of the last of each; −Infinity before the first). */
+export interface TrafficView {
+  packets: number;
+  dropped: number;
+  verdicts: number;
+  dsReads: number;
+  lastPacket_s: number;
+  lastDrop_s: number;
+  lastVerdict_s: number;
+  lastDsRead_s: number;
+}
+
 export interface FirmwareView {
   state: State;
   alertRun: number;
@@ -187,7 +199,19 @@ export interface FirmwareView {
   sensorFault: boolean;
   tripReason: TripReason | null;
   activeMap: string | null;
+  traffic: TrafficView;
 }
+
+export const NO_TRAFFIC: TrafficView = {
+  packets: 0,
+  dropped: 0,
+  verdicts: 0,
+  dsReads: 0,
+  lastPacket_s: -Infinity,
+  lastDrop_s: -Infinity,
+  lastVerdict_s: -Infinity,
+  lastDsRead_s: -Infinity,
+};
 
 const FIRMWARE_OFF: FirmwareView = {
   state: 'OFF',
@@ -197,6 +221,7 @@ const FIRMWARE_OFF: FirmwareView = {
   sensorFault: false,
   tripReason: null,
   activeMap: null,
+  traffic: NO_TRAFFIC,
 };
 
 /** Snapshot for the UI (spec §10.2); every value is copied, so it can be posted from a worker. */

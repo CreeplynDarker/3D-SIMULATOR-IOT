@@ -1,4 +1,4 @@
-import { Edges, OrbitControls } from '@react-three/drei';
+import { Edges, Html, OrbitControls } from '@react-three/drei';
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Vector3 } from 'three';
@@ -20,6 +20,9 @@ import { photoTexturesReady } from './models/materials.ts';
 import { Mpu6050 } from './models/Mpu6050.tsx';
 import { Relay } from './models/Relay.tsx';
 import { Resistor } from './models/Resistor.tsx';
+import { inspectorFor } from '../ui/inspectorData.ts';
+import { Labels } from './Labels.tsx';
+import { SignalFlow } from './wires/SignalFlow.tsx';
 import { WifiArc } from './wires/WifiArc.tsx';
 import { Wires } from './wires/Wires.tsx';
 
@@ -82,6 +85,29 @@ function Highlight({ id, color }: { id: ComponentId; color: string }) {
   );
 }
 
+/** M1 hover tooltip: the part's name and its first live pin value (the inspector's text). */
+function HoverTip({ id }: { id: ComponentId }) {
+  const snap = useAppStore((s) => s.sim.snapshot);
+  const status = useAppStore((s) => s.model.status);
+  const score = useAppStore((s) => s.model.lastScored?.score ?? null);
+  if (!snap) return null;
+  const info = inspectorFor(id, snap, { status, score });
+  const y_m = componentById(id).size_mm[1] / 2000 + TIP_GAP_m;
+  return (
+    <Html position={[0, y_m, 0]} center zIndexRange={[20, 0]} wrapperClass="pointer-events-none">
+      <div
+        data-testid="scene-tooltip"
+        className="whitespace-nowrap rounded bg-slate-900/90 px-2 py-1 font-mono text-[11px] text-slate-100 shadow"
+      >
+        <div className="font-sans font-semibold">{info.name}</div>
+        {info.pins[0]?.text}
+      </div>
+    </Html>
+  );
+}
+
+const TIP_GAP_m = 0.02;
+
 /** Places a component at its §13.2 pose; hovering highlights it and clicking selects it (`ui.selectedId`). */
 function Placed({ id, children }: { id: ComponentId; children: ReactNode }) {
   const c = componentById(id);
@@ -112,6 +138,7 @@ function Placed({ id, children }: { id: ComponentId; children: ReactNode }) {
       >
         {children}
         {(hovered || selected) && <Highlight id={id} color={selected ? HIGHLIGHT.selected : HIGHLIGHT.hover} />}
+        {hovered && <HoverTip id={id} />}
       </group>
     </>
   );
@@ -136,7 +163,9 @@ export function Bench() {
         <FanStand />
       </group>
       <Wires />
+      <SignalFlow />
       <WifiArc />
+      <Labels />
     </>
   );
 }

@@ -426,3 +426,22 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   visibility: shown at 6 Hz, ×N" while the Fan camera is active or the fan is selected. (f) `window.__scene.anim()`
   returns what the animated parts drew last frame, for the e2e tests. Affects `scene/anim.ts`,
   `scene/animDebug.ts`, `scene/models/FanMotion.tsx`, `scene/Bench.tsx`, `ui/ViewportControls.tsx`.
+- **D-058 · 2026-10-31 · Signal flow, labels and tooltip (P6.2).** (a) The internal `Snapshot` (not the §10.1
+  protocol) gains `traffic`: packets sent, packets dropped, verdicts delivered and DS18B20 reads, with the sim time
+  of the last of each (−Infinity before the first). The firmware counts them where they happen (link send result,
+  link delivery, sampler read) and reports them through `FirmwareView`. The plant's OFF view has zeros. (b) Each
+  wire now has its own material. `scene/wires/SignalFlow.tsx` applies §13.3's energised rules
+  (`anim.wireEnergised`): V12_SW (W04) dims when the CH2 contact is NC, RELAY_IN (W29) dims while GPIO26 is HIGH,
+  and every other net stays live. A wire is repainted only when its state changes, and each change is logged with
+  the snapshot's sim time (`__scene.anim().flow.log`). Dimming always shows; with `tgl-flow` on, energised V12,
+  V12_SW, V5, V3V3 and RELAY_IN wires also glow (GND doesn't). (c) Pulses with `tgl-flow`: I²C (W19/W20) and ADC
+  (W25/W26) run continuously, as the ESP32 samples at 1 kHz whenever it is powered. Tach (W27/W28) runs at a rate
+  proportional to rpm and stops with the fan. One 1-Wire pulse crosses W23 then W24 for each DS18B20 read. (d) On the
+  Wi-Fi arc, a pulse runs up from each packet's send time and a pulse runs down after each delivered verdict, once
+  the up pulse has arrived; the real 20 ms latency would hide it. A dropped packet turns the arc red, fading back.
+  Travel and fade times are a fixed share of wall time at the current speed, capped below one window, so pulses
+  stay visible at 4–10× without overlapping. They depend only on sim time and the speed setting, so a paused sim
+  freezes them. (e) `tgl-labels` draws canvas name tags over the 10 main parts (no font is fetched). (f) The M1
+  hover tooltip (`scene-tooltip`, drei `Html`) shows the part's name and its first live pin line from M9's data.
+  Pulses, tags and the tooltip cast no shadows. Affects `firmware/firmware.ts`, `sim/plant.ts`,
+  `shared/messages.ts`, `scene/wires/*`, `scene/Labels.tsx`, `scene/Bench.tsx`, `scene/anim.ts`.

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { CONFIG } from '../../../src/shared/config.ts';
 import type { Snapshot } from '../../../src/shared/messages.ts';
 import { type Packet, PROTOCOL_VERSION, type Verdict } from '../../../src/shared/protocol.ts';
+import { NO_TRAFFIC } from '../../../src/sim/plant.ts';
 import { type AppStore, createAppStore } from '../../../src/store/index.ts';
 import { CONSOLE_CAPACITY } from '../../../src/store/slices/console.ts';
 import { SERIES_CAPACITY } from '../../../src/store/slices/series.ts';
@@ -40,6 +41,7 @@ const verdict = (seqRef: number, score: number): Verdict => ({
 });
 
 const snapshot = (t_s: number, lagging: boolean): Snapshot => ({
+  traffic: { ...NO_TRAFFIC },
   t_s,
   rpm: 3800,
   omega_radps: 397.9,
