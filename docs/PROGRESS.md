@@ -71,7 +71,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 ## P4 — RCF and harness (deps: P3.6)
 
-- [ ] P4.1 RRCF
+- [x] P4.1 RRCF
+  2026-10-31 · rcf/rrcf.ts: RCTree class (insert/forget/codisp/query, duplicates share a leaf, parent links); property test of 1,000 ops checks n, exact boxes and cuts; rcf/ coverage threshold on · no tuning
 - [ ] P4.2 Normalise
 - [ ] P4.3 Model (deps: P4.1, P4.2)
 - [ ] P4.4 RCF worker (deps: P4.3, P0.6)
