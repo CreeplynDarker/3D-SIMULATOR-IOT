@@ -24,6 +24,7 @@ export function inspectStore(s: AppState) {
       legendOpen: s.ui.legendOpen,
     },
     faults: { targets: { ...s.ui.faultTargets }, ramp: { ...s.ui.ramp }, live: s.sim.snapshot ? { ...s.sim.snapshot.faults } : null }, // prettier-ignore
+    operator: { ...s.ui.operator, resetDialogOpen: s.ui.resetDialogOpen },
     model: { status: s.model.status, progress: s.model.progress, threshold: s.model.threshold },
   };
 }

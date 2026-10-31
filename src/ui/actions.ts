@@ -2,7 +2,11 @@
 // worker and records what the UI must remember in the store; none computes physics, features or scores.
 import type { FaultKey, MainToRcf, MainToSim } from '../shared/messages.ts';
 import { type Command, PROTOCOL_VERSION } from '../shared/protocol.ts';
+import { CONFIG } from '../shared/config.ts';
 import { scenarioById } from '../shared/scenarios.ts';
+import type { SimConfig } from '../sim/types.ts';
+import type { OperatorParams } from '../store/slices/ui.ts';
+import { canReset } from './rules.ts';
 import { appStore } from '../store/index.ts';
 import type { Speed } from '../store/slices/sim.ts';
 
@@ -20,6 +24,16 @@ export function bindWorkers(p: WorkerPorts | null): void {
 }
 
 const toSim = (m: MainToSim) => ports?.postSim(m);
+const toRcf = (m: MainToRcf) => ports?.postRcf(m);
+
+/** §5.1 config with the operator's M5 limits and warm-start choice, for `init`. */
+export function initConfig(op: OperatorParams): SimConfig {
+  return {
+    ...CONFIG,
+    firmware: { ...CONFIG.firmware, nCritical: op.nCritical, iMax_A: op.iMax_A, tMax_C: op.tMax_C },
+    thermal: { ...CONFIG.thermal, warmStart: op.warmStart },
+  };
+}
 
 export const actions = {
   play() {
@@ -40,8 +54,9 @@ export const actions = {
   },
   /** Rebuilds plant and firmware at t = 0 (the sim keeps its play state); the charts start over. */
   resetSim() {
-    toSim({ type: 'reset' });
     const s = appStore.getState();
+    const op = s.ui.operator;
+    toSim({ type: 'init', config: initConfig(op), seed: CONFIG.seed, warmStart: op.warmStart });
     s.series.clear();
     s.sim.setScenario(null);
     s.ui.resetFaultTargets();
@@ -65,6 +80,30 @@ export const actions = {
     appStore.getState().sim.setScenario({ id, done: false });
     if (scenario.speed !== undefined) actions.setSpeed(scenario.speed as Speed);
     actions.play();
+  },
+  /** Alert threshold on the normalised score (unitless) for the RCF. */
+  setThreshold(x: number) {
+    toRcf({ type: 'setThreshold', x });
+    appStore.getState().model.setThreshold(x);
+  },
+  /** M5 limits go to the running firmware at once; warm start waits for the next sim reset. */
+  setOperator(p: Partial<OperatorParams>) {
+    const ui = appStore.getState().ui;
+    ui.setOperator(p);
+    const { nCritical, iMax_A, tMax_C } = appStore.getState().ui.operator;
+    if ('nCritical' in p || 'iMax_A' in p || 'tMax_C' in p) toSim({ type: 'params', nCritical, iMax_A, tMax_C });
+  },
+  train() {
+    toRcf({ type: 'train' });
+  },
+  /** Opens the reset confirmation (only in CRITICAL, like `btn-reset`). */
+  requestReset() {
+    const s = appStore.getState();
+    if (canReset(s.sim.snapshot?.state ?? 'OFF')) s.ui.setResetDialogOpen(true);
+  },
+  confirmReset() {
+    actions.command('RESET');
+    appStore.getState().ui.setResetDialogOpen(false);
   },
   toggleTheme() {
     const ui = appStore.getState().ui;

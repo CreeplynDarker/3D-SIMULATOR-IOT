@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand/vanilla';
+import { CONFIG } from '../../shared/config.ts';
 import type { FaultKey, FaultValues } from '../../shared/messages.ts';
 import type { AppState } from '../index.ts';
 
@@ -30,6 +31,14 @@ export const NO_FAULTS: FaultValues = {
 /** Default `inp-ramp-s` (s): the 30 s ramp of scenario S4 (D-047). */
 export const DEFAULT_RAMP_s = 30;
 
+/** M5 firmware limits and warm start (A, °C, count); they start at the §5.1 values. */
+export interface OperatorParams {
+  nCritical: number;
+  iMax_A: number;
+  tMax_C: number;
+  warmStart: boolean;
+}
+
 export interface UiSlice {
   ui: {
     selectedId: string | null;
@@ -47,6 +56,9 @@ export interface UiSlice {
     faultTargets: FaultValues;
     /** `tgl-ramp` and `inp-ramp-s` (s): numeric faults move over `ramp_s` when on. */
     ramp: { on: boolean; ramp_s: number };
+    operator: OperatorParams;
+    /** `dlg-reset-confirm` is open. */
+    resetDialogOpen: boolean;
     select(id: string | null): void;
     setCamera(camera: CameraPreset): void;
     setToggle(toggle: ViewToggle, on: boolean): void;
@@ -59,6 +71,8 @@ export interface UiSlice {
     setFaultTarget(key: FaultKey, value: number | boolean): void;
     resetFaultTargets(): void;
     setRamp(ramp: { on: boolean; ramp_s: number }): void;
+    setOperator(p: Partial<OperatorParams>): void;
+    setResetDialogOpen(open: boolean): void;
   };
 }
 
@@ -79,6 +93,13 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       fps: 0,
       faultTargets: { ...NO_FAULTS },
       ramp: { on: false, ramp_s: DEFAULT_RAMP_s },
+      operator: {
+        nCritical: CONFIG.firmware.nCritical,
+        iMax_A: CONFIG.firmware.iMax_A,
+        tMax_C: CONFIG.firmware.tMax_C,
+        warmStart: CONFIG.thermal.warmStart,
+      },
+      resetDialogOpen: false,
       select: (selectedId) => patch({ selectedId }),
       setCamera: (camera) => patch({ camera }),
       setToggle: (toggle, on) => set((s) => ({ ui: { ...s.ui, toggles: { ...s.ui.toggles, [toggle]: on } } })),
@@ -89,6 +110,8 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       setFps: (fps) => patch({ fps }),
       setFaultTarget: (key, value) => set((s) => ({ ui: { ...s.ui, faultTargets: { ...s.ui.faultTargets, [key]: value } } })), // prettier-ignore
       resetFaultTargets: () => patch({ faultTargets: { ...NO_FAULTS } }),
+      setOperator: (p) => set((s) => ({ ui: { ...s.ui, operator: { ...s.ui.operator, ...p } } })),
+      setResetDialogOpen: (resetDialogOpen) => patch({ resetDialogOpen }),
       setRamp: ({ on, ramp_s }) => patch({ ramp: { on, ramp_s: Math.max(0, ramp_s) } }),
       setDockHeight: (px) => patch({ dockHeight_px: Math.min(DOCK_HEIGHT_px.max, Math.max(DOCK_HEIGHT_px.min, px)) }),
     },

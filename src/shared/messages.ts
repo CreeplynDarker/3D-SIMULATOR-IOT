@@ -1,4 +1,4 @@
-import type { Config } from './config.ts';
+import type { SimConfig } from '../sim/types.ts';
 import type { Command, Packet, State, TripReason, Verdict } from './protocol.ts';
 
 // Worker message shapes (spec §10.2). Every message is a plain object discriminated by `type`.
@@ -65,9 +65,13 @@ export interface Snapshot {
   lagging: boolean;
 }
 
-/** Main → sim worker. `connect` hands over the sim end of the "Wi-Fi" MessageChannel. */
+/**
+ * Main → sim worker. `connect` hands over the sim end of the "Wi-Fi" MessageChannel; `params` changes the M5 firmware
+ * limits on the running firmware (D-048).
+ */
 export type MainToSim =
-  | { type: 'init'; config: Config; seed: number; warmStart: boolean }
+  | { type: 'init'; config: SimConfig; seed: number; warmStart: boolean }
+  | { type: 'params'; nCritical: number; iMax_A: number; tMax_C: number }
   | { type: 'connect'; port: MessagePort }
   | { type: 'play' }
   | { type: 'pause' }

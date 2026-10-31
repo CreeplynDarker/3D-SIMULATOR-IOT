@@ -18,8 +18,12 @@ const scope = self as unknown as WorkerScope;
 const TICK_ms = 4; // §10.2 pacing: one wall tick every 4 ms
 const MAX_SIM_PER_TICK_s = 0.2; // §10.2: never run more than 0.2 s of sim time per tick
 
+/** The firmware limits the operator may change while it runs (M5, D-048). */
+type LiveFirmwareParams = { -readonly [K in 'nCritical' | 'iMax_A' | 'tMax_C']: SimConfig['firmware'][K] };
+
+// The worker's own copy of the config: `params` edits its firmware limits in place, and the firmware reads them live.
 let init: { config: SimConfig; seed: number; warmStart: boolean } = {
-  config: CONFIG,
+  config: structuredClone(CONFIG),
   seed: CONFIG.seed,
   warmStart: CONFIG.thermal.warmStart,
 };
@@ -156,8 +160,15 @@ function handle(msg: MainToSim): void {
   const at_s = plant.t_s;
   switch (msg.type) {
     case 'init':
-      init = { config: msg.config, seed: msg.seed, warmStart: msg.warmStart };
+      init = { config: structuredClone(msg.config), seed: msg.seed, warmStart: msg.warmStart };
       return reset();
+    case 'params': {
+      const fw = init.config.firmware as LiveFirmwareParams;
+      fw.nCritical = msg.nCritical;
+      fw.iMax_A = msg.iMax_A;
+      fw.tMax_C = msg.tMax_C;
+      return postSnapshot(performance.now());
+    }
     case 'connect':
       return connect(msg.port);
     case 'play':

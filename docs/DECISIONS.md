@@ -325,3 +325,18 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   change. With `tgl-ramp` on, numeric faults ramp over `inp-ramp-s` seconds of sim time (default 30 s, S4's ramp;
   negative values clamp to 0). The DS18B20 switch always steps. `btn-clear-faults` and `btn-sim-reset` zero the
   targets. Affects `ui/FaultPanel.tsx`, `ui/actions.ts`, `store/slices/ui.ts`.
+- **D-048 · 2026-10-31 · Operator panel (P5.5).** (a) The enable rules are pure functions in `ui/rules.ts`. `btn-start`
+  is enabled in OFF. `btn-reset` is enabled in CRITICAL; it opens `dlg-reset-confirm`, and `btn-reset-confirm`
+  sends RESET (`btn-reset-cancel` is an extra test ID). The firmware still refuses a RESET while the fan turns.
+  `btn-train` is enabled in NORMAL with every fault off and the last window's |dT/dt| ≤ `warmDtdtMax_C_per_min`. A
+  null dT/dt (fewer than 10 readings) counts as not settled. `btn-estop` is enabled in every state but OFF ("any
+  except OFF", §7.4). One consequence: a warm-started motor that sits OFF while the sim plays cools down, so TRAIN
+  stays disabled until dT/dt settles. (b) `inp-n-critical`, `inp-i-max` and `inp-t-max` apply to the running
+  firmware at once. The new `MainToSim` message `params{nCritical, iMax_A, tMax_C}` edits the worker's own copy of
+  the config, which the firmware reads live, so the snapshot's `nCritical` (and so `persistence`) follow. To
+  carry an edited config, `init.config` is now typed `SimConfig`. (c) `tgl-warm-start` applies at the next
+  `btn-sim-reset`, which now sends `init` with the §5.1 config plus the operator's limits and warm start, rather
+  than `reset`. (d) `inp-threshold` sends `setThreshold` to the RCF and updates the model slice. (e)
+  `latched-indicator` (extra test ID) reads LATCHED in CRITICAL. (f) Input ranges: threshold 0.05–1, N 1–20,
+  I_MAX 0.05–1 A, T_MAX 20–100 °C. They are UI bounds, not §5.2 tuning. Affects `ui/OperatorPanel.tsx`,
+  `ui/rules.ts`, `ui/actions.ts`, `shared/messages.ts`, `sim/worker.ts`, `store/slices/ui.ts`.

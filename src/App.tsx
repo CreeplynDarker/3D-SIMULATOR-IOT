@@ -8,6 +8,7 @@ import type { Speed } from './store/slices/sim.ts';
 import { actions, bindWorkers } from './ui/actions.ts';
 import { inspectStore, type SimDebug, simDebug, type StoreView } from './ui/debug.ts';
 import { FaultPanel } from './ui/FaultPanel.tsx';
+import { OperatorPanel, ResetDialog } from './ui/OperatorPanel.tsx';
 import { StatusPanel } from './ui/StatusPanel.tsx';
 import { TopBar } from './ui/TopBar.tsx';
 import { AppShell } from './ui/layout/AppShell.tsx';
@@ -210,7 +211,7 @@ export function App() {
       left={
         <>
           <FaultPanel />
-          <Pending name="M5 operator" />
+          <OperatorPanel />
         </>
       }
       viewport={
@@ -231,6 +232,7 @@ export function App() {
         code: <Pending name="M8 code panel (P6.5)" />,
         testlog: <Pending name="M10 test log" />,
       }}
+      overlays={<ResetDialog />}
     />
   );
 }
