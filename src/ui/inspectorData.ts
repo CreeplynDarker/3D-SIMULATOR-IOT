@@ -41,31 +41,35 @@ const SPECS: Record<ComponentId, string[]> = {
 const f = (x: number, digits: number) => x.toFixed(digits);
 const level = (high: boolean) => (high ? 'HIGH' : 'LOW');
 
-/** Live pin lines for one component (units in the text). */
+/** Live pin lines for one component (units in the text); in Live mode a field the board doesn't send reads "—". */
 function pins(id: ComponentId, s: Snapshot, model: { status: ModelStatus; score: number | null } | null): string[] {
+  const known = (k: keyof Snapshot) => !s.unknown?.includes(k);
+  const n = (k: keyof Snapshot, x: number, digits: number) => (known(k) ? f(x, digits) : '—');
+  const lv = (k: keyof Snapshot, high: boolean) => (known(k) ? level(high) : '—');
+  const counts = known('adcCounts') ? String(Math.round(s.adcCounts)) : '—';
   const [ax, ay, az] = s.accel_g;
   switch (id) {
     case 'fan':
-      return [`red +${f(s.fanV_V, 2)} V, ${f(s.current_A, 3)} A`, `blue tach ${level(s.tachHigh)} → GPIO27, ${Math.round(s.rpm)} rpm`, `motor ${f(s.tMotor_C, 2)} °C`]; // prettier-ignore
+      return [`red +${n('fanV_V', s.fanV_V, 2)} V, ${n('current_A', s.current_A, 3)} A`, `blue tach ${lv('tachHigh', s.tachHigh)} → GPIO27, ${Math.round(s.rpm)} rpm`, `motor ${n('tMotor_C', s.tMotor_C, 2)} °C`]; // prettier-ignore
     case 'mpu6050':
-      return [`SDA/SCL → GPIO21/22: x=${f(ax, 3)} y=${f(ay, 3)} z=${f(az, 3)} g`];
+      return [`SDA/SCL → GPIO21/22: x=${n('accel_g', ax, 3)} y=${n('accel_g', ay, 3)} z=${n('accel_g', az, 3)} g`];
     case 'ds18b20':
-      return [`DATA → GPIO4 ${f(s.dsReading_C, 4)} °C`, `probe tip ${f(s.tProbe_C, 2)} °C`];
+      return [`DATA → GPIO4 ${n('dsReading_C', s.dsReading_C, 4)} °C`, `probe tip ${n('tProbe_C', s.tProbe_C, 2)} °C`];
     case 'acs712':
     case 'r_div_top':
     case 'r_div_bot':
-      return [`ACS712 OUT ${f(s.acsOut_V, 3)} V → GPIO34 ${Math.round(s.adcCounts)} counts`, `divider mid ${f(s.adcPin_V, 3)} V`]; // prettier-ignore
+      return [`ACS712 OUT ${n('acsOut_V', s.acsOut_V, 3)} V → GPIO34 ${counts} counts`, `divider mid ${n('adcPin_V', s.adcPin_V, 3)} V`]; // prettier-ignore
     case 'relay':
-      return [`IN2 ← GPIO26 ${level(s.gpio26 === 1)} (coil ${s.coilOn ? 'on' : 'off'})`, `COM2 → NO2 ${s.contact === 'NO' ? 'closed' : 'open'}`]; // prettier-ignore
+      return [`IN2 ← GPIO26 ${lv('gpio26', s.gpio26 === 1)} (coil ${s.coilOn ? 'on' : 'off'})`, `COM2 → NO2 ${s.contact === 'NO' ? 'closed' : 'open'}`]; // prettier-ignore
     case 'esp32':
-      return [`state ${s.state}`, `GPIO26 ${level(s.gpio26 === 1)}`, `GPIO34 ${Math.round(s.adcCounts)} counts`, `GPIO4 ${f(s.dsReading_C, 4)} °C`]; // prettier-ignore
+      return [`state ${s.state}`, `GPIO26 ${lv('gpio26', s.gpio26 === 1)}`, `GPIO34 ${counts} counts`, `GPIO4 ${n('dsReading_C', s.dsReading_C, 4)} °C`]; // prettier-ignore
     case 'r_pu_tach':
-      return [`tach line ${level(s.tachHigh)}`];
+      return [`tach line ${lv('tachHigh', s.tachHigh)}`];
     case 'r_pu_ds':
-      return [`DATA ${f(s.dsReading_C, 4)} °C`];
+      return [`DATA ${n('dsReading_C', s.dsReading_C, 4)} °C`];
     case 'dcjack':
     case 'adapter':
-      return [`+12 V supply, sag fault ${f(s.faults.supplySag_V, 1)} V`, `fan side ${f(s.fanV_V, 2)} V`];
+      return [`+12 V supply, sag fault ${n('faults', s.faults.supplySag_V, 1)} V`, `fan side ${n('fanV_V', s.fanV_V, 2)} V`]; // prettier-ignore
     case 'breadboard':
       return ['3V3 and 5 V rails from the ESP32'];
     case 'laptop':

@@ -10,6 +10,7 @@ import { WIRE_COLORS } from '../../shared/wiring.ts';
 import { appStore } from '../../store/index.ts';
 import { continuousU, pulseU, travel_s, wireEnergised } from '../anim.ts';
 import { animDebug } from '../animDebug.ts';
+import { displayTime } from '../time.ts';
 import { getGlowMaterial } from '../models/materials.ts';
 import { POINT_SIZE_PER_SPRITE } from '../cameras.ts';
 import { benchRoutes } from './route.ts';
@@ -104,7 +105,7 @@ export function SignalFlow() {
     const s = appStore.getState();
     const snap = s.sim.snapshot;
     const flow = s.ui.toggles.flow;
-    const t_s = snap?.t_s ?? 0;
+    const t_s = displayTime(s);
     for (const r of benchRoutes()) {
       const energised = snap ? wireEnergised(r.net, snap.contact, snap.gpio26) : r.net !== 'V12_SW';
       paintWire(r.id, energised, flow && energised && GLOW_NETS.includes(r.net), t_s);

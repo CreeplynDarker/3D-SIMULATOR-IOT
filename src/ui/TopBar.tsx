@@ -2,7 +2,7 @@
 import { CONFIG } from '../shared/config.ts';
 import { SCENARIOS } from '../shared/scenarios.ts';
 import { appStore, useAppStore } from '../store/index.ts';
-import type { Speed } from '../store/slices/sim.ts';
+import type { SimSource, Speed } from '../store/slices/sim.ts';
 import { actions } from './actions.ts';
 import { formatClock } from './format.ts';
 import { Button } from './kit.tsx';
@@ -23,15 +23,26 @@ function Readouts() {
       <span data-testid="fps" className="font-mono text-xs text-slate-500 tabular-nums">
         {Math.round(fps)} fps
       </span>
-      <span data-testid="mode-label" className="rounded bg-slate-200 px-1.5 text-xs dark:bg-slate-800">
-        Simulation
-      </span>
+      <ModeLabel />
     </>
+  );
+}
+
+/** What drives the app now, and for Live whether the bridge is connected. */
+function ModeLabel() {
+  const source = useAppStore((s) => s.sim.source);
+  const status = useAppStore((s) => s.sim.live.status);
+  const text = source === 'sim' ? 'Simulation' : source === 'replay' ? 'Replay' : `Live · ${status}`;
+  return (
+    <span data-testid="mode-label" className="rounded bg-slate-200 px-1.5 text-xs dark:bg-slate-800">
+      {text}
+    </span>
   );
 }
 
 /** Play/pause, speed, sim reset and the §12 scenario picker. */
 function SimControls() {
+  const sim = useAppStore((s) => s.sim.source === 'sim');
   const playing = useAppStore((s) => s.sim.playing);
   const speed = useAppStore((s) => s.sim.speed);
   const scenario = useAppStore((s) => s.sim.scenario);
@@ -41,9 +52,10 @@ function SimControls() {
         type="button"
         data-testid="btn-play"
         aria-pressed={playing}
+        disabled={!sim}
         onClick={actions.togglePlay}
         title="Play / pause (Space)"
-        className="w-16 rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-500"
+        className="w-16 rounded bg-sky-600 px-2 py-1 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-40"
       >
         {playing ? 'Pause' : 'Play'}
       </button>
@@ -52,6 +64,7 @@ function SimControls() {
         <select
           data-testid="sel-speed"
           value={speed}
+          disabled={!sim}
           onChange={(e) => actions.setSpeed(Number(e.target.value) as Speed)}
           className={SELECT}
         >
@@ -62,7 +75,7 @@ function SimControls() {
           ))}
         </select>
       </label>
-      <Button testId="btn-sim-reset" onClick={actions.resetSim} title="Restart the simulation at t = 0">
+      <Button testId="btn-sim-reset" disabled={!sim} onClick={actions.resetSim} title="Restart the simulation at t = 0">
         Reset sim
       </Button>
       <label className="text-xs">
@@ -70,6 +83,7 @@ function SimControls() {
         <select
           data-testid="sel-scenario"
           value={scenario?.id ?? ''}
+          disabled={!sim}
           onChange={(e) => e.target.value && actions.playScenario(e.target.value)}
           className={SELECT}
         >
@@ -86,6 +100,26 @@ function SimControls() {
   );
 }
 
+/** `sel-mode`: Simulation or Live (P8.2, the board through the bridge). */
+function ModeSelect() {
+  const source = useAppStore((s) => s.sim.source);
+  return (
+    <label className="text-xs">
+      Mode{' '}
+      <select
+        data-testid="sel-mode"
+        value={source}
+        onChange={(e) => actions.setMode(e.target.value as SimSource)}
+        className={SELECT}
+        title="Live: the real board through the bridge (bridge-py)"
+      >
+        <option value="sim">Simulation</option>
+        <option value="live">Live</option>
+      </select>
+    </label>
+  );
+}
+
 /** The 48 px bar across the top of the app. */
 export function TopBar() {
   return (
@@ -95,13 +129,7 @@ export function TopBar() {
       <span className="mx-1 h-5 border-l border-slate-300 dark:border-slate-700" />
       <SimControls />
       <span className="flex-1" />
-      <label className="text-xs">
-        Mode{' '}
-        <select data-testid="sel-mode" disabled className={SELECT} title="Live mode arrives with the bridge (P8)">
-          <option>Simulation</option>
-          <option>Live</option>
-        </select>
-      </label>
+      <ModeSelect />
       <Button testId="btn-theme" onClick={actions.toggleTheme} title="Light / dark theme">
         Theme
       </Button>

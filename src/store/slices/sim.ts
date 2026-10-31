@@ -6,6 +6,9 @@ import type { AppState } from '../index.ts';
 /** Sim speed multiplier offered by the top bar (unitless, × real time). */
 export type Speed = (typeof CONFIG.ui.speeds)[number];
 
+export type SimSource = 'sim' | 'live' | 'replay';
+export type LiveStatus = 'off' | 'connecting' | 'open' | 'closed';
+
 export interface SimSlice {
   sim: {
     snapshot: Snapshot | null;
@@ -16,6 +19,12 @@ export interface SimSlice {
     scenario: { id: string; done: boolean } | null;
     /** Raw 1 kHz MPU6050 stream (`tgl-raw-mpu`): samples received and the newest x, y, z (g). */
     raw: { on: boolean; samples: number; last: [number, number, number] | null };
+    /** Where the data comes from: the sim worker, the board through the bridge (P8.2), or a recorded session (P8.3). */
+    source: SimSource;
+    /** Live link to the bridge: its state and, when it can't connect, what to do. */
+    live: { status: LiveStatus; message: string | null };
+    /** performance.now() when the last snapshot arrived (live and replay draw between packets from it, ms). */
+    snapshotWall_ms: number;
     setSnapshot(snapshot: Snapshot): void;
     /** Forgets the last snapshot (a sim reset is under way; the worker sends a fresh one). */
     clearSnapshot(): void;
@@ -24,6 +33,10 @@ export interface SimSlice {
     setScenario(scenario: { id: string; done: boolean } | null): void;
     setRawOn(on: boolean): void;
     addRaw(samples: number, last: [number, number, number]): void;
+    setSource(source: SimSource): void;
+    setLive(status: LiveStatus, message?: string): void;
+    /** A snapshot from live or replay data, stamped with the wall time it arrived (ms). */
+    setLiveSnapshot(snapshot: Snapshot, wall_ms: number): void;
   };
 }
 
@@ -38,11 +51,17 @@ export const createSimSlice: StateCreator<AppState, [], [], SimSlice> = (set) =>
       lagging: false,
       scenario: null,
       raw: { on: false, samples: 0, last: null },
+      source: 'sim',
+      live: { status: 'off', message: null },
+      snapshotWall_ms: 0,
       setSnapshot: (snapshot) => patch({ snapshot, lagging: snapshot.lagging }),
       clearSnapshot: () => patch({ snapshot: null }),
       setPlaying: (playing) => patch({ playing }),
       setSpeed: (speed) => patch({ speed }),
       setScenario: (scenario) => patch({ scenario }),
+      setSource: (source) => patch({ source }),
+      setLive: (status, message) => patch({ live: { status, message: message ?? null } }),
+      setLiveSnapshot: (snapshot, snapshotWall_ms) => patch({ snapshot, snapshotWall_ms, lagging: false }),
       setRawOn: (on) => patch({ raw: { on, samples: 0, last: null } }),
       addRaw: (samples, last) => set((s) => ({ sim: { ...s.sim, raw: { ...s.sim.raw, samples: s.sim.raw.samples + samples, last } } })), // prettier-ignore
     },

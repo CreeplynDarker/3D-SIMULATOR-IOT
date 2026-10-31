@@ -34,3 +34,16 @@ describe('M9 inspector data (§8.2)', () => {
     expect(inspectorFor('laptop', snap(), { status: 'READY', score: 0.21 }).pins.map((p) => p.text)).toContain('RCF READY, score 0.21'); // prettier-ignore
   });
 });
+
+describe('M9 in Live mode (P8.2)', () => {
+  it('shows "—" for every field the board does not send', async () => {
+    const { liveSnapshot } = await import('../../../src/bridge/liveSnapshot.ts');
+    const p = { v: 1, kind: 'packet', seq: 3, ts_ms: 4000, win_ms: 1000, a_rms_g: 0.12, cf: 2.5, i_rms_A: 0.18, t_C: 34.06, dtdt_C_per_min: 0, rpm: 3810, state: 'NORMAL', relay_ch2: 'ON', link_lost: false, sensor_fault: false, warn_reason: null, trip_reason: null } as const; // prettier-ignore
+    const live = liveSnapshot(p, null, { nCritical: 5 });
+    const text = (id: Parameters<typeof inspectorFor>[0]) => inspectorFor(id, live, null).pins.map((x) => x.text);
+    expect(text('fan')).toEqual(['red +— V, — A', 'blue tach — → GPIO27, 3810 rpm', 'motor — °C']);
+    expect(text('acs712')[0]).toBe('ACS712 OUT — V → GPIO34 — counts');
+    expect(text('relay')).toEqual(['IN2 ← GPIO26 LOW (coil on)', 'COM2 → NO2 closed']);
+    expect(text('ds18b20')).toEqual(['DATA → GPIO4 34.0600 °C', 'probe tip 34.06 °C']);
+  });
+});

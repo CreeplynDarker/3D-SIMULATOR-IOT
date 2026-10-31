@@ -177,6 +177,22 @@ export function ResetDialog() {
   );
 }
 
+/** P8.2: on the real bench, E-STOP is a message over Wi-Fi, not a safety stop. */
+function EstopNote() {
+  const live = useAppStore((s) => s.sim.source === 'live');
+  if (!live) return null;
+  return (
+    <p
+      data-testid="estop-note"
+      role="note"
+      className="rounded border border-red-500 px-2 py-1 text-xs text-red-600 dark:text-red-400"
+    >
+      E-STOP here is a command sent over Wi-Fi: it is not a safety stop. To stop the fan in an emergency, switch off the
+      12 V supply.
+    </p>
+  );
+}
+
 /** The M5 panel under M4 in the left column. */
 export function OperatorPanel() {
   const status = useAppStore((s) => s.model.status);
@@ -200,6 +216,7 @@ export function OperatorPanel() {
         </span>
       </div>
       <Commands />
+      <EstopNote />
       <Settings />
     </Panel>
   );

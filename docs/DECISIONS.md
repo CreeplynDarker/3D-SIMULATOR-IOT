@@ -628,3 +628,26 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   (`BRIDGE_PYTHON`, else `python3`), as for P4.6; CI installs none, so there they skip. Affects `bridge-py/`,
   `scripts/esp32-emulator.ts`, `src/firmware/reference-cpp/main.cpp`, `tests/unit/{bridge,firmware}/`,
   `.gitignore`.
+- **D-074 · 2026-10-31 · Live mode in the browser (P8.2).** (a) `sel-mode` offers Simulation and Live. Live pauses
+  the sim worker, clears the run (charts, console, verdicts, snapshot), and from then on main ignores sim-worker
+  output. It opens `ws(s)://<page host>/ui` (`src/bridge/wsClient.ts`). Each packet goes through one path
+  (`src/bridge/live.ts`, `createPacketPath`): into the series and the console as sim packets do; events derived
+  from changes between packets (state, relay, link, sensor) go to the chart markers and the test log; and it goes
+  to the browser's RCF worker over its own MessageChannel. Each verdict that comes back goes to the bridge (D-071).
+  Commands from M5 go to the bridge. (b) `liveSnapshot()` maps a packet onto the internal Snapshot: rpm and ω,
+  state, relay CH2 (contact, coil, GPIO26), t_C (probe, DS reading and the heat tint), link and sensor flags, trip
+  reason, traffic counts. It lists in the new optional `Snapshot.unknown` the fields the board doesn't send:
+  θ, fan voltage, instantaneous current, motor temperature, accelerometer sample, ACS712 and ADC values, tach level,
+  `alertRun`, `activeMap`, faults. M3 shows persistence as "—/N", and M9 shows "—" for each of those. (c) Packets
+  come once per window, so in Live and Replay the scene runs on a display time (the last packet's time plus wall time
+  × rate, at most one window ahead; `scene/time.ts`). The blade angle is ω × that time, and jitter, airflow and
+  pulses follow it. The simulation is unchanged, so a paused sim still draws identical frames. (d) M4 is disabled in
+  Live, with a note that the faults are physical on the real bench. Play, speed, sim reset and scenarios are disabled
+  too. M5 shows "E-STOP here is a command sent over Wi-Fi: it is not a safety stop…" (`estop-note`). `live-banner`
+  shows connecting, connected with the packet count, or, when no bridge answers (e.g. on Pages), how to run the
+  bridge and open http://localhost:8765. `mode-label` reads "Live · <status>". (e) e2e: without a bridge (always
+  runs), the banner and the disabled controls; with the bridge and the emulated board (only when Python with the
+  bridge packages is found), the real browser runs START → NORMAL → CRITICAL (RCF, a_rms_g dominant) → RESET → OFF
+  at 4×, scored by the app's own RCF worker. Affects `src/bridge/`, `src/scene/time.ts`, `scene/models/FanMotion.tsx`,
+  `scene/wires/*`, `ui/{TopBar,FaultPanel,OperatorPanel,StatusPanel,LiveBanner}.tsx`, `ui/inspectorData.ts`,
+  `ui/actions.ts`, `store/slices/sim.ts`, `shared/messages.ts`, `App.tsx`.

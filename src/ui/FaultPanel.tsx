@@ -107,26 +107,34 @@ function RampControls() {
 export function FaultPanel() {
   const disconnected = useAppStore((s) => s.ui.faultTargets.ds18b20Disconnect);
   const liveDisconnected = useAppStore((s) => s.sim.snapshot?.faults.ds18b20Disconnect ?? false);
+  const sim = useAppStore((s) => s.sim.source === 'sim');
   return (
     <Panel title="Fault injection (M4)" testId="fault-panel">
-      {SLIDERS.map((s) => (
-        <FaultSlider key={s.id} {...s} />
-      ))}
-      <div className="flex items-center justify-between py-1 text-xs">
-        <ToggleButton
-          testId="tgl-ds-disconnect"
-          label="Disconnect DS18B20"
-          on={disconnected}
-          onChange={(on) => actions.setFault('ds18b20Disconnect', on)}
-        />
-        <span data-testid="val-ds-disconnect" className="font-mono text-slate-500 dark:text-slate-400">
-          {liveDisconnected ? 'open' : 'connected'}
-        </span>
-      </div>
-      <RampControls />
-      <Button testId="btn-clear-faults" onClick={actions.clearFaults}>
-        Clear all faults
-      </Button>
+      {!sim && (
+        <p data-testid="faults-disabled-note" className="mb-1 text-xs text-amber-600 dark:text-amber-400">
+          Faults are simulated, so they are off in Live mode: on the real bench, the faults are physical.
+        </p>
+      )}
+      <fieldset disabled={!sim} className="disabled:opacity-50">
+        {SLIDERS.map((s) => (
+          <FaultSlider key={s.id} {...s} />
+        ))}
+        <div className="flex items-center justify-between py-1 text-xs">
+          <ToggleButton
+            testId="tgl-ds-disconnect"
+            label="Disconnect DS18B20"
+            on={disconnected}
+            onChange={(on) => actions.setFault('ds18b20Disconnect', on)}
+          />
+          <span data-testid="val-ds-disconnect" className="font-mono text-slate-500 dark:text-slate-400">
+            {liveDisconnected ? 'open' : 'connected'}
+          </span>
+        </div>
+        <RampControls />
+        <Button testId="btn-clear-faults" onClick={actions.clearFaults}>
+          Clear all faults
+        </Button>
+      </fieldset>
     </Panel>
   );
 }

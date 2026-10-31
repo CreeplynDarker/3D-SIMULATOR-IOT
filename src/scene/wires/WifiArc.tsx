@@ -7,6 +7,7 @@ import { WIFI_LINK } from '../../shared/wiring.ts';
 import { appStore } from '../../store/index.ts';
 import { bezier, fade, pulseU, travel_s } from '../anim.ts';
 import { animDebug } from '../animDebug.ts';
+import { displayTime } from '../time.ts';
 import { worldAnchor_m } from '../anchors.ts';
 import { getGlowMaterial } from '../models/materials.ts';
 
@@ -41,7 +42,7 @@ export function WifiArc() {
     const snap = s.sim.snapshot;
     const tr = snap?.traffic;
     const on = s.ui.toggles.flow && tr !== undefined;
-    const t_s = snap?.t_s ?? 0;
+    const t_s = displayTime(s);
     const travel = travel_s(s.sim.speed, TRAVEL.wall_s, TRAVEL.cap_s);
     const uUp = on ? pulseU(t_s, tr.lastPacket_s, travel) : null;
     // The verdict leaves the laptop when its packet has arrived, then takes the same time back down.

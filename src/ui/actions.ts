@@ -10,7 +10,8 @@ import type { OperatorParams } from '../store/slices/ui.ts';
 import { canReset } from './rules.ts';
 import { conditionText } from './testlog.ts';
 import { appStore } from '../store/index.ts';
-import type { Speed } from '../store/slices/sim.ts';
+import type { SimSource, Speed } from '../store/slices/sim.ts';
+import { type LiveSession, startLive } from '../bridge/live.ts';
 
 export interface WorkerPorts {
   postSim(message: MainToSim, transfer?: Transferable[]): void;
@@ -19,6 +20,18 @@ export interface WorkerPorts {
 
 let ports: WorkerPorts | null = null;
 let commandSeq = 0;
+/** The live session while `sim.source` is 'live' (P8.2). */
+let live: LiveSession | null = null;
+
+/** Forgets the last run: charts, console, verdicts and snapshot (a new data source starts from nothing). */
+function clearRun(): void {
+  const s = appStore.getState();
+  s.series.clear();
+  s.console.clear();
+  s.model.clearVerdicts();
+  s.sim.clearSnapshot();
+  s.sim.setScenario(null);
+}
 
 /** Connects the actions to the running workers (App does this at start-up; null disconnects). */
 export function bindWorkers(p: WorkerPorts | null): void {
@@ -164,8 +177,32 @@ export const actions = {
   },
   /** Operator command to the firmware (START, RESET, ESTOP), logged in the console. */
   command(cmd: Command['cmd']) {
+    const source = appStore.getState().sim.source;
+    if (source === 'replay') return; // a recording can't be commanded
     const command: Command = { v: PROTOCOL_VERSION, kind: 'command', seq: commandSeq++, cmd };
-    toSim({ type: 'command', command });
-    appStore.getState().console.append({ kind: 'command', text: `→ cmd ${cmd} #${command.seq}`, json: command });
+    if (source === 'live') live?.command(command);
+    else toSim({ type: 'command', command });
+    const to = source === 'live' ? ' (to the board)' : '';
+    appStore.getState().console.append({ kind: 'command', text: `→ cmd ${cmd} #${command.seq}${to}`, json: command });
+  },
+  /**
+   * `sel-mode` (§8.2 M2, P8): Simulation runs the sim worker; Live pauses it and takes packets from the board
+   * through the bridge (D-070 to D-072).
+   */
+  setMode(mode: SimSource) {
+    const s = appStore.getState();
+    if (mode === s.sim.source || !ports) return;
+    live?.stop();
+    live = null;
+    actions.pause();
+    actions.exitGuided();
+    if (mode === 'live') {
+      clearRun();
+      s.sim.setSource('live');
+      live = startLive(ports.postRcf, window.location);
+    } else {
+      s.sim.setSource(mode);
+      if (mode === 'sim') actions.resetSim();
+    }
   },
 };

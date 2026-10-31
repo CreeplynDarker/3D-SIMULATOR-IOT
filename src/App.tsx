@@ -25,6 +25,7 @@ import { TestLog } from './ui/TestLog.tsx';
 import { FaultPanel } from './ui/FaultPanel.tsx';
 import { Inspector } from './ui/Inspector.tsx';
 import { Legend, useShortcuts } from './ui/Legend.tsx';
+import { LiveBanner } from './ui/LiveBanner.tsx';
 import { OperatorPanel, ResetDialog } from './ui/OperatorPanel.tsx';
 import { Scenarios } from './ui/Scenarios.tsx';
 import { StatusPanel } from './ui/StatusPanel.tsx';
@@ -109,6 +110,7 @@ function startWorkers(): Workers {
 /** One sim-worker message into the store. */
 function simToStore(msg: SimToMain): void {
   const s = appStore.getState();
+  if (s.sim.source !== 'sim') return; // live or replay data owns the store; the paused sim worker is ignored
   if (msg.type === 'snapshot') s.sim.setSnapshot(msg.snapshot);
   else if (msg.type === 'packet') {
     s.series.pushPacket(msg.packet);
@@ -254,6 +256,7 @@ export function App() {
         <>
           <BenchViewport />
           <ViewportControls />
+          <LiveBanner />
           <Scenarios />
         </>
       }

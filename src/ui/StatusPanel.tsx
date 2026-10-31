@@ -75,7 +75,9 @@ export function StatusPanel() {
       </Row>
       <Row label="Persistence (k/N alerts)">
         <span data-testid="persistence" className="font-mono tabular-nums">
-          {persistenceText(snap?.alertRun ?? 0, snap?.nCritical ?? 0)}
+          {snap?.unknown?.includes('alertRun')
+            ? `—/${snap.nCritical}`
+            : persistenceText(snap?.alertRun ?? 0, snap?.nCritical ?? 0)}
         </span>
       </Row>
       <Row label="Relay">
