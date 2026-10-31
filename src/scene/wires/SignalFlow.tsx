@@ -136,7 +136,7 @@ export function SignalFlow() {
   });
 
   return (
-    <points ref={points} name="signal-flow" material={material} frustumCulled={false}>
+    <points ref={points} name="signal-flow" material={material} frustumCulled={false} raycast={() => null}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[built.positions, 3]} />
       </bufferGeometry>

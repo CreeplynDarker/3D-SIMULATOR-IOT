@@ -581,3 +581,12 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   stops the 3D render loop (`ui.rendering` → the canvas `frameloop`), and those three specs call it before measuring.
   Their limits are unchanged, and they now pass here every time. Affects `.github/workflows/`, `scene/Bench.tsx`,
   `store/slices/ui.ts`, `App.tsx`, `tests/e2e/{workers,sim,rcf}.spec.ts`.
+- **D-069 · 2026-10-31 · Fixes from the final P7 e2e run.** (a) The Points that replaced the airflow and pulse sprites
+  (D-066) caught clicks: three.js raycasts Points with a 1 m threshold, and the airflow streaks sit inside the fan's
+  clickable group, so a click on empty space near the fan selected it. Both Points objects now opt out of
+  raycasting. (b) The worker ping spec now waits for READY, stops the render loop and waits until the last frame is
+  drawn before pinging; it had pinged while the page was still loading. (c) The guided-scenario spec samples the
+  card every 250 ms; on this runner, at 10×, short steps can pass between samples, so it now asks for at least 3
+  distinct steps seen. Its real check, that the card shows and has reached the last step with `scenarioDone`, is
+  unchanged. Affects `scene/models/FanMotion.tsx`, `scene/wires/SignalFlow.tsx`, `tests/e2e/workers.spec.ts`,
+  `tests/e2e/p6-guided.spec.ts`.

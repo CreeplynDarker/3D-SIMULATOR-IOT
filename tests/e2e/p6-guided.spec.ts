@@ -26,7 +26,9 @@ for (const id of ['S1', 'S2', 'S4', 'S5', 'S6', 'S9']) {
     process.stdout.write(`GUIDED ${id} steps=${steps} seen=${[...seen].join(',')} wall=${wall_s.toFixed(1)}s\n`);
     await expect(card(page)).toHaveAttribute('data-step', String(steps));
     await expect(card(page)).toHaveAttribute('data-reached', String(steps));
-    expect(seen.size).toBeGreaterThanOrEqual(steps - 2); // steps go by themselves (a short one may pass between polls)
+    // Steps go by themselves; at 10× on a slow runner short ones can pass between two 250 ms samples, so this only
+    // checks that several were seen. Reaching the last step (above) is the real check.
+    expect(seen.size).toBeGreaterThanOrEqual(3);
     const ui = (await page.evaluate(() => window.__pdm?.inspect().ui))!;
     expect(ui.camera).toBe('overview');
     expect(ui.guidedChart).toBe('chart-score');

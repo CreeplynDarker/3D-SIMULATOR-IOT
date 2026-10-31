@@ -28,6 +28,9 @@ import { getGlowMaterial } from './materials.ts';
 const MM = 0.001;
 const DISC = { inner_mm: 14.2, outer_mm: 33, z_mm: 0.8, color: '#3a3a40', maxOpacity: 0.85 };
 const GOLDEN_ANGLE_rad = 2.399963;
+// Streaks and pulses take no clicks: three.js raycasts Points with a 1 m threshold, so inside the fan's clickable
+// group they would catch clicks meant for empty space (D-069).
+const noRaycast = () => null;
 const AIR = { streaks: 10, z0_mm: 9, z1_mm: 90, rMin_mm: 18, rMax_mm: 30, size_mm: 5, color: '#9fd8ff' };
 
 /** Gives every mesh under `group` its own transparent copy of its material, and stops it casting shadows. */
@@ -87,7 +90,7 @@ function Airflow() {
     p.geometry.getAttribute('color').needsUpdate = true;
   });
   return (
-    <points ref={points} material={material} frustumCulled={false} visible={false}>
+    <points ref={points} material={material} frustumCulled={false} visible={false} raycast={noRaycast}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
         <bufferAttribute attach="attributes-color" args={[colors, 3]} />
