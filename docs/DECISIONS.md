@@ -706,5 +706,6 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   specs (p5-operator, p5-gate, p6-code) waited for the plant's rpm < 100 before RESET, but the firmware guards
   RESET with its own tach rpm from the last 1 s window (`sm.reset.ok`, `resetMaxRpm`), so a fast click was refused
   and the run stayed CRITICAL; slow rendering had hidden it. They now wait on the newest packet's rpm, exposed as
-  the debug-only `window.__sim.packetRpm` (an addition to the §8.2 hook). No limit or accept item changed; the
+  the debug-only `window.__sim.packetRpm` (an addition to the §8.2 hook). p5-shell waits for the canvas to mount
+  (`window.__scene`, which its theme test calls) before it stops the loop. No limit or accept item changed; the
   rendering specs (camera, scene, p6-fan, p6-flow, p6-heat, p6-relay, p7-perf) still render.

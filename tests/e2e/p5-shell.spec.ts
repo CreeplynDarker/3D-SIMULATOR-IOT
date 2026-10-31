@@ -15,7 +15,8 @@ async function boxes(page: Page) {
 async function open(page: Page, width: number, height: number) {
   await page.setViewportSize({ width, height });
   await page.goto('./?debug=1');
-  await page.waitForFunction(() => window.__pdm !== undefined);
+  // the canvas has mounted (window.__scene) before its render loop stops
+  await page.waitForFunction(() => window.__pdm !== undefined && window.__scene !== undefined);
   await page.evaluate(() => window.__pdm?.setRendering(false)); // logic only: no software-WebGL load (D-077)
 }
 
