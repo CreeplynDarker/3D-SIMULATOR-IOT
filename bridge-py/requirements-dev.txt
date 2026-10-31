@@ -1,0 +1,4 @@
+# Tests for the bridge (pytest) on top of requirements.txt.
+-r requirements.txt
+pytest==8.3.5
+httpx==0.28.1

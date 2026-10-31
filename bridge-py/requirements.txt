@@ -1,0 +1,5 @@
+# Live bridge (P8.1). Direct dependencies pinned exactly; see README.md for the venv setup.
+fastapi==0.115.12
+uvicorn==0.34.2
+websockets==15.0.1
+jsonschema==4.23.0

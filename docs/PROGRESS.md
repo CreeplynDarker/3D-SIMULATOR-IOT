@@ -137,7 +137,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 ## P8 — Live bridge, optional (deps: P7)
 
-- [ ] P8.1 Python bridge
+- [x] P8.1 Python bridge
+  2026-10-31 · bridge-py/app.py (UDP 4211 ↔ WebSocket /ui, schema validation, drop counts, JSON-lines session, serves dist/ at :8765), fake_esp32.py over the real TS firmware (scripts/esp32-emulator.ts), C++ packet now matches §10.1; pytest 10/10, end-to-end START → CRITICAL (RCF) → RESET through the bridge · no tuning
 - [ ] P8.2 Live mode
 - [ ] P8.3 Replay
 - [ ] P8.4 Calibration

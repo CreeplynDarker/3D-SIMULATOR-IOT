@@ -603,3 +603,28 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   (team decision).** No CORS and no mixed-content issues: the page and its `/ui` WebSocket share one origin. If Live
   is chosen on the published Pages site, the app shows a clear message to run the bridge and open
   http://localhost:8765. Affects P8.1, P8.2.
+- **D-073 · 2026-10-31 · Live bridge and emulated ESP32 (P8.1).** (a) `bridge-py/app.py` (FastAPI 0.115.12,
+  uvicorn 0.34.2, websockets 15.0.1, jsonschema 4.23.0; tests add pytest 8.3.5 and httpx 0.28.1). Direct
+  dependencies are pinned exactly in `requirements.txt` and `requirements-dev.txt`; transitive ones are left to pip,
+  because pinning them all would pick versions newer than D-009's two-week rule. The bridge has a UDP endpoint on
+  4211 for the board; `/ui` (WebSocket) carries `{"type": "packet"}` down and `{"type": "verdict"|"command"}` up. It
+  validates with Draft 2020-12 against `public/schema/*.schema.json` and drops anything invalid, counting it as
+  `invalid_up` or `invalid_down` in `GET /status` and logging it with the reason. It writes a JSON-lines session file
+  (`{"t_ms", "dir", "msg"}`, or `"invalid"` and `"raw"` for drops) in `bridge-py/sessions/`, which is gitignored. It
+  sends verdicts and commands to `--esp32-host:4210`, or, by default, to the address the packets come from, and
+  serves `dist/` at :8765 (a short how-to-build page if it is missing). (b) `bridge-py/fake_esp32.py` speaks the
+  board's UDP protocol. In emulate mode it runs `scripts/esp32-emulator.ts`: the real TS plant and firmware, paced
+  at `--speed`, with test-only `--fault key=value@t_s` injections, linked to Python over stdin/stdout JSON lines. So
+  START, RESET, ESTOP, the verdicts and the link timeout all go through the real state machine. `--replay` re-sends a
+  recorded session's packets. It prints a timestamped run log. (c) The reference C++ `sendPacket` didn't match
+  §10.1: it sent `state` as a number and omitted `relay_ch2`, `warn_reason` and `trip_reason`, so the bridge would
+  have dropped every packet from a board built from it. It now sends the protocol names and all the fields, and a
+  parity test (`tests/unit/firmware/cppPacket.test.ts`) checks every Packet field and the UDP ports. (d) Tests:
+  `bridge-py/tests/test_bridge.py` (10 pytest cases: relaying both ways, five kinds of invalid datagram, invalid
+  browser messages, the session log, learning the board address, serving dist/). `tests/unit/bridge/live.test.ts`
+  runs the bridge, the fake board at 10× with an imbalance at 60 s, and a Node stand-in browser that scores with the
+  real RCF service and default model, over the real UDP and WebSocket links. It runs START → NORMAL → CRITICAL (RCF,
+  65.0 s) → RESET → OFF and runs pytest. Both run only when a Python with the bridge's packages is found
+  (`BRIDGE_PYTHON`, else `python3`), as for P4.6; CI installs none, so there they skip. Affects `bridge-py/`,
+  `scripts/esp32-emulator.ts`, `src/firmware/reference-cpp/main.cpp`, `tests/unit/{bridge,firmware}/`,
+  `.gitignore`.

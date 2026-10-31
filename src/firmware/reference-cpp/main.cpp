@@ -37,6 +37,7 @@ Features computeFeatures(const float ax[N], const float ay[N], const float az[N]
                          float counts0, uint32_t tachEdges, float now_s);
 bool addTemperature(float t_s, float value_C);
 void relayInit();
+bool relayIsOn();
 void smCommandStart(); void smCommandReset(); void smCommandEstop();
 void smCalibrationDone(); void smGraceDone();
 void smLimitTrip(Reason r); void smSoftCondition(Reason r); void smVerdict(bool alert, bool clear);
@@ -104,13 +105,24 @@ void setup() {
   esp_timer_handle_t timer; esp_timer_create(&args, &timer); esp_timer_start_periodic(timer, 1000);  // 1 kHz
 }
 
+// Names as in the §10.1 protocol (public/schema/packet.schema.json); the bridge drops packets that don't match.
+static const char *const STATE_NAMES[] = {"OFF", "CALIBRATING", "STARTING", "NORMAL", "WARNING", "CRITICAL"};
+static const char *const REASON_NAMES[] = {nullptr, "RCF", "I_MAX", "T_MAX", "STALL", "ESTOP", "I_SOFT", "T_SOFT", "SENSOR"};
+
+static void setReason(JsonDocument &doc, const char *key, Reason r) {
+  if (r == Reason::NONE) doc[key] = nullptr; else doc[key] = REASON_NAMES[(int)r];
+}
+
+// One §10.1 packet per window, as one JSON datagram to the laptop's bridge (UDP 4211, D-070).
 static void sendPacket(const Features &f) {
   JsonDocument doc;
   doc["v"] = 1; doc["kind"] = "packet"; doc["seq"] = windowSeq; doc["ts_ms"] = tickMs; doc["win_ms"] = 1000;
   doc["a_rms_g"] = f.aRms_g; doc["cf"] = f.cf; doc["i_rms_A"] = f.iRms_A; doc["rpm"] = f.rpm;
   if (f.tValid) doc["t_C"] = f.t_C; else doc["t_C"] = nullptr;
   if (f.dtdtValid) doc["dtdt_C_per_min"] = f.dtdt_C_per_min; else doc["dtdt_C_per_min"] = nullptr;
-  doc["state"] = (int)fsm.state; doc["link_lost"] = fsm.linkLost; doc["sensor_fault"] = sensorFault;
+  doc["state"] = STATE_NAMES[(int)fsm.state]; doc["relay_ch2"] = relayIsOn() ? "ON" : "OFF";
+  doc["link_lost"] = fsm.linkLost; doc["sensor_fault"] = sensorFault;
+  setReason(doc, "warn_reason", fsm.warnReason); setReason(doc, "trip_reason", fsm.tripReason);
   udp.beginPacket(LAPTOP_IP, 4211); serializeJson(doc, udp); udp.endPacket();
 }
 
