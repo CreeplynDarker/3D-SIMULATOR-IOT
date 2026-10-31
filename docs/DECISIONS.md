@@ -496,3 +496,10 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   and fan presets world-sized tags covered the parts. Screenshots of each S2 step (sim paused for each shot) are in
   `docs/screenshots/p6/`. Affects `shared/guided.ts`, `ui/Scenarios.tsx`, `ui/actions.ts`, `ui/Charts.tsx`,
   `store/slices/{ui,sim}.ts`, `scene/Labels.tsx`, `App.tsx`.
+- **D-063 · 2026-10-31 · Guided steps no longer switch the dock tab.** The full e2e run found that each guided step
+  set the dock to Charts. That hid `btn-run-start` from an operator recording a guided run in M10, and broke the S2
+  test-log spec, since S2 is now guided. A step now sets only its camera and outlines its strip (visible when the
+  Charts tab is open); the card already names the chart. Separately, the three M7 console specs were near
+  Playwright's default 30 s test timeout on this GPU-less container (26–28 s in P5); with the P6 animations they
+  went over, so they now allow 90 s. Their checks are unchanged. Affects `ui/actions.ts`,
+  `tests/e2e/p5-console.spec.ts`.

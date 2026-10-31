@@ -95,7 +95,10 @@ export const actions = {
     if (speed !== undefined) actions.setSpeed(speed as Speed);
     actions.play();
   },
-  /** Shows guided step `i` (0-based): its camera preset, the charts tab and the strip to watch. */
+  /**
+   * Shows guided step `i` (0-based): its camera preset and an outline on the strip to watch. The dock tab is left as
+   * the operator set it, so recording a guided run in M10 keeps working (D-063).
+   */
   showGuidedStep(i: number) {
     const ui = appStore.getState().ui;
     const step = ui.guided && guidedFor(ui.guided.id)?.steps[i];
@@ -103,7 +106,6 @@ export const actions = {
     ui.setGuided({ ...ui.guided, view: i });
     ui.setCamera(step.camera);
     ui.setGuidedChart(step.chart);
-    ui.setDockTab('charts');
   },
   /** Closes the M11 card; the scenario keeps running. */
   exitGuided() {

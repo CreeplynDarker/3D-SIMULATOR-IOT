@@ -17,6 +17,7 @@ const lines = (page: Page, kind?: string) =>
   page.getByTestId('console').locator(kind ? `[data-kind="${kind}"]` : '[data-testid="console-line"]');
 
 test('M7: every control exists; packets, verdicts, commands and logs appear in the §8.2 formats', async ({ page }) => {
+  test.setTimeout(90_000);
   await running(page);
   for (const id of IDS) await expect(page.getByTestId(id), id).toBeVisible();
   await expect(lines(page, 'packet').last()).toHaveText(/^↑ #\d+ (NORMAL|STARTING) a=\d\.\d{3}g cf=\d+\.\d\d I=\d\.\d{3}A T=\d+\.\d\d°C dT=-?\d+\.\d\d\/min rpm=\d+$/); // prettier-ignore
@@ -29,6 +30,7 @@ test('M7: every control exists; packets, verdicts, commands and logs appear in t
 });
 
 test('M7: filters hide kinds, pause freezes the view, copy uses the clipboard', async ({ page, context }) => {
+  test.setTimeout(90_000); // the GPU-less CI container renders the scene in software
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await running(page);
   await page.getByTestId('flt-verdicts').click();
@@ -49,6 +51,7 @@ test('M7: filters hide kinds, pause freezes the view, copy uses the clipboard', 
 });
 
 test('M7: CSV and JSON exports, and the raw MPU stream', async ({ page }) => {
+  test.setTimeout(90_000);
   await running(page);
   await page.getByTestId('btn-play').click(); // pause, so the console holds still while exporting
   const csvDl = page.waitForEvent('download');
