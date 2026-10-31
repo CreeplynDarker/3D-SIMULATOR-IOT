@@ -503,3 +503,90 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   Playwright's default 30 s test timeout on this GPU-less container (26–28 s in P5); with the P6 animations they
   went over, so they now allow 90 s. Their checks are unchanged. Affects `ui/actions.ts`,
   `tests/e2e/p5-console.spec.ts`.
+- **D-064 · 2026-10-31 · All UI text, guided text and docs stay in English (team decision).** This covers every label,
+  tooltip, help and glossary text in `src/ui/` and `src/scene/`, the guided steps in `src/shared/guided.ts`, log
+  lines, the README and everything in `docs/`. A check on 2026-10-31 found no text in another language; the only
+  non-ASCII characters are units and symbols (°C, m/s², Ω, §, →). Translations, if wanted later, are a new task.
+  Affects all user-facing text.
+- **D-065 · 2026-10-31 · Coverage counts the workers (P7.1).** Since P0.1, `vite.config.ts` had excluded
+  `src/**/worker.ts` from coverage; with them counted, sim/ fell to 58 % and rcf/ to 89 %. The exclusion is gone. Both
+  workers now run in Node under unit tests (`tests/unit/sim/worker.test.ts`, `tests/unit/rcf/worker.test.ts`): `self`
+  is a stand-in worker scope with a stand-in "Wi-Fi" port, and Vitest's fake timers drive `setInterval` and
+  `performance.now`. The tests cover real behaviour: wall-clock pacing at 1× and 4×, pause, the 0.2 s per-tick cap
+  and `lagging`, START through the real firmware with packets on the channel and verdicts back as `verdictIn`,
+  faults, params, init and reset, the raw MPU stream, and playing S8 with its after-CRITICAL steps to its paused
+  end. For the RCF worker: boot status, ping, loading and rejecting models, scoring, threshold, and training
+  progress and abort. Result, per folder (statements / branches / functions / lines): sim 99.4 / 96.3 / 100 / 100,
+  firmware 99.1 / 93.2 / 98.6 / 99.6, rcf 99.3 / 98.0 / 100 / 99.5, harness 97.1 / 87.0 / 100 / 100. No file in
+  these folders is under 80 % on any metric; the lowest are `firmware/link.ts` functions at 80 % and
+  `harness/trainDefault.ts` branches at 81.8 %. The 1,000-operation RRCF property test took 6 s under coverage
+  instrumentation, over Vitest's 5 s default, so it gets an explicit 30 s budget. Affects `vite.config.ts`,
+  `tests/unit/sim/worker.test.ts`, `tests/unit/rcf/worker.test.ts`, `tests/unit/rcf/rrcf.test.ts`.
+- **D-066 · 2026-10-31 · Performance pass (P7.2).** Measured with `window.__scene.info()` (renderer.info plus a walk
+  of the scene), at the overview preset, 1920 × 1080, every view toggle on, fan running:
+
+  | | Before | After |
+  |---|---|---|
+  | Draw calls | 208 | 183 |
+  | Triangles | 66,788 | 66,732 |
+  | Vertices (each geometry once) | 58,408 | 52,050 |
+  | Texture uploads (RGBA8, no mipmaps) | 20.39 MB | 16.19 MB |
+  | Photo texture files | 303 kB (JPEG) | 160 kB (WebP) |
+  | `dist/` gzipped (raw) | 791 KiB (2,024 KiB) | 653 KiB (1,886 KiB) |
+
+  (a) Instancing: `planInstances` turns groups of at least 8 identical untextured parts (same shape, size, rotation,
+  material and colour) into one InstancedMesh each: the ESP32's 30 header pins and 30 solder joints, the relay
+  header, and the like. Breadboard holes were already drawn into the board's canvas texture (no meshes, cheaper than
+  instancing), so there was nothing to instance there. Instancing cuts vertices and merge time, not triangles.
+  (b) The 26 data-wire pulse sprites and the 10 airflow sprites are now two `Points` objects (one draw call each);
+  hidden pulses park off-scene, and streak fading uses vertex colours under additive blending. A point's size is the
+  sprite's world size × 1 / tan(fov / 2), so the pulses look as before. (c) Textures: the photo crops were already
+  at most 1024 px; `pnpm gen:textures` now writes WebP at quality 0.85 through the same Playwright Chromium (no new
+  dependency, no KTX2), and honours `PW_CHROMIUM_PATH`. The breadboard canvas is 1024 px wide instead of 2048
+  (about 6 px per mm, enough for its 1 mm holes). (d) The sim worker queues everything but `pong` and sends it as
+  one `batch` message with each snapshot (at most `snapshotHz`; 50 a second on its 4 ms ticks) and after each
+  control message. Main flattens it with `unbatch`, and the `raw` buffers are still transferred. The RCF worker sends
+  one verdict per second plus status changes, so it is left as is. Affects `scene/models/{Parts,parts,FanMotion,
+  materials}.ts(x)`, `scene/wires/SignalFlow.tsx`, `scene/cameras.ts`, `scene/Bench.tsx`, `sim/worker.ts`,
+  `shared/messages.ts`, `App.tsx`, `scripts/crop-textures.ts`, `public/textures/`, `ui/inspectorData.ts`.
+- **D-067 · 2026-10-31 · Copy check and README (P7.3).** The project report isn't in the repo, so text was checked
+  against PLAN §14 and the vocabulary the plan uses; a [human] check against the report remains. A unit test
+  (`tests/unit/ui/copy.test.ts`) now keeps it so: the M12 glossary equals §14 word for word; upper-case tokens in
+  the guided and help text are real states, commands, limits, pins or parts; the snake_case names in guided text
+  are protocol keys, packet flags or §14 names; no UI file calls the detector anything but a Random Cut Forest; and
+  displayed text data carries no markdown. Fixes: the Persistence glossary entry showed literal backticks around
+  nCritical. Labels now use §14's words: "Persistence N (alerts to trip)" in M5, "Persistence (k/N alerts)" in
+  M3, "Crest factor (CF)", "Raw MPU6050 (1 kHz)", and a TRAIN tooltip that says 120 windows train and 60 are
+  held out. Each fault slider gained help text naming the feature it moves. The imbalance help says grams: per
+  §6.3, `imbalance_g` is a mass at 28 mm (unbalance in g·mm), not g of acceleration like a_RMS, so the M4 text and
+  the S2 guided step now say "a 0.3 gram mass on one blade". `README.md` describes what the simulator shows, the
+  live link, local setup, the tests, the folder layout, and three screenshots; a docs test checks that its images
+  exist and that it names the commands and the link. Affects `ui/legend.ts`, `ui/FaultPanel.tsx`,
+  `ui/OperatorPanel.tsx`, `ui/StatusPanel.tsx`, `ui/Console.tsx`, `ui/chartData.ts`, `shared/guided.ts`,
+  `README.md`.
+- **D-068 · 2026-10-31 · Hosting: GitHub Pages, built by GitHub Actions (P7.4).** The app is a static site
+  (`base: './'`, no backend before P8), so GitHub Pages serves it from the repository, with no other account or
+  cost. The site is at https://creeplyndarker.github.io/3D-SIMULATOR-IOT/. `.github/workflows/deploy.yml` runs on
+  every push to main (and by hand): `pnpm install --frozen-lockfile`, `pnpm build`, `actions/upload-pages-artifact`
+  with `dist/`, then `actions/deploy-pages` into the `github-pages` environment. It needs `pages: write` and
+  `id-token: write`, and runs one deployment at a time. `.github/workflows/ci.yml` runs on pull requests: `pnpm
+  verify` and `pnpm test:cov` (the P7.1 coverage gate) in one job, and in another `pnpm test:e2e` with Playwright's
+  Chromium, uploading the report on failure. Every action is pinned to the commit SHA of an exact release, with the
+  version beside it; each tag was checked against GitHub: checkout v4.2.2, pnpm/action-setup v4.1.0, setup-node
+  v4.4.0, configure-pages v5.0.0, upload-pages-artifact v3.0.1, deploy-pages v4.0.5, upload-artifact v4.6.2. Pages
+  must be switched on once by the repo owner (Settings → Pages → Source: GitHub Actions). The build was checked from
+  a `/3D-SIMULATOR-IOT/` sub-path: it reaches NORMAL with no console errors and no failed requests. GitHub's runners
+  have no GPU, like this container, where the worker ping, the sim clock rate and the RCF verdict latency checks
+  failed because software WebGL starved the main thread (D-026, D-056). A debug-only `__pdm.setRendering(false)`
+  stops the 3D render loop (`ui.rendering` → the canvas `frameloop`), and those three specs call it before measuring.
+  Their limits are unchanged, and they now pass here every time. Affects `.github/workflows/`, `scene/Bench.tsx`,
+  `store/slices/ui.ts`, `App.tsx`, `tests/e2e/{workers,sim,rcf}.spec.ts`.
+- **D-069 · 2026-10-31 · Fixes from the final P7 e2e run.** (a) The Points that replaced the airflow and pulse sprites
+  (D-066) caught clicks: three.js raycasts Points with a 1 m threshold, and the airflow streaks sit inside the fan's
+  clickable group, so a click on empty space near the fan selected it. Both Points objects now opt out of
+  raycasting. (b) The worker ping spec now waits for READY, stops the render loop and waits until the last frame is
+  drawn before pinging; it had pinged while the page was still loading. (c) The guided-scenario spec samples the
+  card every 250 ms; on this runner, at 10×, short steps can pass between samples, so it now asks for at least 3
+  distinct steps seen. Its real check, that the card shows and has reached the last step with `scenarioDone`, is
+  unchanged. Affects `scene/models/FanMotion.tsx`, `scene/wires/SignalFlow.tsx`, `tests/e2e/workers.spec.ts`,
+  `tests/e2e/p6-guided.spec.ts`.

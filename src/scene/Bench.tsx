@@ -1,11 +1,11 @@
 import { Edges, Html, OrbitControls } from '@react-three/drei';
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Vector3 } from 'three';
 import { type ComponentId, COMPONENTS, componentById, type Vec3 } from '../shared/components.ts';
 import { appStore, useAppStore } from '../store/index.ts';
 import { type AnimDebug, animDebug } from './animDebug.ts';
-import { CAMERA_ORDER, CAMERA_PRESETS, CAMERA_TRANSITION_ms, easeInOutCubic } from './cameras.ts';
+import { CAMERA_FOV_deg, CAMERA_ORDER, CAMERA_PRESETS, CAMERA_TRANSITION_ms, easeInOutCubic } from './cameras.ts';
 import { Look, SCENE_THEMES } from './Look.tsx';
 import { Acs712 } from './models/Acs712.tsx';
 import { Adapter } from './models/Adapter.tsx';
@@ -37,6 +37,8 @@ export interface SceneDebug {
   setTheme(theme: 'dark' | 'light'): void;
   /** What the animated parts drew in the last frame. */
   anim(): AnimDebug;
+  /** Renderer counters for the last frame (draw calls, triangles) and the GPU resources alive now. */
+  info(): { calls: number; triangles: number; geometries: number; textures: number; textureBytes: number; vertices: number }; // prettier-ignore
 }
 
 declare global {
@@ -210,6 +212,8 @@ function CameraRig() {
 /** Counts rendered frames and exposes `window.__scene` with `?debug=1`. */
 function DebugProbe() {
   const frames = useRef(0);
+  const scene = useThree((s) => s.scene);
+  const seen = useMemo(() => new Set<unknown>(), []);
   const camera = useThree((s) => s.camera);
   const gl = useThree((s) => s.gl);
   useFrame(() => {
@@ -232,11 +236,34 @@ function DebugProbe() {
       selectedId: () => appStore.getState().ui.selectedId,
       setTheme: (theme) => appStore.getState().ui.setTheme(theme),
       anim: () => structuredClone(animDebug),
+      info: () => {
+        let textureBytes = 0;
+        let vertices = 0;
+        const geoms = new Set<unknown>();
+        scene.traverse((o) => {
+          const g = (o as { geometry?: { attributes?: { position?: { count: number } } } }).geometry;
+          if (g?.attributes?.position && !geoms.has(g)) {
+            geoms.add(g);
+            vertices += g.attributes.position.count; // each geometry once, however many instances draw it
+          }
+          const m = (o as { material?: unknown }).material;
+          for (const mat of Array.isArray(m) ? m : m ? [m] : []) {
+            const map = (mat as { map?: { image?: { width?: number; height?: number } } }).map;
+            if (map?.image?.width && map.image.height && !seen.has(map)) {
+              seen.add(map);
+              textureBytes += map.image.width * map.image.height * 4; // RGBA8 upload, no mipmaps counted
+            }
+          }
+        });
+        seen.clear();
+        const { render, memory } = gl.info;
+        return { calls: render.calls, triangles: render.triangles, geometries: memory.geometries, textures: memory.textures, textureBytes, vertices }; // prettier-ignore
+      },
     };
     return () => {
       delete window.__scene;
     };
-  }, [camera, gl]);
+  }, [camera, gl, scene, seen]);
   return null;
 }
 
@@ -280,13 +307,15 @@ function CameraButtons() {
 
 /** M1 viewport: the 3D bench in a full-size canvas with the camera presets. */
 export function BenchViewport() {
+  const rendering = useAppStore((s) => s.ui.rendering);
   const start = CAMERA_PRESETS.overview;
   return (
     <div data-testid="viewport" className="relative h-full w-full">
       <Canvas
+        frameloop={rendering ? 'always' : 'never'}
         shadows
         dpr={[1, 1.5]}
-        camera={{ position: [...start.position_m], fov: 40, near: 0.005, far: 20 }}
+        camera={{ position: [...start.position_m], fov: CAMERA_FOV_deg, near: 0.005, far: 20 }}
         onPointerMissed={() => appStore.getState().ui.select(null)}
       >
         <Look />

@@ -6,23 +6,31 @@
 import { useFrame } from '@react-three/fiber';
 import { type ReactNode, useLayoutEffect, useMemo, useRef } from 'react';
 import {
+  AdditiveBlending,
+  Color,
   DoubleSide,
   type Group,
   type Material,
   type Mesh,
   MeshBasicMaterial,
   type MeshStandardMaterial,
-  type Sprite,
+  type Points,
+  PointsMaterial,
 } from 'three';
 import { CONFIG } from '../../shared/config.ts';
 import { appStore, useAppStore } from '../../store/index.ts';
 import { humFor, setHum } from '../../ui/audio.ts';
 import { airflowPhase, bladeMix, heatColor, jitterAmplitude_mm, jitterOffset_mm } from '../anim.ts';
 import { animDebug } from '../animDebug.ts';
+import { POINT_SIZE_PER_SPRITE } from '../cameras.ts';
 import { getGlowMaterial } from './materials.ts';
 
 const MM = 0.001;
 const DISC = { inner_mm: 14.2, outer_mm: 33, z_mm: 0.8, color: '#3a3a40', maxOpacity: 0.85 };
+const GOLDEN_ANGLE_rad = 2.399963;
+// Streaks and pulses take no clicks: three.js raycasts Points with a 1 m threshold, so inside the fan's clickable
+// group they would catch clicks meant for empty space (D-069).
+const noRaycast = () => null;
 const AIR = { streaks: 10, z0_mm: 9, z1_mm: 90, rMin_mm: 18, rMax_mm: 30, size_mm: 5, color: '#9fd8ff' };
 
 /** Gives every mesh under `group` its own transparent copy of its material, and stops it casting shadows. */
@@ -40,41 +48,54 @@ function ownTransparent(group: Group): Material[] {
   return out;
 }
 
-/** Airflow streaks in the fan frame (+z = outlet). */
+/** Airflow streaks in the fan frame (+z = outlet), as one Points object: one draw call (P7.2). */
 function Airflow() {
-  const refs = useRef<(Sprite | null)[]>([]);
+  const points = useRef<Points>(null);
   const on = useAppStore((s) => s.ui.toggles.airflow);
-  const mat = useMemo(() => getGlowMaterial(AIR.color), []);
-  const seeds = useMemo(
-    () => Array.from({ length: AIR.streaks }, (_, k) => {
-      const a = (k * 2.399963) % (Math.PI * 2); // golden-angle spread around the hub
-      const r = AIR.rMin_mm + ((k * 7) % AIR.streaks) / AIR.streaks * (AIR.rMax_mm - AIR.rMin_mm);
+  const { seeds, positions, colors, material } = useMemo(() => {
+    const seeds = Array.from({ length: AIR.streaks }, (_, k) => {
+      const a = (k * GOLDEN_ANGLE_rad) % (Math.PI * 2); // spread around the hub
+      const r = AIR.rMin_mm + (((k * 7) % AIR.streaks) / AIR.streaks) * (AIR.rMax_mm - AIR.rMin_mm);
       return [r * Math.cos(a), r * Math.sin(a)] as const;
-    }),
-    [],
-  ); // prettier-ignore
+    });
+    const material = new PointsMaterial({
+      size: AIR.size_mm * MM * POINT_SIZE_PER_SPRITE,
+      map: getGlowMaterial(AIR.color).map,
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      blending: AdditiveBlending,
+      toneMapped: false,
+    });
+    return { seeds, positions: new Float32Array(AIR.streaks * 3), colors: new Float32Array(AIR.streaks * 3), material };
+  }, []);
+  const base = useMemo(() => new Color(AIR.color), []);
   useFrame(() => {
     const snap = appStore.getState().sim.snapshot;
     const rpm = snap?.rpm ?? 0;
     const visible = on && rpm > 1;
     animDebug.fan.airflowVisible = visible;
-    refs.current.forEach((s, k) => {
-      if (!s) return;
-      s.visible = visible;
-      if (!visible) return;
+    const p = points.current;
+    if (!p) return;
+    p.visible = visible;
+    if (!visible) return;
+    seeds.forEach(([x, y], k) => {
       const u = airflowPhase(snap?.t_s ?? 0, k, CONFIG.fan.rpmRated, rpm, AIR.streaks);
-      const [x, y] = seeds[k] as readonly [number, number];
-      s.position.set(x * MM, y * MM, (AIR.z0_mm + u * (AIR.z1_mm - AIR.z0_mm)) * MM);
-      s.material.opacity = Math.sin(Math.PI * u) * Math.min(1, rpm / CONFIG.fan.rpmRated);
+      positions.set([x * MM, y * MM, (AIR.z0_mm + u * (AIR.z1_mm - AIR.z0_mm)) * MM], k * 3);
+      // additive blending: a darker colour is a fainter streak
+      const fade = Math.sin(Math.PI * u) * Math.min(1, rpm / CONFIG.fan.rpmRated);
+      colors.set([base.r * fade, base.g * fade, base.b * fade], k * 3);
     });
+    p.geometry.getAttribute('position').needsUpdate = true;
+    p.geometry.getAttribute('color').needsUpdate = true;
   });
   return (
-    <>
-      {seeds.map(
-        (_, k) =>
-        <sprite key={k} ref={(el) => void (refs.current[k] = el)} scale={[AIR.size_mm * MM, AIR.size_mm * MM, 1]} material={mat.clone()} visible={false} />, // prettier-ignore
-      )}
-    </>
+    <points ref={points} material={material} frustumCulled={false} visible={false} raycast={noRaycast}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
+      </bufferGeometry>
+    </points>
   );
 }
 

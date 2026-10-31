@@ -95,7 +95,10 @@ export type MainToSim =
   | { type: 'raw'; on: boolean }
   | { type: 'ping'; id: number };
 
-/** Sim worker → main. `raw` buffers are transferred, not copied; `scenario` reports a script's start and end. */
+/**
+ * Sim worker → main. `raw` buffers are transferred, not copied; `scenario` reports a script's start and end. The
+ * worker sends everything but `pong` inside a `batch`, at most once per snapshot (D-066); `unbatch` flattens it.
+ */
 export type SimToMain =
   | { type: 'snapshot'; snapshot: Snapshot }
   | { type: 'packet'; packet: Packet }
@@ -104,6 +107,7 @@ export type SimToMain =
   | { type: 'event'; event: SimEvent }
   | { type: 'raw'; ax: Float32Array; ay: Float32Array; az: Float32Array }
   | { type: 'scenario'; id: string; done: boolean }
+  | { type: 'batch'; messages: SimToMain[] }
   | { type: 'pong'; id: number };
 
 /** Sim → RCF over the MessageChannel ("Wi-Fi" uplink). */
@@ -126,3 +130,8 @@ export type RcfToMain =
   | { type: 'modelStatus'; status: ModelStatus; progress: number; reason?: string }
   | { type: 'verdict'; verdict: Verdict }
   | { type: 'pong'; id: number };
+
+/** The messages inside a sim → main message, in order (a `batch` holds several, anything else is one). */
+export function unbatch(m: SimToMain): SimToMain[] {
+  return m.type === 'batch' ? m.messages.flatMap(unbatch) : [m];
+}

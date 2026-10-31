@@ -1,9 +1,9 @@
 import type {} from '@react-three/fiber'; // registers <mesh>, <group>, … as JSX elements
-import { useEffect, useMemo } from 'react';
-import type { BufferGeometry, Material } from 'three';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { type BufferGeometry, type InstancedMesh, type Material, Matrix4 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getGlowMaterial, getMaterial } from './materials.ts';
-import { type Part, partGeometry } from './parts.ts';
+import { INSTANCE_MIN, type InstanceGroup, type Part, partGeometry, planInstances } from './parts.ts';
 
 interface MeshSpec {
   key: string;
@@ -46,6 +46,23 @@ function buildMeshes(parts: readonly Part[]): MeshSpec[] {
   return out;
 }
 
+/** One InstancedMesh for a group of identical parts (P7.2): one geometry, a translation per copy. */
+function Instanced({ group }: { group: InstanceGroup }) {
+  const ref = useRef<InstancedMesh>(null);
+  const geometry = useMemo(() => partGeometry(group.proto), [group]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const m = new Matrix4();
+    group.positions.forEach((p, i) => mesh.setMatrixAt(i, m.makeTranslation(p[0], p[1], p[2])));
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [group]);
+  const material = getMaterial(group.proto.mat, group.proto.color);
+  return <instancedMesh ref={ref} args={[geometry, material, group.positions.length]} castShadow receiveShadow />;
+}
+
 // LED halo sprite size (mm): an additive glow in place of a bloom pass, which cost ~10 ms a frame (D-027).
 const HALO_mm = 7;
 
@@ -54,17 +71,23 @@ export function Parts({ parts }: { parts: readonly Part[] }) {
   const groups = useMemo(() => {
     const byGroup = new Map<string, Part[]>();
     for (const p of parts) byGroup.set(p.group ?? '', [...(byGroup.get(p.group ?? '') ?? []), p]);
-    return [...byGroup].map(([name, list]) => ({ name, meshes: buildMeshes(list), leds: list.filter((p) => p.mat === 'led') })); // prettier-ignore
+    return [...byGroup].map(([name, list]) => {
+      const plan = planInstances(list, INSTANCE_MIN);
+      return { name, meshes: buildMeshes(plan.rest), instanced: plan.instanced, leds: list.filter((p) => p.mat === 'led') }; // prettier-ignore
+    });
   }, [parts]);
 
   useEffect(() => () => groups.forEach((g) => g.meshes.forEach((m) => m.geometry.dispose())), [groups]);
 
   return (
     <group scale={0.001}>
-      {groups.map(({ name, meshes, leds }) => (
+      {groups.map(({ name, meshes, instanced, leds }) => (
         <group key={name || 'static'} name={name || 'static'}>
           {meshes.map((m) => (
             <mesh key={m.key} geometry={m.geometry} material={m.material} castShadow receiveShadow />
+          ))}
+          {instanced.map((g, i) => (
+            <Instanced key={`inst:${i}`} group={g} />
           ))}
           {/* LED halos sit in their part's group, so hiding the group turns the LED off (P6.3) */}
           {leds.map((p, i) => (

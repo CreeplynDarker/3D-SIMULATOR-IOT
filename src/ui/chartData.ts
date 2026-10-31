@@ -16,7 +16,7 @@ export interface StripSpec {
 
 export const STRIPS: readonly StripSpec[] = [
   { testId: 'chart-arms', title: 'a_RMS (g)', series: ['a_rms'] },
-  { testId: 'chart-cf', title: 'Crest factor', series: ['cf'] },
+  { testId: 'chart-cf', title: 'Crest factor (CF)', series: ['cf'] },
   { testId: 'chart-irms', title: 'I_RMS (A)', series: ['i_rms'] },
   { testId: 'chart-temp', title: 'T (°C) · dT/dt (°C/min)', series: ['T', 'dT/dt'] },
   { testId: 'chart-rpm', title: 'RPM', series: ['rpm'] },

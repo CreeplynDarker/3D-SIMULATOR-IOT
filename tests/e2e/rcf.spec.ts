@@ -17,6 +17,8 @@ test('the RCF worker loads default-model.json at boot (model status READY)', asy
 
 test('returns a scored verdict for each packet within 20 ms of wall time', async ({ page }) => {
   await page.waitForFunction(() => window.__pdm?.modelStatus().status === 'READY');
+  // Latency is measured on the main thread; stop the 3D render loop so a GPU-less runner measures the RCF (D-068).
+  await page.evaluate(() => window.__pdm?.setRendering(false));
   await page.evaluate(() => {
     window.__pdm?.setSpeed(10);
     window.__pdm?.command('START');

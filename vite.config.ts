@@ -12,7 +12,6 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/sim/**/*.ts', 'src/firmware/**/*.ts', 'src/rcf/**/*.ts', 'src/harness/**/*.ts'],
-      exclude: ['src/**/worker.ts'],
       thresholds: {
         lines: 80,
         functions: 80,

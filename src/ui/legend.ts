@@ -29,7 +29,7 @@ export const GLOSSARY: { term: string; text: string }[] = [
   { term: 'CoDisp', text: 'collusive displacement, the RRCF per-point score; here divided by the training size, so it runs ≈ 0–1.' }, // prettier-ignore
   { term: 'Dominant variable', text: 'the feature with the largest normalised deviation from the baseline.' },
   { term: 'NO / NC', text: 'normally open / normally closed relay contact. The fan is on NO2, so it runs only while the coil is energised.' }, // prettier-ignore
-  { term: 'Persistence', text: 'number of consecutive alert windows needed to trip (`nCritical`).' },
+  { term: 'Persistence', text: 'number of consecutive alert windows needed to trip (nCritical).' },
   { term: 'Latched', text: 'after a trip the fan stays off until RESET, then START.' },
 ];
 

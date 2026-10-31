@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const docs = resolve(import.meta.dirname, '../../docs');
@@ -26,5 +26,18 @@ describe('docs', () => {
     const listed = new Set([...progress.matchAll(/^- \[[ ~x]\] (P\d+\.(?:\d+|G))\s/gm)].map((m) => m[1]));
     const missing = ids.filter((id) => !listed.has(id));
     expect(missing).toEqual([]);
+  });
+});
+
+describe('README (P7.3)', () => {
+  const readme = readFileSync(join(import.meta.dirname, '../../README.md'), 'utf8');
+
+  it('links screenshots that exist, and the commands that run and test the app', () => {
+    const images = [...readme.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((m) => m[1] as string);
+    expect(images.length).toBeGreaterThanOrEqual(2);
+    for (const img of images) expect(existsSync(join(import.meta.dirname, '../..', img)), img).toBe(true);
+    for (const cmd of ['pnpm install --frozen-lockfile', 'pnpm dev', 'pnpm verify', 'pnpm test:e2e'])
+      expect(readme).toContain(cmd);
+    expect(readme).toMatch(/https:\/\/creeplyndarker\.github\.io\/3D-SIMULATOR-IOT\//);
   });
 });

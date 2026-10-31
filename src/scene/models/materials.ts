@@ -67,11 +67,14 @@ function canvas2d(width_px: number, height_px: number): [HTMLCanvasElement, Canv
   return [canvas, ctx];
 }
 
+// Breadboard texture width: 1024 px over 165 mm is ~6 px per mm, enough for the 1 mm holes (P7.2; 2048 px before).
+const BREADBOARD_TEX_px = 1024;
+
 /** Breadboard top: 630 strip holes, 200 rail holes, rail stripes, centre channel and labels, to scale. */
 function drawBreadboard(): HTMLCanvasElement {
   const [L, W] = [165, 55]; // board size in mm
-  const s = 2048 / L; // px per mm
-  const [canvas, ctx] = canvas2d(2048, Math.round(W * s));
+  const s = BREADBOARD_TEX_px / L; // px per mm
+  const [canvas, ctx] = canvas2d(BREADBOARD_TEX_px, Math.round(W * s));
   const u = (xLocal_mm: number) => (xLocal_mm + L / 2) * s;
   const v = (zLocal_mm: number) => (zLocal_mm + W / 2) * s;
   const colX = (col: number) => (BREADBOARD.centerColumn - col) * BREADBOARD.pitch_mm;
@@ -152,7 +155,7 @@ export function photoTexturesReady(): boolean {
 function loadPhoto(key: TextureKey): Texture {
   photosPending++;
   const done = () => photosPending--;
-  return loader.load(`${import.meta.env.BASE_URL}textures/${key}.jpg`, done, undefined, done);
+  return loader.load(`${import.meta.env.BASE_URL}textures/${key}.webp`, done, undefined, done);
 }
 
 /** Texture for a key; photo crops load asynchronously and appear when ready. */

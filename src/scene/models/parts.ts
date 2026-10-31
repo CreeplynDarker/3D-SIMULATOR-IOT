@@ -189,3 +189,41 @@ export const cyl = (
   mat,
   ...extra,
 });
+
+/** Repeated parts at least this many times become one InstancedMesh (P7.2: header pins, solder joints, holes). */
+export const INSTANCE_MIN = 8;
+
+/** Same shape, size, rotation, material and colour: everything but the position (and the name). */
+export function sameShape(a: Part, b: Part): boolean {
+  const key = (p: Part) => JSON.stringify({ ...p, pos: undefined, name: undefined });
+  return key(a) === key(b);
+}
+
+export interface InstanceGroup {
+  /** The shared part, at the origin. */
+  proto: Part;
+  /** Where each copy sits (mm). */
+  positions: V3[];
+}
+
+/**
+ * Splits a part list into groups of at least `min` identical untextured parts (drawn as one InstancedMesh each)
+ * and the rest (merged per material as before).
+ */
+export function planInstances(parts: readonly Part[], min: number): { instanced: InstanceGroup[]; rest: Part[] } {
+  const buckets = new Map<string, Part[]>();
+  for (const p of parts) {
+    if (p.tex || p.mat === 'led') continue;
+    const key = JSON.stringify({ ...p, pos: undefined, name: undefined });
+    buckets.set(key, [...(buckets.get(key) ?? []), p]);
+  }
+  const instanced: InstanceGroup[] = [];
+  const taken = new Set<Part>();
+  for (const list of buckets.values()) {
+    if (list.length < min) continue;
+    const first = list[0] as Part;
+    instanced.push({ proto: { ...first, pos: [0, 0, 0] }, positions: list.map((p) => p.pos) });
+    for (const p of list) taken.add(p);
+  }
+  return { instanced, rest: parts.filter((p) => !taken.has(p)) };
+}

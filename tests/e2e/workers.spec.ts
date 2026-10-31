@@ -9,6 +9,17 @@ for (const target of ['sim', 'rcf'] as const) {
   test(`${target} worker answers ping with pong in under 50 ms`, async ({ page }) => {
     // Building the default model's forest at boot blocks the RCF worker once (D-043); measure after it.
     if (target === 'rcf') await page.waitForFunction(() => window.__pdm?.modelStatus().status === 'READY');
+    // Measure the workers, not software WebGL on a GPU-less runner: stop the 3D render loop (D-068) and wait until
+    // the last frame is drawn and the page has settled.
+    await page.waitForFunction(() => window.__pdm?.modelStatus().status === 'READY');
+    await page.evaluate(() => window.__pdm?.setRendering(false));
+    await page.waitForFunction(
+      () =>
+        new Promise<boolean>((done) => {
+          const f0 = window.__scene?.frames() ?? 0;
+          setTimeout(() => done((window.__scene?.frames() ?? 0) === f0), 300);
+        }),
+    );
     const rtts = await page.evaluate(async (t) => {
       const api = window.__pdm;
       if (!api) throw new Error('debug API missing');
