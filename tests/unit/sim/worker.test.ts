@@ -8,6 +8,7 @@ import { type Packet, PROTOCOL_VERSION, type Verdict } from '../../../src/shared
 type Batchable = SimToMain | { type: 'batch'; messages: SimToMain[] };
 
 let out: SimToMain[] = [];
+let posts = 0; // postMessage calls (a batch counts once)
 let scope: { postMessage: (m: Batchable) => void; onmessage: ((e: { data: MainToSim }) => void) | null };
 let port: { postMessage: ReturnType<typeof vi.fn>; onmessage: ((e: { data: unknown }) => void) | null };
 
@@ -24,7 +25,15 @@ const command = (cmd: 'START' | 'RESET' | 'ESTOP') => send({ type: 'command', co
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['setInterval', 'setTimeout', 'performance'] });
   out = [];
-  scope = { postMessage: (m) => void (m.type === 'batch' ? out.push(...m.messages) : out.push(m)), onmessage: null };
+  posts = 0;
+  scope = {
+    postMessage: (m) => {
+      posts++;
+      if (m.type === 'batch') out.push(...m.messages);
+      else out.push(m);
+    },
+    onmessage: null,
+  };
   port = { postMessage: vi.fn(), onmessage: null };
   vi.stubGlobal('self', scope);
   vi.resetModules();
@@ -38,6 +47,25 @@ afterEach(() => {
 });
 
 describe('sim worker (§10.2)', () => {
+  it('batches its output: at most one post per snapshot (≤ 60 per second), pong straight away (P7.2)', () => {
+    command('START');
+    send({ type: 'raw', on: true });
+    send({ type: 'speed', x: 10 });
+    send({ type: 'play' });
+    posts = 0;
+    out = [];
+    wall(1000);
+    const snapshots = of('snapshot').length;
+    expect(snapshots).toBeGreaterThanOrEqual(45); // 4 ms ticks: the 16.7 ms minimum gap lands on 20 ms
+    expect(snapshots).toBeLessThanOrEqual(61);
+    expect(out.length).toBeGreaterThan(posts * 2); // packets, events, logs and raw ride along with the snapshots
+    expect(posts).toBeLessThanOrEqual(snapshots);
+    const before = posts;
+    send({ type: 'ping', id: 1 });
+    expect(posts).toBe(before + 1);
+    expect(out.at(-1)).toEqual({ type: 'pong', id: 1 });
+  });
+
   it('boots with an OFF snapshot at t = 0 and answers ping', () => {
     wall(20);
     expect(last()).toMatchObject({ t_s: 0, state: 'OFF', lagging: false });
@@ -84,6 +112,7 @@ describe('sim worker (§10.2)', () => {
     const p = packets.at(-1) as Packet;
     const verdict: Verdict = { v: PROTOCOL_VERSION, kind: 'verdict', seq_ref: p.seq, score: 0.1, threshold: 0.5, alert: false, clear: true, dominant: 'cf', z: null, model: 'READY' }; // prettier-ignore
     port.onmessage?.({ data: { type: 'verdict', verdict } });
+    wall(20); // it rides along with the next snapshot's batch
     expect(of('verdictIn').at(-1)?.verdict).toEqual(verdict);
     port.onmessage?.({ data: { type: 'other' } }); // anything else on the channel is ignored
     const events = of('event').map((m) => m.event.type);

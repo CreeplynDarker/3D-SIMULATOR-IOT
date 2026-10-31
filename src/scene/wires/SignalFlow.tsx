@@ -3,7 +3,7 @@
 // DS18B20 read. Everything follows the snapshot's sim time, so a paused sim freezes it (D-058).
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { CatmullRomCurve3, Color, type Sprite, Vector3 } from 'three';
+import { AdditiveBlending, CatmullRomCurve3, Color, type Points, PointsMaterial, Vector3 } from 'three';
 import { CONFIG } from '../../shared/config.ts';
 import type { Net } from '../../shared/wiring.ts';
 import { WIRE_COLORS } from '../../shared/wiring.ts';
@@ -11,6 +11,7 @@ import { appStore } from '../../store/index.ts';
 import { continuousU, pulseU, travel_s, wireEnergised } from '../anim.ts';
 import { animDebug } from '../animDebug.ts';
 import { getGlowMaterial } from '../models/materials.ts';
+import { POINT_SIZE_PER_SPRITE } from '../cameras.ts';
 import { benchRoutes } from './route.ts';
 import { wireMaterials } from './Wires.tsx';
 
@@ -27,6 +28,22 @@ const TRAINS: Partial<Record<Net, { rate: number; n: number; follows: 'always' |
 /** A 1-Wire read crosses both 1-Wire wires in this much wall time (scaled by the sim speed, capped). */
 const ONEWIRE = { wall_s: 0.35, cap_s: 0.6 };
 const PULSE_m = 0.004;
+/** Where a pulse waits while it isn't on a wire: far below the bench, out of view. */
+const HIDDEN = new Vector3(0, -100, 0);
+const tmp = new Vector3();
+
+/** Round additive glow points of PULSE_m world size, sharing the LED halo texture. */
+function pulseMaterial(): PointsMaterial {
+  return new PointsMaterial({
+    size: PULSE_m * POINT_SIZE_PER_SPRITE,
+    map: getGlowMaterial('#ffffff').map,
+    color: '#ffffff',
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+    toneMapped: false,
+  });
+}
 const LOG_MAX = 200;
 
 interface Lane {
@@ -35,7 +52,9 @@ interface Lane {
   curve: CatmullRomCurve3;
   /** Index of this wire among the wires of its net, for the 1-Wire relay (probe → node → ESP32). */
   hop: number;
-  sprites: (Sprite | null)[];
+  /** First slot of this lane's pulses in the shared Points buffer, and how many it has. */
+  first: number;
+  n: number;
 }
 
 /** Sets a wire's colour and glow, only when its state changes, and logs energised changes with their sim time. */
@@ -60,6 +79,7 @@ export function SignalFlow() {
   const built = useMemo(() => {
     const out: Lane[] = [];
     const hops = new Map<Net, number>();
+    let slots = 0;
     for (const r of benchRoutes()) {
       if (!TRAINS[r.net] && r.net !== 'ONEWIRE') continue;
       const hop = hops.get(r.net) ?? 0;
@@ -69,12 +89,16 @@ export function SignalFlow() {
         false,
         'centripetal',
       );
-      out.push({ id: r.id, net: r.net, curve, hop, sprites: [] });
+      const n = TRAINS[r.net]?.n ?? 1;
+      out.push({ id: r.id, net: r.net, curve, hop, first: slots, n });
+      slots += n;
     }
     lanes.current = out;
-    return out;
+    return { lanes: out, positions: new Float32Array(slots * 3) };
   }, []);
-  const mat = useMemo(() => getGlowMaterial('#ffffff'), []);
+  // All pulses are one Points object: one draw call instead of one sprite each (P7.2).
+  const material = useMemo(() => pulseMaterial(), []);
+  const points = useRef<Points>(null);
 
   useFrame(() => {
     const s = appStore.getState();
@@ -87,43 +111,35 @@ export function SignalFlow() {
     }
     let visible = 0;
     const read_s = travel_s(s.sim.speed, ONEWIRE.wall_s, ONEWIRE.cap_s);
+    const pos = built.positions;
     for (const lane of lanes.current) {
       const train = TRAINS[lane.net];
-      lane.sprites.forEach((sp, k) => {
-        if (!sp) return;
+      for (let k = 0; k < lane.n; k++) {
         let u: number | null = null;
         if (flow && snap && train) {
           const speed = train.follows === 'rpm' ? (train.rate * snap.rpm) / CONFIG.fan.rpmRated : train.rate;
           u = train.follows === 'rpm' && snap.rpm < 1 ? null : continuousU(t_s, speed, k, train.n);
-        } else if (flow && snap && lane.net === 'ONEWIRE' && k === 0) {
+        } else if (flow && snap && lane.net === 'ONEWIRE') {
           // probe → breadboard node over the first half, node → ESP32 over the second
           const whole = pulseU(t_s, snap.traffic.lastDsRead_s, read_s);
           const half = whole === null ? null : whole * 2 - lane.hop;
           u = half !== null && half >= 0 && half <= 1 ? half : null;
         }
-        sp.visible = u !== null;
-        if (u !== null) {
-          sp.position.copy(lane.curve.getPointAt(u));
-          visible++;
-        }
-      });
+        const p = u === null ? HIDDEN : lane.curve.getPointAt(u, tmp);
+        pos.set([p.x, p.y, p.z], (lane.first + k) * 3);
+        if (u !== null) visible++;
+      }
     }
+    const attr = points.current?.geometry.getAttribute('position');
+    if (attr) attr.needsUpdate = true;
     animDebug.flow.pulses = visible;
   });
 
   return (
-    <group name="signal-flow">
-      {built.map((lane) =>
-        Array.from({ length: TRAINS[lane.net]?.n ?? 1 }, (_, k) => (
-          <sprite
-            key={`${lane.id}:${k}`}
-            ref={(el) => void (lane.sprites[k] = el)}
-            material={mat}
-            scale={[PULSE_m, PULSE_m, 1]}
-            visible={false}
-          />
-        )),
-      )}
-    </group>
+    <points ref={points} name="signal-flow" material={material} frustumCulled={false}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[built.positions, 3]} />
+      </bufferGeometry>
+    </points>
   );
 }

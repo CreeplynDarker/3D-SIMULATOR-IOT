@@ -14,11 +14,11 @@ export interface InspectorInfo {
 }
 
 const PHOTOS: Partial<Record<ComponentId, string>> = {
-  fan: 'textures/fan-hub.jpg',
-  esp32: 'textures/esp32-pcb.jpg',
-  acs712: 'textures/acs712-pcb.jpg',
-  relay: 'textures/relay-pcb.jpg',
-  adapter: 'textures/adapter-label.jpg',
+  fan: 'textures/fan-hub.webp',
+  esp32: 'textures/esp32-pcb.webp',
+  acs712: 'textures/acs712-pcb.webp',
+  relay: 'textures/relay-pcb.webp',
+  adapter: 'textures/adapter-label.webp',
 };
 
 const SPECS: Record<ComponentId, string[]> = {

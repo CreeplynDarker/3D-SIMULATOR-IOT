@@ -522,3 +522,30 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   `harness/trainDefault.ts` branches at 81.8 %. The 1,000-operation RRCF property test took 6 s under coverage
   instrumentation, over Vitest's 5 s default, so it gets an explicit 30 s budget. Affects `vite.config.ts`,
   `tests/unit/sim/worker.test.ts`, `tests/unit/rcf/worker.test.ts`, `tests/unit/rcf/rrcf.test.ts`.
+- **D-066 · 2026-10-31 · Performance pass (P7.2).** Measured with `window.__scene.info()` (renderer.info plus a walk
+  of the scene), at the overview preset, 1920 × 1080, every view toggle on, fan running:
+
+  | | Before | After |
+  |---|---|---|
+  | Draw calls | 208 | 183 |
+  | Triangles | 66,788 | 66,732 |
+  | Vertices (each geometry once) | 58,408 | 52,050 |
+  | Texture uploads (RGBA8, no mipmaps) | 20.39 MB | 16.19 MB |
+  | Photo texture files | 303 kB (JPEG) | 160 kB (WebP) |
+  | `dist/` gzipped (raw) | 791 KiB (2,024 KiB) | 653 KiB (1,886 KiB) |
+
+  (a) Instancing: `planInstances` turns groups of at least 8 identical untextured parts (same shape, size, rotation,
+  material and colour) into one InstancedMesh each: the ESP32's 30 header pins and 30 solder joints, the relay
+  header, and the like. Breadboard holes were already drawn into the board's canvas texture (no meshes, cheaper than
+  instancing), so there was nothing to instance there. Instancing cuts vertices and merge time, not triangles.
+  (b) The 26 data-wire pulse sprites and the 10 airflow sprites are now two `Points` objects (one draw call each);
+  hidden pulses park off-scene, and streak fading uses vertex colours under additive blending. A point's size is the
+  sprite's world size × 1 / tan(fov / 2), so the pulses look as before. (c) Textures: the photo crops were already
+  at most 1024 px; `pnpm gen:textures` now writes WebP at quality 0.85 through the same Playwright Chromium (no new
+  dependency, no KTX2), and honours `PW_CHROMIUM_PATH`. The breadboard canvas is 1024 px wide instead of 2048
+  (about 6 px per mm, enough for its 1 mm holes). (d) The sim worker queues everything but `pong` and sends it as
+  one `batch` message with each snapshot (at most `snapshotHz`; 50 a second on its 4 ms ticks) and after each
+  control message. Main flattens it with `unbatch`, and the `raw` buffers are still transferred. The RCF worker sends
+  one verdict per second plus status changes, so it is left as is. Affects `scene/models/{Parts,parts,FanMotion,
+  materials}.ts(x)`, `scene/wires/SignalFlow.tsx`, `scene/cameras.ts`, `scene/Bench.tsx`, `sim/worker.ts`,
+  `shared/messages.ts`, `App.tsx`, `scripts/crop-textures.ts`, `public/textures/`, `ui/inspectorData.ts`.

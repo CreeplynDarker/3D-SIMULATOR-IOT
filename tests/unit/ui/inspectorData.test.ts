@@ -30,7 +30,7 @@ describe('M9 inspector data (§8.2)', () => {
     const relay = inspectorFor('relay', snap(), null).pins.map((p) => p.text);
     expect(relay).toContain('IN2 ← GPIO26 LOW (coil on)');
     expect(relay).toContain('COM2 → NO2 closed');
-    expect(inspectorFor('fan', snap(), null).photo).toBe('textures/fan-hub.jpg');
+    expect(inspectorFor('fan', snap(), null).photo).toBe('textures/fan-hub.webp');
     expect(inspectorFor('laptop', snap(), { status: 'READY', score: 0.21 }).pins.map((p) => p.text)).toContain('RCF READY, score 0.21'); // prettier-ignore
   });
 });

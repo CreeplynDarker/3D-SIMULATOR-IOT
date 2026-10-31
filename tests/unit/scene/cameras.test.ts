@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CAMERA_ORDER, CAMERA_PRESETS, CAMERA_TRANSITION_ms, easeInOutCubic } from '../../../src/scene/cameras.ts';
+import { CAMERA_FOV_deg, POINT_SIZE_PER_SPRITE } from '../../../src/scene/cameras.ts';
 
 describe('camera presets', () => {
   it('has the five M1 presets in button order', () => {
@@ -21,5 +22,12 @@ describe('camera presets', () => {
     expect(easeInOutCubic(0.25) + easeInOutCubic(0.75)).toBeCloseTo(1, 12);
     expect(easeInOutCubic(-1)).toBe(0);
     expect(easeInOutCubic(2)).toBe(1);
+  });
+});
+
+describe('Points sizing (P7.2)', () => {
+  it('scales a sprite size by 1 / tan(fov / 2) so Points pulses match the sprites they replaced', () => {
+    expect(CAMERA_FOV_deg).toBe(40);
+    expect(POINT_SIZE_PER_SPRITE).toBeCloseTo(2.7475, 4);
   });
 });

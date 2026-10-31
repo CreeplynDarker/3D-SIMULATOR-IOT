@@ -18,27 +18,31 @@ interface Crop {
 }
 
 const CROPS: Crop[] = [
-  { out: 'esp32-pcb.jpg', src: 'esp32.jpg', rect: [0.293, 0.17, 0.762, 0.812], turns: 1, width_px: 1024, height_px: 552 },
-  { out: 'esp32-shield.jpg', src: 'esp32.jpg', rect: [0.382, 0.247, 0.652, 0.478], turns: 1, width_px: 384, height_px: 336 },
-  { out: 'relay-pcb.jpg', src: 'relay-closeup.png', rect: [0.02, 0.012, 0.985, 0.99], turns: 0, width_px: 1024, height_px: 778 },
-  { out: 'relay-ch1.jpg', src: 'relay-closeup.png', rect: [0.09, 0.225, 0.515, 0.64], turns: 0, width_px: 256, height_px: 312 },
-  { out: 'relay-ch2.jpg', src: 'relay-closeup.png', rect: [0.535, 0.225, 0.965, 0.63], turns: 0, width_px: 256, height_px: 312 },
-  { out: 'acs712-pcb.jpg', src: 'acs712.jpg', rect: [0.272, 0.44, 0.64, 0.648], turns: 0, width_px: 1024, height_px: 430 },
-  { out: 'fan-hub.jpg', src: 'fan-closeup.png', rect: [0.335, 0.34, 0.705, 0.71], turns: 0, width_px: 512, height_px: 512 },
-  { out: 'adapter-label.jpg', src: 'adapter.jpg', rect: [0.448, 0.53, 0.785, 0.875], turns: 3, width_px: 600, height_px: 448 },
+  { out: 'esp32-pcb.webp', src: 'esp32.jpg', rect: [0.293, 0.17, 0.762, 0.812], turns: 1, width_px: 1024, height_px: 552 },
+  { out: 'esp32-shield.webp', src: 'esp32.jpg', rect: [0.382, 0.247, 0.652, 0.478], turns: 1, width_px: 384, height_px: 336 },
+  { out: 'relay-pcb.webp', src: 'relay-closeup.png', rect: [0.02, 0.012, 0.985, 0.99], turns: 0, width_px: 1024, height_px: 778 },
+  { out: 'relay-ch1.webp', src: 'relay-closeup.png', rect: [0.09, 0.225, 0.515, 0.64], turns: 0, width_px: 256, height_px: 312 },
+  { out: 'relay-ch2.webp', src: 'relay-closeup.png', rect: [0.535, 0.225, 0.965, 0.63], turns: 0, width_px: 256, height_px: 312 },
+  { out: 'acs712-pcb.webp', src: 'acs712.jpg', rect: [0.272, 0.44, 0.64, 0.648], turns: 0, width_px: 1024, height_px: 430 },
+  { out: 'fan-hub.webp', src: 'fan-closeup.png', rect: [0.335, 0.34, 0.705, 0.71], turns: 0, width_px: 512, height_px: 512 },
+  { out: 'adapter-label.webp', src: 'adapter.jpg', rect: [0.448, 0.53, 0.785, 0.875], turns: 3, width_px: 600, height_px: 448 },
 ]; // prettier-ignore
 
+// WebP at 0.85: about a third smaller than JPEG at the same quality, decoded by every current browser (P7.2, D-066).
+const WEBP_QUALITY = 0.85;
 const root = resolve(import.meta.dirname, '..');
 const outDir = join(root, 'public/textures');
 mkdirSync(outDir, { recursive: true });
 
-const browser = await chromium.launch();
+// PW_CHROMIUM_PATH: a preinstalled Chromium when the pinned Playwright's own build is absent (as for the e2e tests).
+const executablePath = process.env['PW_CHROMIUM_PATH'];
+const browser = await chromium.launch(executablePath ? { executablePath } : {});
 const page = await browser.newPage();
 for (const crop of CROPS) {
   const bytes = readFileSync(join(root, 'assets/photos', crop.src));
   const mime = crop.src.endsWith('.png') ? 'image/png' : 'image/jpeg';
   const dataUrl = await page.evaluate(
-    async ({ src, rect, turns, width_px, height_px }) => {
+    async ({ src, rect, turns, width_px, height_px, quality }) => {
       const img = new Image();
       img.src = src;
       await img.decode();
@@ -56,9 +60,9 @@ for (const crop of CROPS) {
       ctx.rotate((turns * Math.PI) / 2);
       const [dw, dh] = turns % 2 === 0 ? [width_px, height_px] : [height_px, width_px];
       ctx.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
-      return canvas.toDataURL('image/jpeg', 0.85);
+      return canvas.toDataURL('image/webp', quality);
     },
-    { ...crop, src: `data:${mime};base64,${bytes.toString('base64')}` },
+    { ...crop, src: `data:${mime};base64,${bytes.toString('base64')}`, quality: WEBP_QUALITY },
   );
   const file = join(outDir, crop.out);
   writeFileSync(file, Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64'));

@@ -43,10 +43,27 @@ let raw: number[][] = [[], [], []];
 let script: ScriptRun | null = null;
 let relayEvents: SimEvent[] = [];
 
+// Output to main waits in an outbox and goes out as one `batch` with each snapshot (≤ snapshotHz) and after each
+// control message (P7.2, D-066). `pong` skips the queue, so the ping round trip still measures the worker.
+let outbox: SimToMain[] = [];
+let transfers: Transferable[] = [];
+
+function post(message: SimToMain, transfer: Transferable[] = []): void {
+  outbox.push(message);
+  transfers.push(...transfer);
+}
+
+function flushOutbox(): void {
+  if (outbox.length === 0) return;
+  scope.postMessage({ type: 'batch', messages: outbox }, transfers);
+  outbox = [];
+  transfers = [];
+}
+
 /** Uplink: a packet that survived the link goes to the RCF worker, and a copy to main for the console and charts. */
 function uplink(packet: Packet): void {
   wifi?.postMessage({ type: 'packet', packet } satisfies SimToRcf);
-  scope.postMessage({ type: 'packet', packet });
+  post({ type: 'packet', packet });
 }
 
 /** Fresh plant and firmware from the last `init`. */
@@ -74,12 +91,13 @@ function build(): void {
 
 function postSnapshot(now_ms: number): void {
   lastSnapshot_ms = now_ms;
-  scope.postMessage({ type: 'snapshot', snapshot: toSnapshot(plant, firmware.view(), lagging) });
+  post({ type: 'snapshot', snapshot: toSnapshot(plant, firmware.view(), lagging) });
   if (rawOn && (raw[0]?.length ?? 0) > 0) {
     const [ax, ay, az] = raw.map((a) => Float32Array.from(a)) as [Float32Array, Float32Array, Float32Array];
     raw = [[], [], []];
-    scope.postMessage({ type: 'raw', ax, ay, az }, [ax.buffer, ay.buffer, az.buffer]);
+    post({ type: 'raw', ax, ay, az }, [ax.buffer, ay.buffer, az.buffer]);
   }
+  flushOutbox();
 }
 
 /** Forwards plant and firmware events (a running script sees them first) and the firmware's log lines. */
@@ -88,8 +106,8 @@ function flush(): void {
   if (script) for (const event of fw) scriptEvent(script, plant, event);
   // One tick's plant, firmware and relay events, in sim-time order (as the harness records them; D-052).
   const events = [...plant.events.splice(0), ...fw, ...relayEvents.splice(0)].sort((a, b) => a.t_s - b.t_s);
-  for (const event of events) scope.postMessage({ type: 'event', event });
-  for (const line of firmware.drainLogs()) scope.postMessage({ type: 'log', line });
+  for (const event of events) post({ type: 'event', event });
+  for (const line of firmware.drainLogs()) post({ type: 'log', line });
 }
 
 /** Runs the sim steps owed for this wall tick, then forwards output and (at most snapshotHz) a snapshot. */
@@ -123,7 +141,7 @@ function endScript(): void {
   if (!script) return;
   playing = false;
   debt_s = 0;
-  scope.postMessage({ type: 'scenario', id: script.scenario.id, done: true });
+  post({ type: 'scenario', id: script.scenario.id, done: true });
   script = null;
   postSnapshot(performance.now());
 }
@@ -131,11 +149,11 @@ function endScript(): void {
 /** Plays a §12 script from the current sim time (D-046); unknown ids are logged and ignored. */
 function playScenario(id: string): void {
   if (!SCENARIOS.some((s) => s.id === id)) {
-    scope.postMessage({ type: 'log', line: `WARN sim: unknown scenario ${id}` });
+    post({ type: 'log', line: `WARN sim: unknown scenario ${id}` });
     return;
   }
   script = startScript(plant, scenarioById(id), plant.t_s);
-  scope.postMessage({ type: 'scenario', id, done: false });
+  post({ type: 'scenario', id, done: false });
 }
 
 function reset(): void {
@@ -153,7 +171,7 @@ function connect(port: MessagePort): void {
   port.onmessage = (event: MessageEvent<RcfToSim>) => {
     if (event.data.type !== 'verdict') return;
     firmware.receiveVerdict(event.data.verdict, plant.t_s);
-    scope.postMessage({ type: 'verdictIn', verdict: event.data.verdict });
+    post({ type: 'verdictIn', verdict: event.data.verdict });
   };
 }
 
@@ -204,6 +222,9 @@ function handle(msg: MainToSim): void {
 }
 
 build();
-scope.onmessage = (event) => handle(event.data);
+scope.onmessage = (event) => {
+  handle(event.data);
+  flushOutbox();
+};
 setInterval(tick, TICK_ms);
 postSnapshot(performance.now());

@@ -128,7 +128,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 - [x] P7.1 Tests
   2026-10-31 · worker.ts files back in coverage with Node unit tests for both workers; every file in sim/, firmware/, rcf/, harness/ ≥ 80 % (folders 97–99 % statements) · no tuning
-- [ ] P7.2 Performance
+- [x] P7.2 Performance
+  2026-10-31 · instanced repeated parts, Points pulses/airflow, WebP photos, 1024 px breadboard canvas, batched sim → main messages; overview draw calls 208 → 183, vertices 58,408 → 52,050, textures 20.4 → 16.2 MB, dist gzip 791 → 653 KiB · no tuning
 - [ ] P7.3 Copy
 - [ ] P7.4 Publish
 

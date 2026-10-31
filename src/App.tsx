@@ -1,7 +1,16 @@
 import { useEffect } from 'react';
 import { BenchViewport } from './scene/Bench.tsx';
 import { CONFIG } from './shared/config.ts';
-import type { MainToRcf, MainToSim, ModelStatus, RcfToMain, SimEvent, SimToMain, Snapshot } from './shared/messages.ts';
+import {
+  type MainToRcf,
+  type MainToSim,
+  type ModelStatus,
+  type RcfToMain,
+  type SimEvent,
+  type SimToMain,
+  type Snapshot,
+  unbatch,
+} from './shared/messages.ts';
 import type { Command, Packet, Verdict } from './shared/protocol.ts';
 import { appStore } from './store/index.ts';
 import type { Speed } from './store/slices/sim.ts';
@@ -95,30 +104,35 @@ function startWorkers(): Workers {
   return { sim, rcf, postSim, postRcf, dispose };
 }
 
+/** One sim-worker message into the store. */
+function simToStore(msg: SimToMain): void {
+  const s = appStore.getState();
+  if (msg.type === 'snapshot') s.sim.setSnapshot(msg.snapshot);
+  else if (msg.type === 'packet') {
+    s.series.pushPacket(msg.packet);
+    s.console.append({ kind: 'packet', text: packetLine(msg.packet), json: msg.packet });
+  } else if (msg.type === 'verdictIn') {
+    s.console.append({ kind: 'verdict', text: verdictLine(msg.verdict), json: msg.verdict });
+  } else if (msg.type === 'raw') {
+    const n = msg.ax.length;
+    if (n > 0) s.sim.addRaw(n, [msg.ax[n - 1] ?? 0, msg.ay[n - 1] ?? 0, msg.az[n - 1] ?? 0]);
+  } else if (msg.type === 'event') {
+    s.series.pushEvent(msg.event);
+    const run = s.testlog.runs.find((r) => r.id === s.testlog.active);
+    if (run) s.testlog.updateRun(run.id, runPatch(run, msg.event));
+  } else if (msg.type === 'log') s.console.append({ kind: 'log', text: msg.line });
+  else if (msg.type === 'scenario') {
+    s.sim.setScenario({ id: msg.id, done: msg.done });
+    if (msg.done) s.sim.setPlaying(false);
+  }
+}
+
 /** Copies worker output into the store; components only read the store (AGENTS.md rule 6). */
 function routeToStore(workers: Workers): void {
   workers.sim.addEventListener('message', (event: MessageEvent<SimToMain>) => {
-    const msg = event.data;
-    const s = appStore.getState();
-    if (msg.type === 'snapshot') s.sim.setSnapshot(msg.snapshot);
-    else if (msg.type === 'packet') {
-      s.series.pushPacket(msg.packet);
-      s.console.append({ kind: 'packet', text: packetLine(msg.packet), json: msg.packet });
-    } else if (msg.type === 'verdictIn') {
-      s.console.append({ kind: 'verdict', text: verdictLine(msg.verdict), json: msg.verdict });
-    } else if (msg.type === 'raw') {
-      const n = msg.ax.length;
-      if (n > 0) s.sim.addRaw(n, [msg.ax[n - 1] ?? 0, msg.ay[n - 1] ?? 0, msg.az[n - 1] ?? 0]);
-    } else if (msg.type === 'event') {
-      s.series.pushEvent(msg.event);
-      const run = s.testlog.runs.find((r) => r.id === s.testlog.active);
-      if (run) s.testlog.updateRun(run.id, runPatch(run, msg.event));
-    } else if (msg.type === 'log') s.console.append({ kind: 'log', text: msg.line });
-    else if (msg.type === 'scenario') {
-      s.sim.setScenario({ id: msg.id, done: msg.done });
-      if (msg.done) s.sim.setPlaying(false);
-    }
+    for (const msg of unbatch(event.data)) simToStore(msg);
   });
+
   workers.rcf.addEventListener('message', (event: MessageEvent<RcfToMain>) => {
     const msg = event.data;
     const s = appStore.getState();
@@ -158,12 +172,13 @@ function installDebugApi(workers: Workers): () => void {
     entry.resolve(performance.now() - entry.t0_ms);
   };
   workers.sim.addEventListener('message', (event: MessageEvent<SimToMain>) => {
-    const msg = event.data;
-    if (msg.type === 'pong') onPong(msg.id);
-    else if (msg.type === 'packet') {
-      simPackets.push(msg.packet);
-      pair(msg.packet.seq, 'packet');
-    } else if (msg.type === 'verdictIn') simVerdictsIn.push(msg.verdict);
+    for (const msg of unbatch(event.data)) {
+      if (msg.type === 'pong') onPong(msg.id);
+      else if (msg.type === 'packet') {
+        simPackets.push(msg.packet);
+        pair(msg.packet.seq, 'packet');
+      } else if (msg.type === 'verdictIn') simVerdictsIn.push(msg.verdict);
+    }
   });
   workers.rcf.addEventListener('message', (event: MessageEvent<RcfToMain>) => {
     const msg = event.data;

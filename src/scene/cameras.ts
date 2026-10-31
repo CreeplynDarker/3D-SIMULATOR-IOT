@@ -27,3 +27,12 @@ export function easeInOutCubic(t: number): number {
   const u = Math.min(1, Math.max(0, t));
   return u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2;
 }
+
+/** Vertical field of view of the viewport camera (degrees). */
+export const CAMERA_FOV_deg = 40;
+
+/**
+ * Size factor from a sprite's world size to a `PointsMaterial` size: three.js scales attenuated points by half the
+ * viewport height, sprites by the camera's field of view, so a point needs 1 / tan(fov / 2) to match (P7.2).
+ */
+export const POINT_SIZE_PER_SPRITE = 1 / Math.tan((CAMERA_FOV_deg * Math.PI) / 360);
