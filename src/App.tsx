@@ -14,6 +14,7 @@ import { runPatch } from './ui/testlog.ts';
 import { TestLog } from './ui/TestLog.tsx';
 import { FaultPanel } from './ui/FaultPanel.tsx';
 import { Inspector } from './ui/Inspector.tsx';
+import { Legend, useShortcuts } from './ui/Legend.tsx';
 import { OperatorPanel, ResetDialog } from './ui/OperatorPanel.tsx';
 import { StatusPanel } from './ui/StatusPanel.tsx';
 import { TopBar } from './ui/TopBar.tsx';
@@ -211,6 +212,7 @@ function Pending({ name }: { name: string }) {
 
 /** Root component: starts the workers, routes their output into the store and lays out the modules. */
 export function App() {
+  useShortcuts();
   useEffect(() => {
     const workers = startWorkers();
     bindWorkers(workers);
@@ -251,7 +253,12 @@ export function App() {
         code: <Pending name="M8 code panel (P6.5)" />,
         testlog: <TestLog />,
       }}
-      overlays={<ResetDialog />}
+      overlays={
+        <>
+          <ResetDialog />
+          <Legend />
+        </>
+      }
     />
   );
 }

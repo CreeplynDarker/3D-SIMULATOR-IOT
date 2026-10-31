@@ -382,3 +382,11 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   now posts each tick's plant, firmware and relay events together, sorted by sim time; before this, relay events
   went out while the tick was still stepping. Extra test ID: `testlog-row`. Affects `ui/TestLog.tsx`,
   `ui/testlog.ts`, `store/slices/testlog.ts`, `sim/worker.ts`, `App.tsx`.
+- **D-053 · 2026-10-31 · Legend and shortcuts (P5.10).** `legend-modal` shows the §13.3 colour key (11 swatches
+  from `WIRE_COLORS`), the six §8.1 state colours, the shortcut list and the §14 glossary verbatim
+  (`ui/legend.ts`). It closes with `btn-legend-close`, Escape or a click outside. The §8.2 keys are handled by one
+  window listener (`useShortcuts`): Space play/pause, S START, E ESTOP, R opens the reset confirmation (only in
+  CRITICAL), 1–5 the camera presets in `CAMERA_ORDER`, ? the legend, and Escape closes either dialog. Keys typed into
+  inputs, selects or text areas, or pressed with Ctrl/Alt/Meta, are ignored. They go through the same `actions` as
+  the buttons, so S and R follow the same rules. Extra test IDs: `btn-legend-close`, `legend-wire`,
+  `legend-state`. Affects `ui/Legend.tsx`, `ui/legend.ts`, `App.tsx`.

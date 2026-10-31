@@ -104,7 +104,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · ui/Inspector.tsx + inspectorData.ts: name, photo crop, specs, live pin lines (ACS712 OUT … → GPIO34 … counts), wires with colours; unit + e2e · no tuning
 - [x] P5.9 M10 test log
   2026-10-31 · ui/TestLog.tsx + testlog.ts: runs with condition, start, duration, alerted, first alert, CRITICAL → relay ms, operator reset, notes; CSV export; worker posts each tick's events in time order · no tuning
-- [ ] P5.10 M12 legend
+- [x] P5.10 M12 legend
+  2026-10-31 · ui/Legend.tsx + legend.ts: legend-modal (wire key, state colours, shortcuts, §14 glossary); keyboard Space/S/E/R/1–5/?/Esc, ignored in inputs · no tuning
 - [ ] P5.G Phase gate (deps: P5.1–P5.10)
 
 ## P6 — Animation and explanation (deps: P5)
