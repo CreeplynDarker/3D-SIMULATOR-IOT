@@ -75,7 +75,7 @@ function Toolbar({ visible }: { visible: ConsoleEntry[] }) {
         Export JSON
       </Button>
       <span className="mx-1 h-4 border-l border-slate-300 dark:border-slate-700" />
-      <ToggleButton testId="tgl-raw-mpu" label="Raw MPU 1 kHz" on={raw.on} onChange={actions.setRawMpu} />
+      <ToggleButton testId="tgl-raw-mpu" label="Raw MPU6050 (1 kHz)" on={raw.on} onChange={actions.setRawMpu} />
       {raw.on && (
         <span data-testid="raw-mpu" className="font-mono text-[11px] text-slate-500">
           {raw.samples} samples

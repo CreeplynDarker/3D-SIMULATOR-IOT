@@ -114,7 +114,7 @@ export const GUIDED: readonly GuidedScenario[] = [
         camera: 'fan',
         chart: 'chart-arms',
         watch: 'The frame shakes harder and a_RMS jumps about five times; the current hardly moves.',
-        injected: 'Imbalance 0.3 g (a mass on one blade), as a step at t = 60 s.',
+        injected: 'Imbalance 0.3 g: a 0.3 gram mass on one blade, added as a step at t = 60 s.',
         meaning: 'Still NORMAL: the ESP32 waits for the next 1 s window and the RCF verdict.',
       },
       warningStep('chart-score', 'The score leaps over the threshold; the dominant variable reads a_rms_g.', 'Imbalance 0.3 g.'), // prettier-ignore

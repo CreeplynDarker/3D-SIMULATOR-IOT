@@ -73,7 +73,7 @@ export function StatusPanel() {
           {dominant ?? '—'}
         </span>
       </Row>
-      <Row label="Persistence (alerts / to trip)">
+      <Row label="Persistence (k/N alerts)">
         <span data-testid="persistence" className="font-mono tabular-nums">
           {persistenceText(snap?.alertRun ?? 0, snap?.nCritical ?? 0)}
         </span>

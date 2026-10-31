@@ -549,3 +549,18 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   one verdict per second plus status changes, so it is left as is. Affects `scene/models/{Parts,parts,FanMotion,
   materials}.ts(x)`, `scene/wires/SignalFlow.tsx`, `scene/cameras.ts`, `scene/Bench.tsx`, `sim/worker.ts`,
   `shared/messages.ts`, `App.tsx`, `scripts/crop-textures.ts`, `public/textures/`, `ui/inspectorData.ts`.
+- **D-067 · 2026-10-31 · Copy check and README (P7.3).** The project report isn't in the repo, so text was checked
+  against PLAN §14 and the vocabulary the plan uses; a [human] check against the report remains. A unit test
+  (`tests/unit/ui/copy.test.ts`) now keeps it so: the M12 glossary equals §14 word for word; upper-case tokens in
+  the guided and help text are real states, commands, limits, pins or parts; the snake_case names in guided text
+  are protocol keys, packet flags or §14 names; no UI file calls the detector anything but a Random Cut Forest; and
+  displayed text data carries no markdown. Fixes: the Persistence glossary entry showed literal backticks around
+  nCritical. Labels now use §14's words: "Persistence N (alerts to trip)" in M5, "Persistence (k/N alerts)" in
+  M3, "Crest factor (CF)", "Raw MPU6050 (1 kHz)", and a TRAIN tooltip that says 120 windows train and 60 are
+  held out. Each fault slider gained help text naming the feature it moves. The imbalance help says grams: per
+  §6.3, `imbalance_g` is a mass at 28 mm (unbalance in g·mm), not g of acceleration like a_RMS, so the M4 text and
+  the S2 guided step now say "a 0.3 gram mass on one blade". `README.md` describes what the simulator shows, the
+  live link, local setup, the tests, the folder layout, and three screenshots; a docs test checks that its images
+  exist and that it names the commands and the link. Affects `ui/legend.ts`, `ui/FaultPanel.tsx`,
+  `ui/OperatorPanel.tsx`, `ui/StatusPanel.tsx`, `ui/Console.tsx`, `ui/chartData.ts`, `shared/guided.ts`,
+  `README.md`.

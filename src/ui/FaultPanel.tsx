@@ -6,22 +6,59 @@ import { appStore, useAppStore } from '../store/index.ts';
 import { actions } from './actions.ts';
 import { Button, Panel, ToggleButton } from './kit.tsx';
 
-const SLIDERS: { id: string; fault: NumericFaultKey; label: string; unit: string }[] = [
-  { id: 'imbalance', fault: 'imbalance_g', label: 'Imbalance', unit: 'g' },
-  { id: 'looseness', fault: 'looseness', label: 'Looseness', unit: '' },
-  { id: 'friction', fault: 'friction', label: 'Friction', unit: '' },
-  { id: 'overheat', fault: 'overheat', label: 'Overheat', unit: '' },
-  { id: 'sag', fault: 'supplySag_V', label: 'Supply sag', unit: 'V' },
-  { id: 'loss', fault: 'packetLoss', label: 'Wi-Fi packet loss', unit: '' },
+/** Each fault with the feature it moves (help text, §6.9). */
+const SLIDERS: { id: string; fault: NumericFaultKey; label: string; unit: string; help: string }[] = [
+  {
+    id: 'imbalance',
+    fault: 'imbalance_g',
+    label: 'Imbalance',
+    unit: 'g',
+    help: 'Extra mass on one blade, in grams, 28 mm from the axis (not g of acceleration): raises a_RMS.',
+  },
+  {
+    id: 'looseness',
+    fault: 'looseness',
+    label: 'Looseness',
+    unit: '',
+    help: 'Loose mounting, 0–1: impacts raise the crest factor (CF) and a_RMS.',
+  },
+  {
+    id: 'friction',
+    fault: 'friction',
+    label: 'Friction',
+    unit: '',
+    help: 'Bearing friction, 0–1: the fan slows (RPM) and draws more current (I_RMS).',
+  },
+  {
+    id: 'overheat',
+    fault: 'overheat',
+    label: 'Overheat',
+    unit: '',
+    help: 'Hotter air around the motor, 0–1 (up to +35 °C): raises T and dT/dt.',
+  },
+  {
+    id: 'sag',
+    fault: 'supplySag_V',
+    label: 'Supply sag',
+    unit: 'V',
+    help: 'The 12 V supply drops by this much: the fan slows and draws less current.',
+  },
+  {
+    id: 'loss',
+    fault: 'packetLoss',
+    label: 'Wi-Fi packet loss',
+    unit: '',
+    help: 'Share of packets the Wi-Fi drops, 0–1. After 5 s with no verdict the ESP32 flags link_lost and only its local limits can trip.',
+  },
 ];
 
 /** One fault slider with its target and live value. */
-function FaultSlider({ id, fault: faultKey, label, unit }: (typeof SLIDERS)[number]) {
+function FaultSlider({ id, fault: faultKey, label, unit, help }: (typeof SLIDERS)[number]) {
   const target = useAppStore((s) => s.ui.faultTargets[faultKey]);
   const live = useAppStore((s) => s.sim.snapshot?.faults[faultKey] ?? 0);
   const range = CONFIG.faults[faultKey];
   return (
-    <label className="block py-1 text-xs">
+    <label className="block py-1 text-xs" title={help}>
       <span className="flex justify-between">
         <span>{label}</span>
         <span data-testid={`val-${id}`} className="font-mono tabular-nums text-slate-500 dark:text-slate-400">

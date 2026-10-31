@@ -80,7 +80,7 @@ function Commands() {
         testId="btn-train"
         disabled={!trainable}
         onClick={actions.train}
-        title="Retrain on 180 healthy NORMAL windows"
+        title="Retrain the RCF on 180 healthy NORMAL windows (120 to train, 60 holdout)"
       >
         TRAIN
       </Button>
@@ -106,7 +106,7 @@ function Settings() {
       />
       <NumberField
         testId="inp-n-critical"
-        label="Alerts to trip (N)"
+        label="Persistence N (alerts to trip)"
         value={op.nCritical}
         min={1}
         max={20}
