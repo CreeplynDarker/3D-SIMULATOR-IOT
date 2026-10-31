@@ -39,14 +39,14 @@ versión o el sitio publicado, nunca `pnpm dev`.
 
 Atajos útiles dentro de la app:
 
-| Tecla | Acción |
-| --- | --- |
-| Espacio | Reproducir / pausar |
-| S | START |
-| E | E-STOP |
-| R | RESET |
-| 1 a 5 | Cámaras predefinidas |
-| `?` | Leyenda y ayuda |
+| Tecla   | Acción               |
+| ------- | -------------------- |
+| Espacio | Reproducir / pausar  |
+| S       | START                |
+| E       | E-STOP               |
+| R       | RESET                |
+| 1 a 5   | Cámaras predefinidas |
+| `?`     | Leyenda y ayuda      |
 
 Si se añade `?debug=1` a la URL, la consola del navegador expone `window.__sim` (fps, estado, tiempo) y
 `window.__pdm` (inspección del estado), útiles para medir.
@@ -154,8 +154,8 @@ ambas resoluciones (`off-1280x720.jpg`, `normal-1920x1080.jpg`, etc.).
 **Cómo hacerlo:**
 
 1. Elegir a un compañero que no haya usado la app.
-2. Darle solo la URL del sitio publicado y esta consigna: *"Arranca el ventilador, provoca un desequilibrio hasta que
-   el sistema corte la alimentación y luego deja el sistema otra vez apagado y listo."*
+2. Darle solo la URL del sitio publicado y esta consigna: _"Arranca el ventilador, provoca un desequilibrio hasta que
+   el sistema corte la alimentación y luego deja el sistema otra vez apagado y listo."_
 3. No responder preguntas ni señalar controles. Observar y anotar dónde duda o se equivoca.
 4. Detenerse cuando el sistema vuelva a OFF tras el RESET confirmado, o a los 10 minutos.
 
@@ -209,12 +209,12 @@ relé abierto → el ventilador se detiene.
 
 **Archivos a revisar:**
 
-| Archivo | Contenido |
-| --- | --- |
-| `src/ui/legend.ts` | Glosario, colores de cables y de estados, atajos (lo que muestra la leyenda M12) |
-| `src/shared/guided.ts` | Texto de cada paso de los escenarios guiados (M11) |
-| `src/shared/components.ts` | Nombres y especificaciones de cada pieza (Inspector M9) |
-| `docs/PLAN.md` §14 | Glosario de referencia |
+| Archivo                    | Contenido                                                                        |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| `src/ui/legend.ts`         | Glosario, colores de cables y de estados, atajos (lo que muestra la leyenda M12) |
+| `src/shared/guided.ts`     | Texto de cada paso de los escenarios guiados (M11)                               |
+| `src/shared/components.ts` | Nombres y especificaciones de cada pieza (Inspector M9)                          |
+| `docs/PLAN.md` §14         | Glosario de referencia                                                           |
 
 **Cómo hacerlo:**
 
@@ -240,13 +240,13 @@ indicados. Los valores numéricos solo se cambian en `src/shared/config.ts`.
 
 1. Revisar que los pines coinciden con el cableado real:
 
-   | Señal | Pin |
-   | --- | --- |
-   | MPU6050 (I²C, 400 kHz) | SDA GPIO21, SCL GPIO22, dirección 0x68 |
-   | DS18B20 (pull-up de 4.7 k) | GPIO4 |
-   | ACS712 (divisor 10 k / 20 k) | GPIO34 (ADC1) |
-   | Tacómetro (pull-up de 10 k) | GPIO27 (PCNT) |
-   | Relé CH2 | GPIO26 → IN2 (activo en bajo) |
+   | Señal                        | Pin                                    |
+   | ---------------------------- | -------------------------------------- |
+   | MPU6050 (I²C, 400 kHz)       | SDA GPIO21, SCL GPIO22, dirección 0x68 |
+   | DS18B20 (pull-up de 4.7 k)   | GPIO4                                  |
+   | ACS712 (divisor 10 k / 20 k) | GPIO34 (ADC1)                          |
+   | Tacómetro (pull-up de 10 k)  | GPIO27 (PCNT)                          |
+   | Relé CH2                     | GPIO26 → IN2 (activo en bajo)          |
 
 2. Revisar que las bibliotecas existen y son las habituales: `ArduinoJson`, `OneWire`, `DallasTemperature`, `Wire`,
    `WiFi`, `WiFiUdp`, `driver/pulse_cnt.h` (ESP-IDF 5 / núcleo Arduino-ESP32 3.x).
@@ -278,7 +278,7 @@ confirmarlo en una ventana normal.
 4. Leer el contador **fps** de la barra superior durante 30 s, o en la consola del navegador (con `?debug=1`):
 
    ```js
-   window.__sim.fps
+   window.__sim.fps;
    ```
 
    Opcionalmente, DevTools → More tools → Rendering → **Frame Rendering Stats** muestra el fps del navegador.
@@ -433,8 +433,8 @@ JSON por UDP al puerto 4211 del portátil y escuchar en el 4210.
    ```
 
    Si la placa no se detecta sola, añadir `--esp32-host <IP de la placa>`.
-3. Comprobar en http://localhost:8765/status que el contador `packet` sube cada segundo y que `invalid_up` sigue en
-   0. Si sube `invalid_up`, el archivo de sesión `bridge-py/sessions/session-*.jsonl` indica qué campo falla.
+
+3. Comprobar en http://localhost:8765/status que el contador `packet` sube cada segundo y que `invalid_up` sigue en 0. Si sube `invalid_up`, el archivo de sesión `bridge-py/sessions/session-*.jsonl` indica qué campo falla.
 4. Abrir http://localhost:8765, elegir **Mode → Live** y comprobar que:
    - las rpm, la vibración, la corriente, la temperatura y el estado coinciden con el banco real;
    - las aspas giran, el relé se mueve y el color de calor cambia;
@@ -534,22 +534,22 @@ acepta el cambio en `docs/DECISIONS.md`.
 
 ## Resumen
 
-| # | ID | Verificación | Requiere | Estado |
-| --- | --- | --- | --- | --- |
-| 1 | P1.2 | Piezas reconocibles junto a su foto | Navegador | ☐ |
-| 2 | P1.3 | Banco de laboratorio ordenado | Navegador | ☐ |
-| 3 | P1.4 | Ningún cable atraviesa una pieza | Navegador | ☐ |
-| 4 | P5.1 | Interfaz legible a 1280 × 720 y 1920 × 1080 | Navegador | ☐ |
-| 5 | P5.G | Falla y reset sin instrucciones | Un compañero | ☐ |
-| 6 | P6 | Las animaciones muestran causa y efecto | Una persona ajena | ☐ |
-| 7 | P6.3/P6.4 | Sonidos del relé y del ventilador | Auriculares | ☐ |
-| 8 | P7.3 | Textos coherentes con el informe | Informe final | ☐ |
-| 9 | P3.7 | C++ plausible para ESP32 | Arduino IDE (opcional) | ☐ |
-| 10 | P1.6 | ≥ 50 fps con gráficos integrados | Portátil del equipo | ☐ |
-| 11 | P6 | ≥ 50 fps con todos los conmutadores | Portátil del equipo | ☐ |
-| 12 | P7.4 | Primera carga < 4 s | Navegador + red | ☐ |
-| 13 | P7.4 | Demo en ≤ 3 minutos | Cronómetro | ☐ |
-| 14 | P8.1 | Puente instalado y funcionando | Portátil + Python | ☐ |
-| 15 | P8 | Paquetes reales se muestran | Placa + firmware | ☐ |
-| 16 | P8 | E-STOP abre el relé real | Placa + firmware | ☐ |
-| 17 | P8.4 | Calibración plausible | Placa + 11 min de grabación | ☐ |
+| #   | ID        | Verificación                                | Requiere                    | Estado |
+| --- | --------- | ------------------------------------------- | --------------------------- | ------ |
+| 1   | P1.2      | Piezas reconocibles junto a su foto         | Navegador                   | ☐      |
+| 2   | P1.3      | Banco de laboratorio ordenado               | Navegador                   | ☐      |
+| 3   | P1.4      | Ningún cable atraviesa una pieza            | Navegador                   | ☐      |
+| 4   | P5.1      | Interfaz legible a 1280 × 720 y 1920 × 1080 | Navegador                   | ☐      |
+| 5   | P5.G      | Falla y reset sin instrucciones             | Un compañero                | ☐      |
+| 6   | P6        | Las animaciones muestran causa y efecto     | Una persona ajena           | ☐      |
+| 7   | P6.3/P6.4 | Sonidos del relé y del ventilador           | Auriculares                 | ☐      |
+| 8   | P7.3      | Textos coherentes con el informe            | Informe final               | ☐      |
+| 9   | P3.7      | C++ plausible para ESP32                    | Arduino IDE (opcional)      | ☐      |
+| 10  | P1.6      | ≥ 50 fps con gráficos integrados            | Portátil del equipo         | ☐      |
+| 11  | P6        | ≥ 50 fps con todos los conmutadores         | Portátil del equipo         | ☐      |
+| 12  | P7.4      | Primera carga < 4 s                         | Navegador + red             | ☐      |
+| 13  | P7.4      | Demo en ≤ 3 minutos                         | Cronómetro                  | ☐      |
+| 14  | P8.1      | Puente instalado y funcionando              | Portátil + Python           | ☐      |
+| 15  | P8        | Paquetes reales se muestran                 | Placa + firmware            | ☐      |
+| 16  | P8        | E-STOP abre el relé real                    | Placa + firmware            | ☐      |
+| 17  | P8.4      | Calibración plausible                       | Placa + 11 min de grabación | ☐      |
