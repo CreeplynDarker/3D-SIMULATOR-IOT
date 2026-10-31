@@ -2,12 +2,17 @@
 // P3.2: five feature windows captured from the plant (healthy, imbalance, looseness, friction, sensor-null). Each
 // fixture holds the raw window, the calibrated counts0, the valid DS18B20 readings and the config values the
 // features use; `python3 -I scripts/features_reference.py` then fills in the NumPy `reference`.
+// P4.6: rcf_dataset.json — 120 healthy training windows and 60 test windows (healthy and the four faults) from the
+// harness; `python3 -I scripts/rrcf_reference.py` then fills in the Python rrcf scores.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { addTempReading, createTempTracker } from '../src/firmware/features.ts';
+import { runScenario } from '../src/harness/runScenario.ts';
+import { configFeatures, featureVector } from '../src/rcf/model.ts';
 import { createSampler, samplerTick } from '../src/firmware/sampler.ts';
 import { CONFIG } from '../src/shared/config.ts';
 import type { FaultKey } from '../src/shared/messages.ts';
+import type { Scenario } from '../src/shared/scenarios.ts';
 import { createPlant, runPlant, schedule } from '../src/sim/plant.ts';
 import { GPIO_HIGH, GPIO_LOW } from '../src/sim/types.ts';
 
@@ -81,10 +86,61 @@ function capture(c: (typeof CASES)[number]) {
   return out;
 }
 
+// rcf_dataset (P4.6): train on healthy windows 16…135, test on healthy 136…155 and 10 windows after each fault onset.
+const DATASET_FAULTS: { label: string; key: FaultKey; value: number }[] = [
+  { label: 'imbalance', key: 'imbalance_g', value: 0.3 },
+  { label: 'looseness', key: 'looseness', value: 0.6 },
+  { label: 'friction', key: 'friction', value: 0.3 }, // below I_SOFT, so the windows stay NORMAL
+  { label: 'overheat', key: 'overheat', value: 1.0 },
+];
+const FAULT_AT_S = 60;
+const FAULT_WINDOWS = 10;
+
+/** NORMAL/WARNING windows with no null feature from a harness run (no RCF scoring), keyed by window index. */
+function windows(steps: Scenario['steps'], end_s: number): Map<number, number[]> {
+  const scenario: Scenario = { id: 'dataset', title: 'rcf dataset', guided: false, end_s, steps };
+  const { packets } = runScenario(scenario, { seed: CONFIG.seed, config: CONFIG, model: null });
+  const out = new Map<number, number[]>();
+  for (const p of packets) {
+    const x = featureVector(p, configFeatures(CONFIG));
+    if (x && (p.state === 'NORMAL' || p.state === 'WARNING')) out.set(p.seq, x);
+  }
+  return out;
+}
+
+function rcfDataset() {
+  const start: Scenario['steps'][number] = { at_s: 0, action: { kind: 'command', cmd: 'START' } };
+  const range = (from: number, n: number) => Array.from({ length: n }, (_, k) => from + k);
+  const healthy = windows([start], 160);
+  const pick = (m: Map<number, number[]>, seqs: number[]) => seqs.map((k) => m.get(k) ?? [] /* checked below */);
+  const train = pick(healthy, range(16, CONFIG.rcf.nTrain));
+  const test = pick(healthy, range(16 + CONFIG.rcf.nTrain, 20)).map((row) => ({ label: 'healthy', row }));
+  for (const f of DATASET_FAULTS) {
+    const fault = { at_s: FAULT_AT_S, action: { kind: 'fault' as const, key: f.key, value: f.value, ramp_s: 0 } };
+    const w = windows([start, fault], FAULT_AT_S + FAULT_WINDOWS + 2);
+    test.push(...pick(w, range(FAULT_AT_S + 1, FAULT_WINDOWS)).map((row) => ({ label: f.label, row })));
+  }
+  if ([...train, ...test.map((t) => t.row)].some((r) => r.length === 0)) throw new Error('rcf_dataset: missing window');
+  return {
+    name: 'rcf_dataset',
+    seed: CONFIG.seed,
+    numTrees: CONFIG.rcf.numTrees,
+    features: configFeatures(CONFIG),
+    stdFloor: CONFIG.rcf.features.map((k) => CONFIG.rcf.stdFloor[k as keyof typeof CONFIG.rcf.stdFloor]),
+    train,
+    test,
+    reference: null,
+  };
+}
+
 mkdirSync(outDir, { recursive: true });
 for (const c of CASES) {
   const file = join(outDir, `features_${c.name}.json`);
   writeFileSync(file, `${JSON.stringify(capture(c))}\n`);
   process.stdout.write(`wrote ${file}\n`);
 }
+const datasetFile = join(outDir, 'rcf_dataset.json');
+writeFileSync(datasetFile, `${JSON.stringify(rcfDataset())}\n`);
+process.stdout.write(`wrote ${datasetFile}\n`);
 process.stdout.write('next: python3 -I scripts/features_reference.py (fills the NumPy reference)\n');
+process.stdout.write('next: python3 -I scripts/rrcf_reference.py (fills the Python rrcf scores)\n');

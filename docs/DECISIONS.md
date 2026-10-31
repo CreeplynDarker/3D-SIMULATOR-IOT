@@ -277,3 +277,17 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   `playwright.config.ts` takes an optional `PW_CHROMIUM_PATH` for a preinstalled Chromium when the pinned
   Playwright's own build is missing. Messages in `shared/messages.ts` are unchanged. Affects `rcf/service.ts`,
   `rcf/worker.ts`, `App.tsx`, `tests/e2e/`, `playwright.config.ts`.
+- **D-044 · 2026-10-31 · Python rrcf cross-check (P4.6).** `pnpm gen:fixtures` also writes
+  `tests/fixtures/rcf_dataset.json` from harness runs with no RCF scoring. Training is 120 healthy windows
+  (16…135). The test set is 20 healthy windows (136…155) plus windows 61…70 after a t = 60 s step of imbalance 0.3,
+  looseness 0.6, friction 0.3 or overheat 1.0. Friction is 0.3 rather than §12's 0.5, so the current stays under
+  I_SOFT and the windows stay NORMAL. `scripts/rrcf_reference.py` normalises as §9.2 does, builds 40
+  `rrcf.RCTree(random_state=seed + i)` trees and scores as §9.3 does. Its RNG differs from the TS `rcf-tree-<i>`
+  streams, so the check compares ranks, not values. Measured Spearman: 0.944. The test always checks the stored
+  reference. When a Python with rrcf 0.4.4 is found (`RRCF_PYTHON`, else `python3`), it also re-runs the script on a
+  copy and matches the stored scores to 1e-9. On Debian/Ubuntu `pip install rrcf==0.4.4` fails against the system
+  setuptools, and rrcf 0.4.4 needs `pkg_resources`; a venv works: `python3 -m venv .venv && .venv/bin/pip install
+  numpy rrcf==0.4.4 "setuptools<81"`, then `RRCF_PYTHON=.venv/bin/python`. Regenerating the fixtures here gave
+  byte-identical feature windows; only the NumPy dT/dt reference on the constant-temperature windows moved within
+  1e-13 of 0, so those files were left as committed. Affects `scripts/gen-fixtures.ts`, `scripts/rrcf_reference.py`,
+  `tests/fixtures/rcf_dataset.json`.

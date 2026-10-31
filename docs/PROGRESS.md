@@ -81,7 +81,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · rcf/service.ts (load, score, live train with n/180 progress) + thin rcf/worker.ts; main loads default-model.json at boot → READY; e2e: READY at boot, a verdict per packet, every main-side latency < 20 ms; 0.17 ms per packet in Node · no tuning
 - [x] P4.5 Harness, scenarios and default model (deps: P4.3)
   2026-10-31 · harness/runScenario.ts (plant + createFirmware + model in one loop, verdicts through the link), shared/scenarios.ts (S1–S9), harness/trainDefault.ts + gen:model; default model trained on a run with one stop and restart (D-041); S1–S8 tests in tests/scenario/, determinism check on a 40 s run · no tuning
-- [ ] P4.6 Python cross-check (deps: P4.5)
+- [x] P4.6 Python cross-check (deps: P4.5)
+  2026-10-31 · gen:fixtures writes rcf_dataset.json (120 healthy train, 60 test: healthy + 4 faults); scripts/rrcf_reference.py (rrcf 0.4.4, 40 trees) fills the reference; Spearman TS vs Python 0.944; re-run test when rrcf is installed · no tuning
 
 ## P5 — Interface modules (deps: P1, P4)
 
