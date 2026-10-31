@@ -21,6 +21,7 @@ conflicts with `docs/PLAN.md`, `docs/PLAN.md` wins. Decisions taken during the b
 | `pnpm gen:schema` | Write `public/schema/*.schema.json` from `src/shared/protocol.ts` |
 | `pnpm gen:model` | Write `public/models/default-model.json` (pre-trained baseline) |
 | `pnpm gen:fixtures` | Regenerate `tests/fixtures/*` from the harness |
+| `pnpm calibrate <session>` | Fit fan/thermal/noise to a healthy recording; writes a config diff (P8.4) |
 | `python3 -I scripts/features_reference.py` | NumPy reference for feature extraction |
 | `python3 -I scripts/rrcf_reference.py` | Python `rrcf` 0.4.4 reference scores |
 

@@ -143,7 +143,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · src/bridge/ (wsClient, live path through the browser RCF worker, liveSnapshot with "—" fields), sel-mode Live, scene on display time, M4 off, E-STOP note, no-bridge banner; e2e without and with the bridge + fake ESP32 · no tuning
 - [x] P8.3 Replay
   2026-10-31 · src/bridge/{session,replay}.ts: bridge JSON-lines sessions and M7 JSON exports replay through createPacketPath (browser RCF rescoring) at the top bar's speed, pausable; sel-mode Replay, inp-replay-file, replay-status; fixture session_s2.jsonl; e2e 10× NORMAL → CRITICAL (RCF) · no tuning
-- [ ] P8.4 Calibration
+- [x] P8.4 Calibration
+  2026-10-31 · src/harness/calibrate.ts (pure fit: spin-up/coast curves, steady rpm/current/vibration, cold-start two-lag heating, noise from rest windows), configDiff.ts, shared/calibration.ts (recording protocol, fit settings, kept keys), `pnpm calibrate` writes a git-apply diff, never config.ts; 12 keys recovered within 2 % on defaults and shifted params, baseline means within 1 % · no tuning
 
 ## Waiting for human review
 
@@ -162,3 +163,7 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - P7.4 · first load under 4 s on a normal connection (the published Pages site)
 - P7.4 · the Baseline → Imbalance → Trip → Reset demo fits in 3 minutes
 - P1.6 · at least 50 fps at 1920 × 1080 on an integrated-graphics laptop (measured 60 fps vsync-locked on Intel Iris Xe in headless Chromium; confirm in a normal browser window on the team laptop)
+- P8 · real packets from the board render with no change outside `src/bridge/` (sel-mode Live through `python bridge-py/app.py`, page at http://localhost:8765)
+- P8 · `btn-estop` in Live opens the real relay (CH2 clicks and the fan coasts down); the 12 V switch stays the safety stop
+- P8.1 · the bridge venv installs and runs on the team laptop (Windows and Linux steps in `bridge-py/README.md`)
+- P8.4 · `pnpm calibrate` on a real healthy recording (CALIBRATION_SCENARIO protocol) gives plausible values; review the diff before `git apply`

@@ -668,3 +668,28 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   files. (d) The P5 top-bar e2e now expects `sel-mode` enabled (§8.2: "disabled until P8"). Affects `src/bridge/`,
   `ui/{TopBar,OperatorPanel,ReplayBar}.tsx`, `ui/actions.ts`, `ui/debug.ts` (console verdict count),
   `store/slices/sim.ts`, `App.tsx`, `scripts/gen-fixtures.ts`.
+
+- **D-076 · 2026-10-31 · Calibration from a healthy recording (P8.4).** (a) Protocol (`CALIBRATION_SCENARIO`,
+  `src/shared/calibration.ts`): fan at rest and cold for 10 s, START, 600 s of running from cold, E-STOP, 30 s more.
+  Every part is fitted where it shows alone, from the packet fields only (§10.1): with the fan at rest, a_RMS² = 3σ²
+  gives `sensors.mpu.noise_g`. With the relay open after the calibration (from one window after the opening),
+  i_RMS is the current noise alone; ACS712 and ADC noise can't be told apart there, so both scale by one factor.
+  The spin-up and coast-down rpm windows are fitted as window averages of first-order curves, with the switching
+  instant searched too: `fan.tauUp_s`, `fan.tauDown_s`. Steady running after the start grace gives
+  `fan.rpmRated` (mean rpm over the §6.1 speed ratio), and i_RMS² less noise² and ripple²/2 gives
+  iIdle + iAero (both scale by one factor). The residual unbalance is scaled until a short healthy sim matches the
+  recorded a_RMS less noise, two iterations; A1 is linear in it. The probe readings while heating from cold are
+  fitted as two first-order lags (plant τ = C_th·R_th searched on a log scale, probe τ from the config; ambient and
+  rise by least squares). That gives `thermal.ambient_C`, then `thermal.rTh0_KperW` = rise / (heatFraction·V·I) ×
+  (1 + airflowCooling) and `thermal.cTh_JperK` = τ / R_th. What a healthy session can't separate is kept and listed
+  (`KEPT_KEYS`): voltages, inrush, ripple, the iIdle:iAero and noise splits, mount mass, blade pass, heatFraction and
+  airflowCooling, and every fault parameter. A recording without the E-STOP tail proposes no `tauDown_s` and no
+  current noise. (b) `pnpm calibrate <session>` reads a bridge session or M7 export (`src/bridge/session.ts`),
+  prints the table (config, proposed, change, basis; ⚠ when outside a §5.2 range) and writes `<session>.config.diff`,
+  a `git apply` diff of `src/shared/config.ts` with values rounded to 3 significant digits (whole rpm). It never
+  writes config.ts. `pnpm calibrate --record out.jsonl --set key=value…` writes a simulated recording to try it.
+  (c) Search ranges and sizes are named constants in `CALIBRATION_FIT` (rule 1). (d) Result on simulated
+  recordings, defaults and 12 shifted values: every key within 2 % (accept: 10 %), and the baseline means (rpm,
+  a_RMS, crest factor, i_RMS, t_C) of a new run with the proposed config within 1 % of the recording's (accept: 10 %).
+  Affects `src/harness/{calibrate,configDiff}.ts`, `src/shared/calibration.ts`, `scripts/calibrate.ts`,
+  `package.json` (script only).
