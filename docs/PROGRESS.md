@@ -64,7 +64,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-30 · firmware/stateMachine.ts: §7.4 as a 15-row table + transition(); one test per spec row, GPIO26 LOW only in STARTING/NORMAL/WARNING, 4+1 vs 5 alerts, dropped verdict, refusals · no tuning
 - [x] P3.5 Link
   2026-10-30 · firmware/link.ts: seeded loss + latency 20 ± 10 ms, late RCF answers held until arrival; link_lost at +6 s with loss 1.0, cleared by the next verdict · no tuning
-- [ ] P3.6 Firmware orchestrator and logs (deps: P3.1–P3.5)
+- [x] P3.6 Firmware orchestrator and logs (deps: P3.1–P3.5)
+  2026-10-30 · firmware/firmware.ts + logger.ts; healthy 60 s run → 60 valid packets, OFF→CALIBRATING→STARTING→NORMAL, required logs; ESTOP → contacts open ≤ 20 ms; worker now runs the real firmware · no tuning
 - [ ] P3.7 Reference C++ (deps: P3.6)
 
 ## P4 — RCF and harness (deps: P3.6)

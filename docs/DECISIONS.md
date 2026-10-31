@@ -202,3 +202,16 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   on arrival. The firmware pulls due verdicts in `afterStep(t)`, so delivery has 0.5 ms resolution. Measured: delays
   of 10–30 ms; with `packetLoss` 1.0 from t = 30 s, `link_lost` is raised at the 36 s window end (5 s timeout + 1
   window) and cleared by the first verdict after restore. Affects `firmware/link.ts`.
+- **D-037 · 2026-10-30 · The firmware is the plant's Controller; one input added at the integration edge.**
+  `createFirmware()` implements D-031's `Controller` (`tick`, `command`, `afterStep`) unchanged. It reads only the
+  sensor view, its own clock, received verdicts and commands. The plant is untouched. The one addition is
+  `FirmwareOptions.packetLoss: () => number`: the link model (§7.5) needs the "Wi-Fi" packet-loss fault, which
+  belongs to the environment, not to anything the ESP32 measures. The worker and the tests pass
+  `() => plant.faults.values.packetLoss`. The other options are `uplink(packet)` (the transport to the RCF) and
+  `receiveVerdict(v, now_s)` (verdicts entering the link). Until the first calibration, `counts0` is the datasheet
+  zero (2.5 V through the divider). A trip's ERR line gets the last window's features appended
+  (`trip RCF a_rms=… cf=… i_rms=… t=… rpm=…`). Log modules are `fsm`, `fw` and `link`. In the worker, the stand-in
+  controller and the zero placeholder packet (D-032) are gone: real packets go to the RCF stub over the channel and
+  copies go to main, and verdicts from the stub enter the firmware's link. The worker emits `RELAY_OPEN` and
+  `RELAY_CLOSED` when the plant's contact changes, because the firmware cannot sense the contact. Affects
+  `firmware/firmware.ts`, `firmware/logger.ts`, `sim/worker.ts`.

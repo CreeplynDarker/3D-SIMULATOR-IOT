@@ -1,18 +1,11 @@
-// Sim worker (spec §10.2): a thin wrapper that paces the pure plant against the wall clock and talks to main and to
-// the RCF worker. Until P3.6 the firmware is a stand-in (see `standInFirmware`); the plant itself is final.
+// Sim worker (spec §10.2): a thin wrapper that paces the pure plant + firmware against the wall clock and talks to
+// main and, over the "Wi-Fi" MessageChannel, to the RCF worker.
+import { createFirmware, type Firmware } from '../firmware/firmware.ts';
 import { CONFIG } from '../shared/config.ts';
 import type { MainToSim, RcfToSim, SimToMain, SimToRcf } from '../shared/messages.ts';
-import { type Command, PROTOCOL_VERSION, type Packet } from '../shared/protocol.ts';
-import {
-  type Controller,
-  createPlant,
-  type Plant,
-  schedule,
-  type SensorsView,
-  stepPlant,
-  toSnapshot,
-} from './plant.ts';
-import { GPIO_HIGH, GPIO_LOW, type GpioLevel, type SimConfig } from './types.ts';
+import type { Packet } from '../shared/protocol.ts';
+import { type Controller, createPlant, type Plant, schedule, stepPlant, toSnapshot } from './plant.ts';
+import type { SimConfig } from './types.ts';
 
 interface WorkerScope {
   postMessage(message: SimToMain, transfer?: Transferable[]): void;
@@ -28,7 +21,10 @@ let init: { config: SimConfig; seed: number; warmStart: boolean } = {
   seed: CONFIG.seed,
   warmStart: CONFIG.thermal.warmStart,
 };
-let plant: Plant = createPlant(init.config, init.seed, init);
+let plant: Plant;
+let firmware: Firmware;
+let controller: Controller;
+let lastContact: 'NC' | 'NO' = 'NC';
 let playing = false;
 let speed = 1;
 let lagging = false;
@@ -38,54 +34,39 @@ let lastSnapshot_ms = -Infinity;
 let wifi: MessagePort | null = null;
 let rawOn = false;
 let raw: number[][] = [[], [], []];
-let packetSeq = 0;
 
-/**
- * Stand-in firmware until P3.6: START drives GPIO26 LOW (fan on), RESET and ESTOP drive it HIGH. It also collects raw
- * MPU samples for `raw{on}`. Everything else (states, limits, packets) arrives with the firmware mirror.
- */
-function standInFirmware(): Controller {
-  let gpio26: GpioLevel = GPIO_HIGH;
-  return {
-    tick(view: SensorsView): GpioLevel {
-      if (rawOn) for (let k = 0; k < 3; k++) raw[k]?.push(view.accel_g[k] as number);
-      return gpio26;
-    },
-    command(cmd: Command['cmd']) {
-      gpio26 = cmd === 'START' ? GPIO_LOW : GPIO_HIGH;
-    },
-  };
+/** Uplink: a packet that survived the link goes to the RCF worker, and a copy to main for the console and charts. */
+function uplink(packet: Packet): void {
+  wifi?.postMessage({ type: 'packet', packet } satisfies SimToRcf);
+  scope.postMessage({ type: 'packet', packet });
 }
-let firmware = standInFirmware();
 
-/** Zero placeholder packet once per sim second so the Wi-Fi channel carries traffic before P3.6 (D-015, D-032). */
-function placeholderPacket(): Packet {
-  const seq = packetSeq++;
-  const win_ms = CONFIG.firmware.window_s * 1000;
-  return {
-    v: PROTOCOL_VERSION,
-    kind: 'packet',
-    seq,
-    ts_ms: Math.round(plant.t_s * 1000),
-    win_ms,
-    a_rms_g: 0,
-    cf: 0,
-    i_rms_A: 0,
-    t_C: null,
-    dtdt_C_per_min: null,
-    rpm: 0,
-    state: 'OFF',
-    relay_ch2: plant.relay.contact === 'NO' ? 'ON' : 'OFF',
-    link_lost: false,
-    sensor_fault: false,
-    warn_reason: null,
-    trip_reason: null,
+/** Fresh plant and firmware from the last `init`. */
+function build(): void {
+  plant = createPlant(init.config, init.seed, init);
+  const p = plant;
+  firmware = createFirmware({
+    cfg: init.config,
+    seed: init.seed,
+    uplink,
+    packetLoss: () => p.faults.values.packetLoss,
+  });
+  const fw = firmware;
+  // The firmware is the controller; this wrapper only taps the 1 kHz MPU samples for `raw{on}`.
+  controller = {
+    tick(view) {
+      if (rawOn) for (let k = 0; k < 3; k++) raw[k]?.push(view.accel_g[k] as number);
+      return fw.tick(view);
+    },
+    command: (cmd, t_s) => fw.command(cmd, t_s),
+    afterStep: (t_s) => fw.afterStep(t_s),
   };
+  lastContact = plant.relay.contact;
 }
 
 function postSnapshot(now_ms: number): void {
   lastSnapshot_ms = now_ms;
-  scope.postMessage({ type: 'snapshot', snapshot: toSnapshot(plant, undefined, lagging) });
+  scope.postMessage({ type: 'snapshot', snapshot: toSnapshot(plant, firmware.view(), lagging) });
   if (rawOn && (raw[0]?.length ?? 0) > 0) {
     const [ax, ay, az] = raw.map((a) => Float32Array.from(a)) as [Float32Array, Float32Array, Float32Array];
     raw = [[], [], []];
@@ -93,7 +74,14 @@ function postSnapshot(now_ms: number): void {
   }
 }
 
-/** Runs the sim steps owed for this wall tick, then forwards events and (at most snapshotHz) a snapshot. */
+/** Forwards plant and firmware events and the firmware's log lines. */
+function flush(): void {
+  for (const event of plant.events.splice(0)) scope.postMessage({ type: 'event', event });
+  for (const event of firmware.drainEvents()) scope.postMessage({ type: 'event', event });
+  for (const line of firmware.drainLogs()) scope.postMessage({ type: 'log', line });
+}
+
+/** Runs the sim steps owed for this wall tick, then forwards output and (at most snapshotHz) a snapshot. */
 function tick(): void {
   const now_ms = performance.now();
   const wall_s = (now_ms - lastTick_ms) / 1000;
@@ -102,27 +90,23 @@ function tick(): void {
   debt_s += wall_s * speed;
   lagging = debt_s > MAX_SIM_PER_TICK_s;
   if (lagging) debt_s = MAX_SIM_PER_TICK_s;
-  const window_s = CONFIG.firmware.window_s;
   while (debt_s >= plant.dt_s) {
-    const window0 = Math.floor(plant.t_s / window_s + 1e-9);
-    stepPlant(plant, firmware);
+    stepPlant(plant, controller);
     debt_s -= plant.dt_s;
-    if (Math.floor(plant.t_s / window_s + 1e-9) > window0) {
-      const packet = placeholderPacket();
-      wifi?.postMessage({ type: 'packet', packet } satisfies SimToRcf);
-      scope.postMessage({ type: 'packet', packet });
+    if (plant.relay.contact !== lastContact) {
+      lastContact = plant.relay.contact;
+      const type = lastContact === 'NO' ? 'RELAY_CLOSED' : 'RELAY_OPEN';
+      scope.postMessage({ type: 'event', event: { t_s: plant.t_s, type } });
     }
   }
-  for (const event of plant.events.splice(0)) scope.postMessage({ type: 'event', event });
+  flush();
   if (now_ms - lastSnapshot_ms >= 1000 / CONFIG.ui.snapshotHz) postSnapshot(now_ms);
 }
 
 function reset(): void {
-  plant = createPlant(init.config, init.seed, init);
-  firmware = standInFirmware();
+  build();
   debt_s = 0;
   lagging = false;
-  packetSeq = 0;
   raw = [[], [], []];
   postSnapshot(performance.now());
 }
@@ -130,7 +114,9 @@ function reset(): void {
 function connect(port: MessagePort): void {
   wifi = port;
   port.onmessage = (event: MessageEvent<RcfToSim>) => {
-    if (event.data.type === 'verdict') scope.postMessage({ type: 'verdictIn', verdict: event.data.verdict });
+    if (event.data.type !== 'verdict') return;
+    firmware.receiveVerdict(event.data.verdict, plant.t_s);
+    scope.postMessage({ type: 'verdictIn', verdict: event.data.verdict });
   };
 }
 
@@ -174,6 +160,7 @@ function handle(msg: MainToSim): void {
   }
 }
 
+build();
 scope.onmessage = (event) => handle(event.data);
 setInterval(tick, TICK_ms);
 postSnapshot(performance.now());
