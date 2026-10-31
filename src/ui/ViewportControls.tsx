@@ -2,6 +2,7 @@
 import { CONFIG } from '../shared/config.ts';
 import { appStore, useAppStore } from '../store/index.ts';
 import { VIB_EXAGGERATION_RANGE, type ViewToggle } from '../store/slices/ui.ts';
+import { disableSound, enableSound } from './audio.ts';
 import { ToggleButton } from './kit.tsx';
 
 const TOGGLES: { key: ViewToggle; label: string }[] = [
@@ -30,6 +31,7 @@ function SlowedLabel() {
 export function ViewportControls() {
   const toggles = useAppStore((s) => s.ui.toggles);
   const vib = useAppStore((s) => s.ui.vibExaggeration);
+  const sound = useAppStore((s) => s.ui.soundOn);
   const ui = appStore.getState().ui;
   return (
     <>
@@ -44,6 +46,17 @@ export function ViewportControls() {
             onChange={(on) => ui.setToggle(t.key, on)}
           />
         ))}
+        <ToggleButton
+          testId="tgl-sound"
+          label="Sound"
+          on={sound}
+          onChange={(on) => {
+            // The click is the user gesture that lets the AudioContext start (P6.3/P6.4).
+            if (on) enableSound();
+            else disableSound();
+            ui.setSoundOn(on);
+          }}
+        />
         <label className="flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200">
           Vibration ×{vib}
           <input

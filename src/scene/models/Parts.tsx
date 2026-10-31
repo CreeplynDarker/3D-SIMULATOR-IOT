@@ -54,28 +54,28 @@ export function Parts({ parts }: { parts: readonly Part[] }) {
   const groups = useMemo(() => {
     const byGroup = new Map<string, Part[]>();
     for (const p of parts) byGroup.set(p.group ?? '', [...(byGroup.get(p.group ?? '') ?? []), p]);
-    return [...byGroup].map(([name, list]) => ({ name, meshes: buildMeshes(list) }));
+    return [...byGroup].map(([name, list]) => ({ name, meshes: buildMeshes(list), leds: list.filter((p) => p.mat === 'led') })); // prettier-ignore
   }, [parts]);
 
   useEffect(() => () => groups.forEach((g) => g.meshes.forEach((m) => m.geometry.dispose())), [groups]);
-  const leds = useMemo(() => parts.filter((p) => p.mat === 'led'), [parts]);
 
   return (
     <group scale={0.001}>
-      {groups.map(({ name, meshes }) => (
+      {groups.map(({ name, meshes, leds }) => (
         <group key={name || 'static'} name={name || 'static'}>
           {meshes.map((m) => (
             <mesh key={m.key} geometry={m.geometry} material={m.material} castShadow receiveShadow />
           ))}
+          {/* LED halos sit in their part's group, so hiding the group turns the LED off (P6.3) */}
+          {leds.map((p, i) => (
+            <sprite
+              key={`halo:${i}`}
+              position={[...p.pos]}
+              scale={[HALO_mm, HALO_mm, 1]}
+              material={getGlowMaterial(p.color)}
+            />
+          ))}
         </group>
-      ))}
-      {leds.map((p, i) => (
-        <sprite
-          key={`halo:${i}`}
-          position={[...p.pos]}
-          scale={[HALO_mm, HALO_mm, 1]}
-          material={getGlowMaterial(p.color)}
-        />
       ))}
     </group>
   );

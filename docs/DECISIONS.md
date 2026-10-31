@@ -445,3 +445,17 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   hover tooltip (`scene-tooltip`, drei `Html`) shows the part's name and its first live pin line from M9's data.
   Pulses, tags and the tooltip cast no shadows. Affects `firmware/firmware.ts`, `sim/plant.ts`,
   `shared/messages.ts`, `scene/wires/*`, `scene/Labels.tsx`, `scene/Bench.tsx`, `scene/anim.ts`.
+- **D-059 · 2026-10-31 · Relay animation and sound (P6.3).** (a) Spec conflict: P6.3 says "W03 dims when open", but
+  §13.3 makes W03 (ACS712 IP− → COM2) a V12 wire, always energised, and the switched wire is W04 (NO2 → fan red,
+  V12_SW). §13.3's energised rules win (as the team's P6 notes also say W04): W04 dims while the contact is NC (D-058).
+  (b) A gold arm on the CH2 terminal block pivots above COM2 and points at NC2 or NO2, following the plant's
+  `contact` directly. The 10 ms pull-in is far too short to animate. The arm casts no shadow. (c) The CH2 LED is
+  lit while the coil is energised; the CH1 LED is always off (CH1 dead, IN1 unconnected); the power LED stays on.
+  To allow this, `Parts` now puts each LED's halo inside its part's group. (d) Sound: `tgl-sound` (extra test ID)
+  turns on a Web Audio context from that click, which is the user gesture browsers require; it is off by default.
+  Each contact change then plays a 12 ms square-wave click (`ui/audio.ts`, no audio files). With sound off the
+  change is still counted (`__scene.anim().relay.changes`) but makes no sound. (e) Measured in the e2e test, S2 at
+  4×: CRITICAL 65.013 s → RELAY_OPEN 65.018 s → W04 dimmed 65.375 s → rpm < 100 at 75.214 s. W04's time is the
+  first rendered frame that showed the open contact, so it includes this GPU-less container's ~4 fps (about 0.8 s
+  of sim time per frame at 4×). Affects `scene/models/Relay.tsx`, `scene/models/Parts.tsx`, `ui/audio.ts`,
+  `ui/ViewportControls.tsx`, `store/slices/ui.ts`.
