@@ -10,6 +10,8 @@ import { inspectStore, type SimDebug, simDebug, type StoreView } from './ui/debu
 import { Charts } from './ui/Charts.tsx';
 import { Console } from './ui/Console.tsx';
 import { packetLine, verdictLine } from './ui/consoleFormat.ts';
+import { runPatch } from './ui/testlog.ts';
+import { TestLog } from './ui/TestLog.tsx';
 import { FaultPanel } from './ui/FaultPanel.tsx';
 import { Inspector } from './ui/Inspector.tsx';
 import { OperatorPanel, ResetDialog } from './ui/OperatorPanel.tsx';
@@ -104,8 +106,11 @@ function routeToStore(workers: Workers): void {
     } else if (msg.type === 'raw') {
       const n = msg.ax.length;
       if (n > 0) s.sim.addRaw(n, [msg.ax[n - 1] ?? 0, msg.ay[n - 1] ?? 0, msg.az[n - 1] ?? 0]);
-    } else if (msg.type === 'event') s.series.pushEvent(msg.event);
-    else if (msg.type === 'log') s.console.append({ kind: 'log', text: msg.line });
+    } else if (msg.type === 'event') {
+      s.series.pushEvent(msg.event);
+      const run = s.testlog.runs.find((r) => r.id === s.testlog.active);
+      if (run) s.testlog.updateRun(run.id, runPatch(run, msg.event));
+    } else if (msg.type === 'log') s.console.append({ kind: 'log', text: msg.line });
     else if (msg.type === 'scenario') {
       s.sim.setScenario({ id: msg.id, done: msg.done });
       if (msg.done) s.sim.setPlaying(false);
@@ -244,7 +249,7 @@ export function App() {
         charts: <Charts />,
         console: <Console />,
         code: <Pending name="M8 code panel (P6.5)" />,
-        testlog: <Pending name="M10 test log" />,
+        testlog: <TestLog />,
       }}
       overlays={<ResetDialog />}
     />

@@ -34,6 +34,7 @@ export function inspectStore(s: AppState) {
       lines: s.console.lines.size,
     },
     raw: { ...s.sim.raw },
+    testlog: { active: s.testlog.active, runs: s.testlog.runs.map((r) => ({ ...r })) },
     model: { status: s.model.status, progress: s.model.progress, threshold: s.model.threshold },
   };
 }

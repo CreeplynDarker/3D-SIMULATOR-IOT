@@ -102,7 +102,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · ui/Console.tsx + consoleFormat.ts: ↑/↓/→/log lines in the §8.2 formats, filters, pause, copy, expand JSON, CSV (packet fields + verdict by seq) and JSON exports, raw MPU stream; e2e CSV rows = console packets · no tuning
 - [x] P5.8 M9 inspector
   2026-10-31 · ui/Inspector.tsx + inspectorData.ts: name, photo crop, specs, live pin lines (ACS712 OUT … → GPIO34 … counts), wires with colours; unit + e2e · no tuning
-- [ ] P5.9 M10 test log
+- [x] P5.9 M10 test log
+  2026-10-31 · ui/TestLog.tsx + testlog.ts: runs with condition, start, duration, alerted, first alert, CRITICAL → relay ms, operator reset, notes; CSV export; worker posts each tick's events in time order · no tuning
 - [ ] P5.10 M12 legend
 - [ ] P5.G Phase gate (deps: P5.1–P5.10)
 

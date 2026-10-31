@@ -41,6 +41,7 @@ let wifi: MessagePort | null = null;
 let rawOn = false;
 let raw: number[][] = [[], [], []];
 let script: ScriptRun | null = null;
+let relayEvents: SimEvent[] = [];
 
 /** Uplink: a packet that survived the link goes to the RCF worker, and a copy to main for the console and charts. */
 function uplink(packet: Packet): void {
@@ -83,11 +84,11 @@ function postSnapshot(now_ms: number): void {
 
 /** Forwards plant and firmware events (a running script sees them first) and the firmware's log lines. */
 function flush(): void {
-  for (const event of plant.events.splice(0)) scope.postMessage({ type: 'event', event });
-  for (const event of firmware.drainEvents()) {
-    if (script) scriptEvent(script, plant, event);
-    scope.postMessage({ type: 'event', event });
-  }
+  const fw = firmware.drainEvents();
+  if (script) for (const event of fw) scriptEvent(script, plant, event);
+  // One tick's plant, firmware and relay events, in sim-time order (as the harness records them; D-052).
+  const events = [...plant.events.splice(0), ...fw, ...relayEvents.splice(0)].sort((a, b) => a.t_s - b.t_s);
+  for (const event of events) scope.postMessage({ type: 'event', event });
   for (const line of firmware.drainLogs()) scope.postMessage({ type: 'log', line });
 }
 
@@ -106,7 +107,7 @@ function tick(): void {
     if (plant.relay.contact !== lastContact) {
       lastContact = plant.relay.contact;
       const type = lastContact === 'NO' ? 'RELAY_CLOSED' : 'RELAY_OPEN';
-      scope.postMessage({ type: 'event', event: { t_s: plant.t_s, type } satisfies SimEvent });
+      relayEvents.push({ t_s: plant.t_s, type });
     }
     if (script && scriptDone(script, plant.t_s)) {
       endScript();
@@ -139,6 +140,7 @@ function playScenario(id: string): void {
 
 function reset(): void {
   script = null;
+  relayEvents = [];
   build();
   debt_s = 0;
   lagging = false;

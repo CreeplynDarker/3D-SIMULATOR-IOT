@@ -10,6 +10,8 @@ export interface TestRun {
   alerted: boolean;
   firstAlert_s: number | null;
   criticalToRelay_ms: number | null;
+  /** Sim time of the run's first CRITICAL (s), kept to time the relay. */
+  critical_s: number | null;
   resetByOperator: boolean;
   notes: string;
 }
@@ -19,6 +21,8 @@ export type TestRunPatch = Partial<Omit<TestRun, 'id'>>;
 export interface TestlogSlice {
   testlog: {
     runs: TestRun[];
+    /** The open run's id, or null. */
+    active: number | null;
     /** Opens a run at sim time `start_s`; returns its id. */
     startRun(scenario: string, start_s: number): number;
     updateRun(id: number, patch: TestRunPatch): void;
@@ -38,6 +42,7 @@ export const createTestlogSlice: StateCreator<AppState, [], [], TestlogSlice> = 
   return {
     testlog: {
       runs: [],
+      active: null,
       startRun: (scenario, start_s) => {
         const run: TestRun = {
           id: nextId++,
@@ -47,18 +52,20 @@ export const createTestlogSlice: StateCreator<AppState, [], [], TestlogSlice> = 
           alerted: false,
           firstAlert_s: null,
           criticalToRelay_ms: null,
+          critical_s: null,
           resetByOperator: false,
           notes: '',
         };
-        set((s) => ({ testlog: { ...s.testlog, runs: [...s.testlog.runs, run] } }));
+        set((s) => ({ testlog: { ...s.testlog, runs: [...s.testlog.runs, run], active: run.id } }));
         return run.id;
       },
       updateRun: update,
       stopRun: (id, end_s) => {
         const run = get().testlog.runs.find((r) => r.id === id);
         if (run) update(id, { duration_s: end_s - run.start_s });
+        if (get().testlog.active === id) set((s) => ({ testlog: { ...s.testlog, active: null } }));
       },
-      clear: () => set((s) => ({ testlog: { ...s.testlog, runs: [] } })),
+      clear: () => set((s) => ({ testlog: { ...s.testlog, runs: [], active: null } })),
     },
   };
 };

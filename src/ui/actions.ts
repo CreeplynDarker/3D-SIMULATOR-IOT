@@ -7,6 +7,7 @@ import { scenarioById } from '../shared/scenarios.ts';
 import type { SimConfig } from '../sim/types.ts';
 import type { OperatorParams } from '../store/slices/ui.ts';
 import { canReset } from './rules.ts';
+import { conditionText } from './testlog.ts';
 import { appStore } from '../store/index.ts';
 import type { Speed } from '../store/slices/sim.ts';
 
@@ -110,6 +111,22 @@ export const actions = {
   setRawMpu(on: boolean) {
     toSim({ type: 'raw', on });
     appStore.getState().sim.setRawOn(on);
+  },
+  /** Opens an M10 run now, named after the scenario being played or the faults injected. */
+  startRun() {
+    const s = appStore.getState();
+    if (s.testlog.active !== null) return;
+    s.testlog.startRun(conditionText(s.sim.scenario?.id ?? null, s.ui.faultTargets), s.sim.snapshot?.t_s ?? 0);
+  },
+  stopRun() {
+    const s = appStore.getState();
+    if (s.testlog.active !== null) s.testlog.stopRun(s.testlog.active, s.sim.snapshot?.t_s ?? 0);
+  },
+  /** Notes for the open run, or the last one if none is open. */
+  setRunNotes(notes: string) {
+    const t = appStore.getState().testlog;
+    const id = t.active ?? t.runs.at(-1)?.id;
+    if (id !== undefined) t.updateRun(id, { notes });
   },
   toggleTheme() {
     const ui = appStore.getState().ui;

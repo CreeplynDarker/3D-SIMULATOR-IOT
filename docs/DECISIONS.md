@@ -372,3 +372,13 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   breadboard, every `bb.*` wire. Each wire shows its colour swatch and net. The adapter and jack show the sag fault
   and the fan-side voltage instead of computing a supply voltage, because the UI computes nothing physical. Extra test
   ID: `inspector-pin`. The debug API gains `select(id)`. Affects `ui/Inspector.tsx`, `ui/inspectorData.ts`.
+- **D-052 · 2026-10-31 · Test log (P5.9).** `btn-run-start` opens a run at the current sim time, named after the
+  scenario being played or, otherwise, `manual:` and the injected faults. While it is open, each event updates it
+  through `ui/testlog.ts` (`runPatch`, pure). The first ALERT sets alerted and the time to first alert, counted from
+  the run's start. The first CRITICAL and the next RELAY_OPEN give the delay in ms. A RESET counts as reset by
+  operator (the firmware emits RESET only for an accepted operator RESET). `btn-run-stop` sets the duration.
+  `inp-run-notes` edits the open run, or the last one. `btn-testlog-export` saves the table as CSV. The test-log
+  slice gains `active` and each run a `critical_s`. To keep CRITICAL ahead of its RELAY_OPEN in main, the sim worker
+  now posts each tick's plant, firmware and relay events together, sorted by sim time; before this, relay events
+  went out while the tick was still stepping. Extra test ID: `testlog-row`. Affects `ui/TestLog.tsx`,
+  `ui/testlog.ts`, `store/slices/testlog.ts`, `sim/worker.ts`, `App.tsx`.
