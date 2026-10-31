@@ -17,6 +17,8 @@ export interface SimSlice {
     /** Raw 1 kHz MPU6050 stream (`tgl-raw-mpu`): samples received and the newest x, y, z (g). */
     raw: { on: boolean; samples: number; last: [number, number, number] | null };
     setSnapshot(snapshot: Snapshot): void;
+    /** Forgets the last snapshot (a sim reset is under way; the worker sends a fresh one). */
+    clearSnapshot(): void;
     setPlaying(playing: boolean): void;
     setSpeed(speed: Speed): void;
     setScenario(scenario: { id: string; done: boolean } | null): void;
@@ -37,6 +39,7 @@ export const createSimSlice: StateCreator<AppState, [], [], SimSlice> = (set) =>
       scenario: null,
       raw: { on: false, samples: 0, last: null },
       setSnapshot: (snapshot) => patch({ snapshot, lagging: snapshot.lagging }),
+      clearSnapshot: () => patch({ snapshot: null }),
       setPlaying: (playing) => patch({ playing }),
       setSpeed: (speed) => patch({ speed }),
       setScenario: (scenario) => patch({ scenario }),

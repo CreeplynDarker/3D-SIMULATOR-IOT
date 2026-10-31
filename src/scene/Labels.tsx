@@ -18,7 +18,9 @@ const LABELS: { id: ComponentId; text: string }[] = [
   { id: 'laptop', text: 'Laptop (RCF)' },
 ];
 const CANVAS = { w: 256, h: 64, font: '600 30px system-ui, sans-serif' };
-const SIZE_m = { w: 0.048, h: 0.012, gap: 0.01 };
+// Tags keep a constant size on screen (sizeAttenuation off), so a close camera doesn't blow them up: the scale is a
+// share of the viewport height. The gap above each part is in metres.
+const SIZE = { w: 0.1, h: 0.025, gap_m: 0.01 };
 
 /** A rounded dark tag with white text. */
 function tagMaterial(text: string): SpriteMaterial {
@@ -39,7 +41,7 @@ function tagMaterial(text: string): SpriteMaterial {
   }
   const map = new CanvasTexture(canvas);
   map.colorSpace = SRGBColorSpace;
-  return new SpriteMaterial({ map, depthTest: false, transparent: true });
+  return new SpriteMaterial({ map, depthTest: false, transparent: true, sizeAttenuation: false });
 }
 
 /** Name tags, shown while `ui.toggles.labels` is on. */
@@ -49,7 +51,7 @@ export function Labels() {
     () =>
       LABELS.map(({ id, text }) => {
         const c = componentById(id);
-        const top = c.position_m[1] + c.size_mm[1] / 2000 + SIZE_m.gap;
+        const top = c.position_m[1] + c.size_mm[1] / 2000 + SIZE.gap_m;
         return { id, material: tagMaterial(text), position: [c.position_m[0], top, c.position_m[2]] as const };
       }),
     [],
@@ -63,7 +65,7 @@ export function Labels() {
           key={t.id}
           position={[...t.position]}
           material={t.material}
-          scale={[SIZE_m.w, SIZE_m.h, 1]}
+          scale={[SIZE.w, SIZE.h, 1]}
           renderOrder={10}
         />
       ))}

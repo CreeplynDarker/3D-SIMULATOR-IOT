@@ -3,6 +3,7 @@
 import type { FaultKey, MainToRcf, MainToSim } from '../shared/messages.ts';
 import { type Command, PROTOCOL_VERSION } from '../shared/protocol.ts';
 import { CONFIG } from '../shared/config.ts';
+import { guidedFor } from '../shared/guided.ts';
 import { scenarioById } from '../shared/scenarios.ts';
 import type { SimConfig } from '../sim/types.ts';
 import type { OperatorParams } from '../store/slices/ui.ts';
@@ -61,6 +62,8 @@ export const actions = {
     s.series.clear();
     s.console.clear(); // seq restarts at 0, so a new run starts a new console (D-050)
     s.model.clearVerdicts();
+    s.sim.clearSnapshot(); // until the worker's fresh snapshot arrives, nothing reads the old run's time
+
     s.sim.setScenario(null);
     s.ui.resetFaultTargets();
   },
@@ -75,14 +78,38 @@ export const actions = {
     toSim({ type: 'clearFaults' });
     appStore.getState().ui.resetFaultTargets();
   },
-  /** Plays a §12 script from a fresh sim at t = 0, at its own speed if it has one (S9). */
+  /**
+   * Plays a §12 script from a fresh sim at t = 0. A guided scenario (M11) opens its card and runs at its guided
+   * speed; otherwise the script's own speed applies if it has one (S9).
+   */
   playScenario(id: string) {
     const scenario = scenarioById(id);
+    const guided = guidedFor(id);
     actions.resetSim();
     toSim({ type: 'scenario', id });
-    appStore.getState().sim.setScenario({ id, done: false });
-    if (scenario.speed !== undefined) actions.setSpeed(scenario.speed as Speed);
+    const s = appStore.getState();
+    s.sim.setScenario({ id, done: false });
+    s.ui.setGuided(guided ? { id, view: 0, reached: 0 } : null);
+    s.ui.setGuidedChart(null);
+    const speed = guided?.speed ?? scenario.speed;
+    if (speed !== undefined) actions.setSpeed(speed as Speed);
     actions.play();
+  },
+  /** Shows guided step `i` (0-based): its camera preset, the charts tab and the strip to watch. */
+  showGuidedStep(i: number) {
+    const ui = appStore.getState().ui;
+    const step = ui.guided && guidedFor(ui.guided.id)?.steps[i];
+    if (!ui.guided || !step) return;
+    ui.setGuided({ ...ui.guided, view: i });
+    ui.setCamera(step.camera);
+    ui.setGuidedChart(step.chart);
+    ui.setDockTab('charts');
+  },
+  /** Closes the M11 card; the scenario keeps running. */
+  exitGuided() {
+    const ui = appStore.getState().ui;
+    ui.setGuided(null);
+    ui.setGuidedChart(null);
   },
   /** Alert threshold on the normalised score (unitless) for the RCF. */
   setThreshold(x: number) {

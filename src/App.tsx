@@ -17,6 +17,7 @@ import { FaultPanel } from './ui/FaultPanel.tsx';
 import { Inspector } from './ui/Inspector.tsx';
 import { Legend, useShortcuts } from './ui/Legend.tsx';
 import { OperatorPanel, ResetDialog } from './ui/OperatorPanel.tsx';
+import { Scenarios } from './ui/Scenarios.tsx';
 import { StatusPanel } from './ui/StatusPanel.tsx';
 import { TopBar } from './ui/TopBar.tsx';
 import { AppShell } from './ui/layout/AppShell.tsx';
@@ -235,6 +236,7 @@ export function App() {
         <>
           <BenchViewport />
           <ViewportControls />
+          <Scenarios />
         </>
       }
       right={

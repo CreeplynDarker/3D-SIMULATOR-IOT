@@ -66,6 +66,10 @@ export interface UiSlice {
     soundOn: boolean;
     /** M8: which tab and file are shown, and whether the view follows the firmware's active `@map` line. */
     code: { tab: 'firmware' | 'schema' | 'rcf'; file: string; follow: boolean };
+    /** M11: the guided scenario on screen, the step shown and the furthest step reached; null when none. */
+    guided: { id: string; view: number; reached: number } | null;
+    /** The M6 strip a guided step asks the viewer to watch (outlined), or null. */
+    guidedChart: string | null;
     select(id: string | null): void;
     setCamera(camera: CameraPreset): void;
     setToggle(toggle: ViewToggle, on: boolean): void;
@@ -84,6 +88,8 @@ export interface UiSlice {
     setChartFrozen(frozen: boolean): void;
     setSoundOn(on: boolean): void;
     setCode(p: Partial<UiSlice['ui']['code']>): void;
+    setGuided(guided: UiSlice['ui']['guided']): void;
+    setGuidedChart(id: string | null): void;
   };
 }
 
@@ -115,6 +121,8 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       chartFrozen: false,
       soundOn: false,
       code: { tab: 'firmware', file: 'state_machine.cpp', follow: true },
+      guided: null,
+      guidedChart: null,
       select: (selectedId) => patch({ selectedId }),
       setCamera: (camera) => patch({ camera }),
       setToggle: (toggle, on) => set((s) => ({ ui: { ...s.ui, toggles: { ...s.ui.toggles, [toggle]: on } } })),
@@ -132,6 +140,8 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       },
       setChartFrozen: (chartFrozen) => patch({ chartFrozen }),
       setSoundOn: (soundOn) => patch({ soundOn }),
+      setGuided: (guided) => patch({ guided }),
+      setGuidedChart: (guidedChart) => patch({ guidedChart }),
       setCode: (p) => set((s) => ({ ui: { ...s.ui, code: { ...s.ui.code, ...p } } })),
       setRamp: ({ on, ramp_s }) => patch({ ramp: { on, ramp_s: Math.max(0, ramp_s) } }),
       setDockHeight: (px) => patch({ dockHeight_px: Math.min(DOCK_HEIGHT_px.max, Math.max(DOCK_HEIGHT_px.min, px)) }),

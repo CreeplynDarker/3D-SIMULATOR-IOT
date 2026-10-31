@@ -480,3 +480,19 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   stays where the operator put it. At boot nothing has run yet, so no line is active. The panel re-renders only
   when `activeMap`, the tab or the file changes. Extra test IDs: `code-file-<name>`. Affects `ui/CodePanel.tsx`,
   `ui/highlight.ts`, `store/slices/ui.ts`, `App.tsx`.
+- **D-062 · 2026-10-31 · Guided scenarios (P6.6).** (a) `src/shared/guided.ts` holds the M11 text as data for every
+  `guided: true` scenario (S1, S2, S4, S5, S6, S9), so the team can edit it without touching a component. Each step
+  has a trigger (a sim time, the first event of a type with an optional offset, or the end of the run), a camera
+  preset, the M6 strip to watch, and three texts: what to watch, what was injected, and what the state means.
+  `reachedStep` (pure) returns the furthest step whose trigger has fired, so a step whose event never happens
+  (e.g. a WARNING skipped by a local trip) can't stall the card. (b) Each run has its own speed, chosen to stay
+  under about 90 s of wall time: S1, S6 and S9 at 10× (60, 42, 60 s), S2, S4 and S5 at 4× (30, 35, 35 s). Measured
+  here: 32.7–62.9 s. (c) `sel-scenario` on a guided scenario opens `scenario-card` over the viewport's bottom-left.
+  A store subscription (no re-render per snapshot) moves the card to each newly reached step and applies its camera
+  preset, the charts tab and a ring on the strip to watch (`data-watched`). `btn-scn-back` and `btn-scn-next`
+  revisit steps with their camera and chart; `btn-scn-exit` closes the card and the run continues. (d) A sim reset
+  now clears the stored snapshot until the worker sends its fresh one, so no trigger fires on the previous run's
+  sim time. (e) Name tags (P6.2) keep a constant size on screen (`sizeAttenuation: false`), because at the relay
+  and fan presets world-sized tags covered the parts. Screenshots of each S2 step (sim paused for each shot) are in
+  `docs/screenshots/p6/`. Affects `shared/guided.ts`, `ui/Scenarios.tsx`, `ui/actions.ts`, `ui/Charts.tsx`,
+  `store/slices/{ui,sim}.ts`, `scene/Labels.tsx`, `App.tsx`.

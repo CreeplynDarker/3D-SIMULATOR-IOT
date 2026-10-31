@@ -121,7 +121,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · hub tint from tMotor_C with tgl-heat (blue 25 °C → red 70 °C); Web Audio hum at blade-pass pitch, gain from a_RMS, muted by default, silent when paused · no tuning
 - [x] P6.5 M8 code panel
   2026-10-31 · ui/CodePanel.tsx + highlight.ts: C++/protocol/RCF sources via ?raw, own tokenizer, active @map line (data-active) with follow; e2e checks the active marker in CALIBRATING, STARTING, NORMAL, WARNING, CRITICAL and OFF · no tuning
-- [ ] P6.6 M11 guided scenarios
+- [x] P6.6 M11 guided scenarios
+  2026-10-31 · shared/guided.ts (S1, S2, S4, S5, S6, S9: trigger, camera, chart, watch/injected/state per step) + ui/Scenarios.tsx card with auto-advance, back/next/exit; every guided run reaches its last step with scenarioDone in 33–63 s wall · no tuning
 
 ## P7 — Verification and delivery (deps: P6)
 
@@ -147,4 +148,7 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - P3.7 · the C++ in `src/firmware/reference-cpp/` reads as plausible ESP32 Arduino code
 - P5.G · a teammate runs a fault and a reset without instructions
 - P5.1 · the layout at 1280 × 720 and 1920 × 1080 reads well (screenshots in `docs/screenshots/p5/`); left column scrolls at 720 px
+- P6 · the animations make the cause and the effect obvious to someone who hasn't read the report (S2 step screenshots in `docs/screenshots/p6/`)
+- P6 · at least 50 fps at 1920 × 1080 with every view toggle on, on the team laptop (this container renders WebGL in software: 2–5 fps before and after P6)
+- P6.3/P6.4 · the relay click and the fan hum sound right (Sound toggle; muted by default)
 - P1.6 · at least 50 fps at 1920 × 1080 on an integrated-graphics laptop (measured 60 fps vsync-locked on Intel Iris Xe in headless Chromium; confirm in a normal browser window on the team laptop)

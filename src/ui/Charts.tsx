@@ -157,6 +157,7 @@ export function Charts() {
   const window_s = useAppStore((s) => s.ui.chartWindow_s);
   const frozen = useAppStore((s) => s.ui.chartFrozen);
   const theme = useAppStore((s) => s.ui.theme);
+  const watched = useAppStore((s) => s.ui.guidedChart);
   const hosts = useRef<Partial<Record<StripId, HTMLDivElement | null>>>({});
   usePlots(hosts, theme);
   const ui = appStore.getState().ui;
@@ -188,7 +189,12 @@ export function Charts() {
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-2 gap-1">
         {STRIPS.map((spec) => (
-          <div key={spec.testId} data-testid={spec.testId} className="flex min-h-0 min-w-0 flex-col">
+          <div
+            key={spec.testId}
+            data-testid={spec.testId}
+            data-watched={watched === spec.testId ? 'true' : undefined}
+            className={`flex min-h-0 min-w-0 flex-col rounded ${watched === spec.testId ? 'ring-2 ring-amber-400' : ''}`}
+          >
             <span className="px-1 text-[10px] text-slate-500 dark:text-slate-400">{spec.title}</span>
             <div ref={(el) => void (hosts.current[spec.testId] = el)} className="min-h-0 flex-1 overflow-hidden" />
           </div>
