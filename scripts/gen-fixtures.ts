@@ -4,7 +4,9 @@
 // features use; `python3 -I scripts/features_reference.py` then fills in the NumPy `reference`.
 // P4.6: rcf_dataset.json — 120 healthy training windows and 60 test windows (healthy and the four faults) from the
 // harness; `python3 -I scripts/rrcf_reference.py` then fills in the Python rrcf scores.
-import { mkdirSync, writeFileSync } from 'node:fs';
+// P8.3: session_s2.jsonl — the S2 run (default model) as the bridge logs it: packets up, verdicts down, one line per
+// message with the bridge clock in t_ms. `pnpm gen:fixtures -- --only=session` writes just this one.
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { addTempReading, createTempTracker } from '../src/firmware/features.ts';
 import { runScenario } from '../src/harness/runScenario.ts';
@@ -12,11 +14,13 @@ import { configFeatures, featureVector } from '../src/rcf/model.ts';
 import { createSampler, samplerTick } from '../src/firmware/sampler.ts';
 import { CONFIG } from '../src/shared/config.ts';
 import type { FaultKey } from '../src/shared/messages.ts';
-import type { Scenario } from '../src/shared/scenarios.ts';
+import { type Scenario, scenarioById } from '../src/shared/scenarios.ts';
 import { createPlant, runPlant, schedule } from '../src/sim/plant.ts';
 import { GPIO_HIGH, GPIO_LOW } from '../src/sim/types.ts';
 
-const outDir = resolve(process.argv[2] ?? join(import.meta.dirname, '../tests/fixtures'));
+const args = process.argv.slice(2);
+const only = args.find((a) => a.startsWith('--only='))?.slice('--only='.length) ?? null;
+const outDir = resolve(args.find((a) => !a.startsWith('--')) ?? join(import.meta.dirname, '../tests/fixtures'));
 const CAPTURE_WINDOW = 20; // steady state: well past spin-up and with ≥ 10 readings for dT/dt
 
 const CASES: { name: string; key: FaultKey | null; value: number | boolean }[] = [
@@ -133,7 +137,22 @@ function rcfDataset() {
   };
 }
 
+/** S2 with the default model as bridge JSON lines: each packet at its window end, its verdict 1 ms later. */
+function sessionS2(): string {
+  const model = JSON.parse(readFileSync(join(import.meta.dirname, '../public/models/default-model.json'), 'utf8'));
+  const { packets, verdicts } = runScenario(scenarioById('S2'), { seed: CONFIG.seed, config: CONFIG, model });
+  const lines = [
+    ...packets.map((p) => ({ t_ms: p.ts_ms, dir: 'up', msg: p })),
+    ...verdicts.map((v) => ({ t_ms: Math.round(v.sent_s * 1000) + 1, dir: 'down', msg: v.verdict })),
+  ].sort((a, b) => a.t_ms - b.t_ms);
+  return lines.map((l) => JSON.stringify(l)).join('\n') + '\n';
+}
+
 mkdirSync(outDir, { recursive: true });
+const sessionFile = join(outDir, 'session_s2.jsonl');
+writeFileSync(sessionFile, sessionS2());
+process.stdout.write(`wrote ${sessionFile}\n`);
+if (only === 'session') process.exit(0);
 for (const c of CASES) {
   const file = join(outDir, `features_${c.name}.json`);
   writeFileSync(file, `${JSON.stringify(capture(c))}\n`);

@@ -33,6 +33,7 @@ export function inspectStore(s: AppState) {
       paused: s.console.paused,
       filters: { ...s.console.filters },
       packets: s.console.lines.toArray().filter((e) => e.kind === 'packet').length,
+      verdicts: s.console.lines.toArray().filter((e) => e.kind === 'verdict').length,
       lines: s.console.lines.size,
     },
     raw: { ...s.sim.raw },
@@ -50,6 +51,8 @@ export interface SimDebug {
   readonly t_s: number;
   readonly scenarioDone: boolean;
   readonly lastEvent: SimEvent | null;
+  /** Tach rpm of the newest packet: what the firmware's RESET guard (rpm < resetMaxRpm) checks. */
+  readonly packetRpm: number | null;
 }
 
 /** Builds `window.__sim` over the store; every read is live. */
@@ -69,6 +72,9 @@ export function simDebug(get: () => AppState): SimDebug {
     },
     get lastEvent() {
       return get().series.events.last() ?? null;
+    },
+    get packetRpm() {
+      return get().series.windows.last()?.rpm ?? null;
     },
   };
 }

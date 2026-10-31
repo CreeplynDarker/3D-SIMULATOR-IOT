@@ -6,6 +6,7 @@ async function open(page: Page, play = true) {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('./?debug=1');
   await page.waitForFunction(() => window.__sim !== undefined && window.__pdm?.modelStatus().status === 'READY');
+  await page.evaluate(() => window.__pdm?.setRendering(false)); // logic only: no software-WebGL load (D-077)
   await page.getByTestId('sel-speed').selectOption('4');
   if (play) await page.getByTestId('btn-play').click();
 }
@@ -26,7 +27,8 @@ test('M5: every control exists; READY at boot; start only in OFF, reset only in 
   await state(page, 'CRITICAL');
   await expect(page.getByTestId('latched-indicator')).toHaveText('LATCHED');
   await expect(page.getByTestId('btn-reset')).toBeEnabled();
-  await page.waitForFunction(() => (window.__pdm?.snapshot()?.rpm ?? 1e9) < 100, undefined, { timeout: 60_000 });
+  // RESET is accepted below resetMaxRpm as the firmware measures it (the last window's tach), not the plant's rpm
+  await page.waitForFunction(() => (window.__sim?.packetRpm ?? 1e9) < 100, undefined, { timeout: 60_000 });
   await page.getByTestId('btn-reset').click();
   await expect(page.getByTestId('dlg-reset-confirm')).toBeVisible();
   await page.getByTestId('btn-reset-confirm').click();

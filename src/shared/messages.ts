@@ -74,6 +74,8 @@ export interface Snapshot {
     lastDsRead_s: number;
   };
   lagging: boolean;
+  /** Live and replay modes (P8.2): the fields the board doesn't send, shown as "—" (D-074). Absent in the sim. */
+  unknown?: readonly (keyof Snapshot)[];
 }
 
 /**

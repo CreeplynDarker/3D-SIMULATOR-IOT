@@ -4,3 +4,7 @@ coverage/
 playwright-report/
 test-results/
 *.log
+bridge-py/.venv/
+bridge-py/sessions/
+__pycache__/
+.pytest_cache/

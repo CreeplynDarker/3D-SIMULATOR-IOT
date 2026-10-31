@@ -8,6 +8,7 @@ test('P6.5: in each state the active line in M8 carries the expected @map id', a
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('./?debug=1');
   await page.waitForFunction(() => window.__pdm?.modelStatus().status === 'READY', undefined, { timeout: 60_000 });
+  await page.evaluate(() => window.__pdm?.setRendering(false)); // logic only: no software-WebGL load (D-077)
   await page.getByTestId('dock-tab-code').click();
   for (const id of ['code-panel', 'tab-code-firmware', 'tab-code-schema', 'tab-code-rcf', 'tgl-follow']) await expect(page.getByTestId(id), id).toBeVisible(); // prettier-ignore
   await expect(active(page)).toHaveCount(0); // OFF at boot: nothing has run yet
@@ -17,7 +18,9 @@ test('P6.5: in each state the active line in M8 carries the expected @map id', a
   await state(page, 'CALIBRATING');
   await expect(active(page)).toHaveAttribute('data-map', 'sm.off.start');
   await expect(page.getByTestId('code-panel')).toHaveAttribute('data-file', 'state_machine.cpp');
-  await expect(active(page)).toContainText('// @map sm.off.start');
+  // The highlighted line's text carries its own marker (read in one go: CALIBRATING may end meanwhile)
+  const line = await active(page).evaluate((el) => ({ map: el.getAttribute('data-map'), text: el.textContent ?? '' }));
+  expect(line.text).toContain(`// @map ${line.map}`);
   await state(page, 'STARTING');
   await expect(active(page)).toHaveAttribute('data-map', 'sm.calib.done');
   await page.getByTestId('sel-speed').selectOption('4');
@@ -30,7 +33,8 @@ test('P6.5: in each state the active line in M8 carries the expected @map id', a
   await page.getByTestId('sel-speed').selectOption('4');
   await state(page, 'CRITICAL');
   await expect(active(page)).toHaveAttribute('data-map', 'sm.warn.trip');
-  await page.waitForFunction(() => (window.__pdm?.snapshot()?.rpm ?? 1e9) < 100, undefined, { timeout: 60_000 });
+  // RESET is accepted below resetMaxRpm as the firmware measures it (the last window's tach), not the plant's rpm
+  await page.waitForFunction(() => (window.__sim?.packetRpm ?? 1e9) < 100, undefined, { timeout: 60_000 });
   await page.getByTestId('btn-reset').click();
   await page.getByTestId('btn-reset-confirm').click();
   await state(page, 'OFF');
@@ -42,6 +46,7 @@ test('P6.5: tabs show the protocol and RCF sources; with follow off the view sta
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('./?debug=1');
   await page.waitForFunction(() => window.__pdm?.modelStatus().status === 'READY', undefined, { timeout: 60_000 });
+  await page.evaluate(() => window.__pdm?.setRendering(false)); // logic only: no software-WebGL load (D-077)
   await page.getByTestId('dock-tab-code').click();
   await page.getByTestId('tab-code-schema').click();
   await expect(page.getByTestId('code-panel')).toHaveAttribute('data-file', 'protocol.ts');

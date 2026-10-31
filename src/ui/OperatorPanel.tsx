@@ -41,18 +41,19 @@ function NumberField(props: {
   );
 }
 
-/** START, E-STOP, RESET and TRAIN with the §8.2 enable rules. */
+/** START, E-STOP, RESET and TRAIN with the §8.2 enable rules; all off in Replay. */
 function Commands() {
   const state = useAppStore((s) => s.sim.snapshot?.state ?? 'OFF');
   const faults = useAppStore((s) => s.sim.snapshot?.faults ?? null);
   const dtdt = useAppStore((s) => (s.series.rev, s.series.windows.last()?.dtdt_C_per_min ?? null));
-  const trainable = faults !== null && canTrain(state, faults, dtdt, CONFIG.rcf.warmDtdtMax_C_per_min);
+  const replay = useAppStore((s) => s.sim.source === 'replay'); // a recording takes no commands (P8.3)
+  const trainable = !replay && faults !== null && canTrain(state, faults, dtdt, CONFIG.rcf.warmDtdtMax_C_per_min);
   return (
     <div className="grid grid-cols-2 gap-1.5 py-1">
       <Button
         testId="btn-start"
         tone="go"
-        disabled={!canStart(state)}
+        disabled={replay || !canStart(state)}
         onClick={() => actions.command('START')}
         title="Start (S)"
       >
@@ -61,7 +62,7 @@ function Commands() {
       <Button
         testId="btn-estop"
         tone="stop"
-        disabled={state === 'OFF'}
+        disabled={replay || state === 'OFF'}
         onClick={() => actions.command('ESTOP')}
         title="Emergency stop (E)"
       >
@@ -70,7 +71,7 @@ function Commands() {
       <Button
         testId="btn-reset"
         tone="warn"
-        disabled={!canReset(state)}
+        disabled={replay || !canReset(state)}
         onClick={actions.requestReset}
         title="Reset the latched trip (R)"
       >
@@ -177,6 +178,22 @@ export function ResetDialog() {
   );
 }
 
+/** P8.2: on the real bench, E-STOP is a message over Wi-Fi, not a safety stop. */
+function EstopNote() {
+  const live = useAppStore((s) => s.sim.source === 'live');
+  if (!live) return null;
+  return (
+    <p
+      data-testid="estop-note"
+      role="note"
+      className="rounded border border-red-500 px-2 py-1 text-xs text-red-600 dark:text-red-400"
+    >
+      E-STOP here is a command sent over Wi-Fi: it is not a safety stop. To stop the fan in an emergency, switch off the
+      12 V supply.
+    </p>
+  );
+}
+
 /** The M5 panel under M4 in the left column. */
 export function OperatorPanel() {
   const status = useAppStore((s) => s.model.status);
@@ -200,6 +217,7 @@ export function OperatorPanel() {
         </span>
       </div>
       <Commands />
+      <EstopNote />
       <Settings />
     </Panel>
   );

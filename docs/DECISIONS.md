@@ -590,3 +590,122 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   distinct steps seen. Its real check, that the card shows and has reached the last step with `scenarioDone`, is
   unchanged. Affects `scene/models/FanMotion.tsx`, `scene/wires/SignalFlow.tsx`, `tests/e2e/workers.spec.ts`,
   `tests/e2e/p6-guided.spec.ts`.
+- **D-070 · 2026-10-31 · ESP32 ↔ bridge transport is UDP; browser ↔ bridge is a WebSocket at `/ui` (team
+  decision).** As in `reference-cpp/main.cpp`: the board sends each packet as one JSON datagram to the laptop's port
+  4211 and listens on port 4210 for verdicts and commands. This replaces the WebSocket `/esp32` in the original P8.1
+  text. The browser talks to the bridge over a WebSocket at `/ui`. PLAN §11 P8 is updated to match.
+  Affects P8.1, P8.2, `bridge-py/`, `src/bridge/`.
+- **D-071 · 2026-10-31 · In live mode, RCF scoring stays in the browser's RCF worker (team decision).** It uses the same
+  TS model and threshold as the simulation. The bridge only relays and validates; it doesn't run Python rrcf (the
+  original P8.1 text had it do so). The verdict a board receives therefore comes from exactly the code the
+  simulator tests. Affects P8.1, P8.2.
+- **D-072 · 2026-10-31 · The bridge serves the built `dist/` at http://localhost:8765, so live mode runs same-origin
+  (team decision).** No CORS and no mixed-content issues: the page and its `/ui` WebSocket share one origin. If Live
+  is chosen on the published Pages site, the app shows a clear message to run the bridge and open
+  http://localhost:8765. Affects P8.1, P8.2.
+- **D-073 · 2026-10-31 · Live bridge and emulated ESP32 (P8.1).** (a) `bridge-py/app.py` (FastAPI 0.115.12,
+  uvicorn 0.34.2, websockets 15.0.1, jsonschema 4.23.0; tests add pytest 8.3.5 and httpx 0.28.1). Direct
+  dependencies are pinned exactly in `requirements.txt` and `requirements-dev.txt`; transitive ones are left to pip,
+  because pinning them all would pick versions newer than D-009's two-week rule. The bridge has a UDP endpoint on
+  4211 for the board; `/ui` (WebSocket) carries `{"type": "packet"}` down and `{"type": "verdict"|"command"}` up. It
+  validates with Draft 2020-12 against `public/schema/*.schema.json` and drops anything invalid, counting it as
+  `invalid_up` or `invalid_down` in `GET /status` and logging it with the reason. It writes a JSON-lines session file
+  (`{"t_ms", "dir", "msg"}`, or `"invalid"` and `"raw"` for drops) in `bridge-py/sessions/`, which is gitignored. It
+  sends verdicts and commands to `--esp32-host:4210`, or, by default, to the address the packets come from, and
+  serves `dist/` at :8765 (a short how-to-build page if it is missing). (b) `bridge-py/fake_esp32.py` speaks the
+  board's UDP protocol. In emulate mode it runs `scripts/esp32-emulator.ts`: the real TS plant and firmware, paced
+  at `--speed`, with test-only `--fault key=value@t_s` injections, linked to Python over stdin/stdout JSON lines. So
+  START, RESET, ESTOP, the verdicts and the link timeout all go through the real state machine. `--replay` re-sends a
+  recorded session's packets. It prints a timestamped run log. (c) The reference C++ `sendPacket` didn't match
+  §10.1: it sent `state` as a number and omitted `relay_ch2`, `warn_reason` and `trip_reason`, so the bridge would
+  have dropped every packet from a board built from it. It now sends the protocol names and all the fields, and a
+  parity test (`tests/unit/firmware/cppPacket.test.ts`) checks every Packet field and the UDP ports. (d) Tests:
+  `bridge-py/tests/test_bridge.py` (10 pytest cases: relaying both ways, five kinds of invalid datagram, invalid
+  browser messages, the session log, learning the board address, serving dist/). `tests/unit/bridge/live.test.ts`
+  runs the bridge, the fake board at 10× with an imbalance at 60 s, and a Node stand-in browser that scores with the
+  real RCF service and default model, over the real UDP and WebSocket links. It runs START → NORMAL → CRITICAL (RCF,
+  65.0 s) → RESET → OFF and runs pytest. Both run only when a Python with the bridge's packages is found
+  (`BRIDGE_PYTHON`, else `python3`), as for P4.6; CI installs none, so there they skip. Affects `bridge-py/`,
+  `scripts/esp32-emulator.ts`, `src/firmware/reference-cpp/main.cpp`, `tests/unit/{bridge,firmware}/`,
+  `.gitignore`.
+- **D-074 · 2026-10-31 · Live mode in the browser (P8.2).** (a) `sel-mode` offers Simulation and Live. Live pauses
+  the sim worker, clears the run (charts, console, verdicts, snapshot), and from then on main ignores sim-worker
+  output. It opens `ws(s)://<page host>/ui` (`src/bridge/wsClient.ts`). Each packet goes through one path
+  (`src/bridge/live.ts`, `createPacketPath`): into the series and the console as sim packets do; events derived
+  from changes between packets (state, relay, link, sensor) go to the chart markers and the test log; and it goes
+  to the browser's RCF worker over its own MessageChannel. Each verdict that comes back goes to the bridge (D-071).
+  Commands from M5 go to the bridge. (b) `liveSnapshot()` maps a packet onto the internal Snapshot: rpm and ω,
+  state, relay CH2 (contact, coil, GPIO26), t_C (probe, DS reading and the heat tint), link and sensor flags, trip
+  reason, traffic counts. It lists in the new optional `Snapshot.unknown` the fields the board doesn't send:
+  θ, fan voltage, instantaneous current, motor temperature, accelerometer sample, ACS712 and ADC values, tach level,
+  `alertRun`, `activeMap`, faults. M3 shows persistence as "—/N", and M9 shows "—" for each of those. (c) Packets
+  come once per window, so in Live and Replay the scene runs on a display time (the last packet's time plus wall time
+  × rate, at most one window ahead; `scene/time.ts`). The blade angle is ω × that time, and jitter, airflow and
+  pulses follow it. The simulation is unchanged, so a paused sim still draws identical frames. (d) M4 is disabled in
+  Live, with a note that the faults are physical on the real bench. Play, speed, sim reset and scenarios are disabled
+  too. M5 shows "E-STOP here is a command sent over Wi-Fi: it is not a safety stop…" (`estop-note`). `live-banner`
+  shows connecting, connected with the packet count, or, when no bridge answers (e.g. on Pages), how to run the
+  bridge and open http://localhost:8765. `mode-label` reads "Live · <status>". (e) e2e: without a bridge (always
+  runs), the banner and the disabled controls; with the bridge and the emulated board (only when Python with the
+  bridge packages is found), the real browser runs START → NORMAL → CRITICAL (RCF, a_rms_g dominant) → RESET → OFF
+  at 4×, scored by the app's own RCF worker. Affects `src/bridge/`, `src/scene/time.ts`, `scene/models/FanMotion.tsx`,
+  `scene/wires/*`, `ui/{TopBar,FaultPanel,OperatorPanel,StatusPanel,LiveBanner}.tsx`, `ui/inspectorData.ts`,
+  `ui/actions.ts`, `store/slices/sim.ts`, `shared/messages.ts`, `App.tsx`.
+
+- **D-075 · 2026-10-31 · Replay (P8.3).** (a) `sel-mode` gains a third option, Replay. Like Live it pauses the sim
+  worker and clears the run; `inp-replay-file` (a file input over the viewport, extra test ID) takes a bridge
+  session (JSON lines; only `dir: "up"` packet lines count) or the M7 JSON export (`{packets: [...]}`). Each entry
+  is checked with the protocol's `Packet` schema; bad ones are skipped and counted, and a file with no packet is
+  refused with a message in `replay-status` (extra test ID; `data-done` when finished). (b) The packets go through
+  the same `createPacketPath` as Live, so the browser's RCF worker scores them again (the recorded verdicts are not
+  reused, so a changed threshold or model shows its effect). A main-thread timer (UI side, not the pure core) advances
+  a replay clock by wall time × the top bar's speed while playing and sends every packet whose `ts_ms` (relative to
+  the first) is due. `btn-play` and `sel-speed` work in Replay (all four speeds, which include the 1×/4×/10× asked
+  for); paused, nothing is fed and the scene's display time stops (D-074 c). At the end it pauses and shows "done".
+  M4 and M5's commands are disabled: a recording can't be commanded. (c) `pnpm gen:fixtures` also writes
+  `tests/fixtures/session_s2.jsonl` (S2 with the default model, as the bridge would log it); `--only=session`
+  writes just that file, so the Python-filled references aren't reset. `fake_esp32.py --replay` reads the same
+  files. (d) The P5 top-bar e2e now expects `sel-mode` enabled (§8.2: "disabled until P8"). Affects `src/bridge/`,
+  `ui/{TopBar,OperatorPanel,ReplayBar}.tsx`, `ui/actions.ts`, `ui/debug.ts` (console verdict count),
+  `store/slices/sim.ts`, `App.tsx`, `scripts/gen-fixtures.ts`.
+
+- **D-076 · 2026-10-31 · Calibration from a healthy recording (P8.4).** (a) Protocol (`CALIBRATION_SCENARIO`,
+  `src/shared/calibration.ts`): fan at rest and cold for 10 s, START, 600 s of running from cold, E-STOP, 30 s more.
+  Every part is fitted where it shows alone, from the packet fields only (§10.1): with the fan at rest, a_RMS² = 3σ²
+  gives `sensors.mpu.noise_g`. With the relay open after the calibration (from one window after the opening),
+  i_RMS is the current noise alone; ACS712 and ADC noise can't be told apart there, so both scale by one factor.
+  The spin-up and coast-down rpm windows are fitted as window averages of first-order curves, with the switching
+  instant searched too: `fan.tauUp_s`, `fan.tauDown_s`. Steady running after the start grace gives
+  `fan.rpmRated` (mean rpm over the §6.1 speed ratio), and i_RMS² less noise² and ripple²/2 gives
+  iIdle + iAero (both scale by one factor). The residual unbalance is scaled until a short healthy sim matches the
+  recorded a_RMS less noise, two iterations; A1 is linear in it. The probe readings while heating from cold are
+  fitted as two first-order lags (plant τ = C_th·R_th searched on a log scale, probe τ from the config; ambient and
+  rise by least squares). That gives `thermal.ambient_C`, then `thermal.rTh0_KperW` = rise / (heatFraction·V·I) ×
+  (1 + airflowCooling) and `thermal.cTh_JperK` = τ / R_th. What a healthy session can't separate is kept and listed
+  (`KEPT_KEYS`): voltages, inrush, ripple, the iIdle:iAero and noise splits, mount mass, blade pass, heatFraction and
+  airflowCooling, and every fault parameter. A recording without the E-STOP tail proposes no `tauDown_s` and no
+  current noise. (b) `pnpm calibrate <session>` reads a bridge session or M7 export (`src/bridge/session.ts`),
+  prints the table (config, proposed, change, basis; ⚠ when outside a §5.2 range) and writes `<session>.config.diff`,
+  a `git apply` diff of `src/shared/config.ts` with values rounded to 3 significant digits (whole rpm). It never
+  writes config.ts. `pnpm calibrate --record out.jsonl --set key=value…` writes a simulated recording to try it.
+  (c) Search ranges and sizes are named constants in `CALIBRATION_FIT` (rule 1). (d) Result on simulated
+  recordings, defaults and 12 shifted values: every key within 2 % (accept: 10 %), and the baseline means (rpm,
+  a_RMS, crest factor, i_RMS, t_C) of a new run with the proposed config within 1 % of the recording's (accept: 10 %).
+  Affects `src/harness/{calibrate,configDiff}.ts`, `src/shared/calibration.ts`, `scripts/calibrate.ts`,
+  `package.json` (script only).
+
+- **D-077 · 2026-10-31 · CI e2e on GitHub's GPU-less runners.** The pull-request e2e job had not passed since it was
+  added (P7.4): the P7 run failed 5 tests and the P8 run 7, all of which pass in this container. They check app
+  logic through the store, not pixels, but on the runner software WebGL kept the main thread busy, so clicks,
+  evaluates and waits ran seconds late (timeouts), and two short windows were missed: CALIBRATING (2 s of wall time
+  at 0.25×) between two assertions in the M8 code spec, and "hold at the start" of S2 in the M11 Back/Next spec,
+  where the card reached step 2 before the pause landed. As in D-068, the specs that don't check rendering stop
+  the 3D loop after load (`__pdm.setRendering(false)`): p5-faults, p5-operator, p5-shell, p5-topbar, p6-code and
+  p6-guided. The M8 spec now reads the active line's marker and text in one call; the M11 spec steps Back to the
+  first step before checking that Back is disabled there. Stopping the render loop exposed one more race: three
+  specs (p5-operator, p5-gate, p6-code) waited for the plant's rpm < 100 before RESET, but the firmware guards
+  RESET with its own tach rpm from the last 1 s window (`sm.reset.ok`, `resetMaxRpm`), so a fast click was refused
+  and the run stayed CRITICAL; slow rendering had hidden it. They now wait on the newest packet's rpm, exposed as
+  the debug-only `window.__sim.packetRpm` (an addition to the §8.2 hook). p5-shell waits for the canvas to mount
+  (`window.__scene`, which its theme test calls) before it stops the loop. No limit or accept item changed; the
+  rendering specs (camera, scene, p6-fan, p6-flow, p6-heat, p6-relay, p7-perf) still render.

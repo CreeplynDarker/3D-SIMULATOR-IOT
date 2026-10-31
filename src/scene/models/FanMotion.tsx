@@ -22,6 +22,7 @@ import { appStore, useAppStore } from '../../store/index.ts';
 import { humFor, setHum } from '../../ui/audio.ts';
 import { airflowPhase, bladeMix, heatColor, jitterAmplitude_mm, jitterOffset_mm } from '../anim.ts';
 import { animDebug } from '../animDebug.ts';
+import { bladeAngle, displayTime } from '../time.ts';
 import { POINT_SIZE_PER_SPRITE } from '../cameras.ts';
 import { getGlowMaterial } from './materials.ts';
 
@@ -80,7 +81,7 @@ function Airflow() {
     p.visible = visible;
     if (!visible) return;
     seeds.forEach(([x, y], k) => {
-      const u = airflowPhase(snap?.t_s ?? 0, k, CONFIG.fan.rpmRated, rpm, AIR.streaks);
+      const u = airflowPhase(displayTime(appStore.getState()), k, CONFIG.fan.rpmRated, rpm, AIR.streaks);
       positions.set([x * MM, y * MM, (AIR.z0_mm + u * (AIR.z1_mm - AIR.z0_mm)) * MM], k * 3);
       // additive blending: a darker colour is a fainter streak
       const fade = Math.sin(Math.PI * u) * Math.min(1, rpm / CONFIG.fan.rpmRated);
@@ -124,7 +125,7 @@ export function FanMotion({ children }: { children: ReactNode }) {
     const mix = bladeMix(snap?.rpm ?? 0, CONFIG.ui.bladeBlurRpm);
     const b = blades.current;
     if (b) {
-      b.group.rotation.z = snap?.theta_rad ?? 0;
+      b.group.rotation.z = bladeAngle(s);
       for (const m of b.mats) m.opacity = 1 - mix;
       b.group.visible = mix < 1;
     }
@@ -132,7 +133,7 @@ export function FanMotion({ children }: { children: ReactNode }) {
     if (disc.current) disc.current.visible = mix > 0;
     const a_rms_g = snap && snap.state !== 'OFF' ? (s.series.windows.last()?.a_rms_g ?? 0) : 0;
     const amp_mm = snap && snap.rpm > 1 ? jitterAmplitude_mm(a_rms_g, s.ui.vibExaggeration, CONFIG.ui) : 0;
-    const [x, y] = jitterOffset_mm(amp_mm, snap?.t_s ?? 0, CONFIG.ui.vibVisual_Hz);
+    const [x, y] = jitterOffset_mm(amp_mm, displayTime(s), CONFIG.ui.vibVisual_Hz);
     outer.current?.position.set(x * MM, y * MM, 0);
     const hubColor = s.ui.toggles.heat && snap ? heatColor(snap.tMotor_C) : '#ffffff';
     if (hub.current && animDebug.fan.hubColor !== hubColor) hub.current.color.set(hubColor);
@@ -140,7 +141,7 @@ export function FanMotion({ children }: { children: ReactNode }) {
     const sound = s.ui.soundOn ? humFor(snap?.rpm ?? 0, a_rms_g, s.sim.playing) : { freq_Hz: 0, gain: 0 };
     if (s.ui.soundOn) setHum(sound.freq_Hz, sound.gain);
     Object.assign(animDebug.sound, { on: s.ui.soundOn, ...sound });
-    Object.assign(animDebug.fan, { bladeAngle_rad: snap?.theta_rad ?? 0, bladeOpacity: 1 - mix, discOpacity: mix, jitterAmp_mm: amp_mm, jitter_mm: [x, y] }); // prettier-ignore
+    Object.assign(animDebug.fan, { bladeAngle_rad: bladeAngle(s), bladeOpacity: 1 - mix, discOpacity: mix, jitterAmp_mm: amp_mm, jitter_mm: [x, y] }); // prettier-ignore
   });
 
   return (
