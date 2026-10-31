@@ -319,3 +319,9 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   `scenarioDone` and `lastEvent` (the newest series event), and `__pdm.events()` returns the series events.
   Affects `sim/script.ts`, `sim/worker.ts`, `harness/runScenario.ts`, `shared/messages.ts`, `ui/TopBar.tsx`,
   `ui/actions.ts`, `scene/Bench.tsx`, `store/slices/{sim,ui}.ts`.
+- **D-047 · 2026-10-31 · Fault panel (P5.4).** The M4 controls keep what the operator asked for in `ui.faultTargets`;
+  each row shows the plant's live value from the snapshot (extra test IDs `val-imbalance|looseness|friction|overheat|sag|loss`
+  and `val-ds-disconnect`). Sliders use the `CONFIG.faults` ranges and send `fault{key, value, ramp_s}` on every
+  change. With `tgl-ramp` on, numeric faults ramp over `inp-ramp-s` seconds of sim time (default 30 s, S4's ramp;
+  negative values clamp to 0). The DS18B20 switch always steps. `btn-clear-faults` and `btn-sim-reset` zero the
+  targets. Affects `ui/FaultPanel.tsx`, `ui/actions.ts`, `store/slices/ui.ts`.

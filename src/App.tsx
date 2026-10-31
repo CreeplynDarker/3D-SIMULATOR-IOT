@@ -7,6 +7,7 @@ import { appStore } from './store/index.ts';
 import type { Speed } from './store/slices/sim.ts';
 import { actions, bindWorkers } from './ui/actions.ts';
 import { inspectStore, type SimDebug, simDebug, type StoreView } from './ui/debug.ts';
+import { FaultPanel } from './ui/FaultPanel.tsx';
 import { StatusPanel } from './ui/StatusPanel.tsx';
 import { TopBar } from './ui/TopBar.tsx';
 import { AppShell } from './ui/layout/AppShell.tsx';
@@ -206,7 +207,12 @@ export function App() {
   return (
     <AppShell
       topBar={<TopBar />}
-      left={<Pending name="M4 faults · M5 operator" />}
+      left={
+        <>
+          <FaultPanel />
+          <Pending name="M5 operator" />
+        </>
+      }
       viewport={
         <>
           <BenchViewport />

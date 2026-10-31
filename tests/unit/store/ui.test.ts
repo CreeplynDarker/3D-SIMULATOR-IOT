@@ -15,3 +15,21 @@ describe('ui slice: layout (P5.1, §8.1)', () => {
     expect(store.getState().ui.dockHeight_px).toBe(480);
   });
 });
+
+describe('ui slice: fault controls (P5.4)', () => {
+  it('holds a target per fault, the ramp switch and the ramp time; reset zeroes the targets', () => {
+    const store = createAppStore();
+    const ui = () => store.getState().ui;
+    expect(ui().faultTargets).toEqual({ imbalance_g: 0, looseness: 0, friction: 0, overheat: 0, supplySag_V: 0, packetLoss: 0, ds18b20Disconnect: false }); // prettier-ignore
+    expect(ui().ramp).toEqual({ on: false, ramp_s: 30 });
+    ui().setFaultTarget('friction', 0.5);
+    ui().setFaultTarget('ds18b20Disconnect', true);
+    ui().setRamp({ on: true, ramp_s: 12 });
+    expect(ui().faultTargets).toMatchObject({ friction: 0.5, ds18b20Disconnect: true });
+    expect(ui().ramp).toEqual({ on: true, ramp_s: 12 });
+    ui().setRamp({ on: true, ramp_s: -3 });
+    expect(ui().ramp.ramp_s).toBe(0);
+    ui().resetFaultTargets();
+    expect(ui().faultTargets).toMatchObject({ friction: 0, ds18b20Disconnect: false });
+  });
+});

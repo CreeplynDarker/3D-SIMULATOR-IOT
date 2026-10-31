@@ -1,6 +1,6 @@
 // Operator actions: the only place UI components send worker messages (AGENTS.md rule 6). Each one posts to a
 // worker and records what the UI must remember in the store; none computes physics, features or scores.
-import type { MainToRcf, MainToSim } from '../shared/messages.ts';
+import type { FaultKey, MainToRcf, MainToSim } from '../shared/messages.ts';
 import { type Command, PROTOCOL_VERSION } from '../shared/protocol.ts';
 import { scenarioById } from '../shared/scenarios.ts';
 import { appStore } from '../store/index.ts';
@@ -44,6 +44,18 @@ export const actions = {
     const s = appStore.getState();
     s.series.clear();
     s.sim.setScenario(null);
+    s.ui.resetFaultTargets();
+  },
+  /** Injects fault `key` (§6.9): numeric faults ramp over `ui.ramp.ramp_s` when the ramp is on. */
+  setFault(key: FaultKey, value: number | boolean) {
+    const ui = appStore.getState().ui;
+    ui.setFaultTarget(key, value);
+    const ramp_s = typeof value === 'number' && ui.ramp.on ? ui.ramp.ramp_s : 0;
+    toSim({ type: 'fault', key, value, ramp_s });
+  },
+  clearFaults() {
+    toSim({ type: 'clearFaults' });
+    appStore.getState().ui.resetFaultTargets();
   },
   /** Plays a §12 script from a fresh sim at t = 0, at its own speed if it has one (S9). */
   playScenario(id: string) {

@@ -92,7 +92,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · ui/TopBar.tsx (sim-clock, fps, mode, play, speed, sim reset, scenario, mode, theme, help); worker scenario{id} via shared sim/script.ts (harness uses it too); window.__sim; e2e plays S2 to scenarioDone · no tuning
 - [x] P5.3 M3 status
   2026-10-31 · ui/StatusPanel.tsx: status-badge (state colours §8.1, data-tone), rcf-gauge (score / threshold + bar), dominant-var, persistence k/N, relay-state, rpm-readout, link/sensor indicators (data-ok), trip-reason; e2e OFF → NORMAL → ESTOP · no tuning
-- [ ] P5.4 M4 faults
+- [x] P5.4 M4 faults
+  2026-10-31 · ui/FaultPanel.tsx: six sliders (CONFIG.faults ranges) with live values, DS18B20 switch, ramp toggle + seconds, clear all; e2e step, ramp and clear · no tuning
 - [ ] P5.5 M5 operator
 - [ ] P5.6 M6 charts
 - [ ] P5.7 M7 console and exports

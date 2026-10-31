@@ -23,6 +23,7 @@ export function inspectStore(s: AppState) {
       theme: s.ui.theme,
       legendOpen: s.ui.legendOpen,
     },
+    faults: { targets: { ...s.ui.faultTargets }, ramp: { ...s.ui.ramp }, live: s.sim.snapshot ? { ...s.sim.snapshot.faults } : null }, // prettier-ignore
     model: { status: s.model.status, progress: s.model.progress, threshold: s.model.threshold },
   };
 }

@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand/vanilla';
+import type { FaultKey, FaultValues } from '../../shared/messages.ts';
 import type { AppState } from '../index.ts';
 
 /** Camera presets `cam-*` in M1 (spec §8.2). */
@@ -15,6 +16,20 @@ export const VIB_EXAGGERATION_RANGE = { min: 1, max: 50, initial: 10 } as const;
 /** Bottom dock height: 280 px, resizable 160–480 px (spec §8.1). */
 export const DOCK_HEIGHT_px = { min: 160, max: 480, initial: 280 } as const;
 
+/** Every fault off (the M4 slider targets at start and after a clear). */
+export const NO_FAULTS: FaultValues = {
+  imbalance_g: 0,
+  looseness: 0,
+  friction: 0,
+  overheat: 0,
+  supplySag_V: 0,
+  packetLoss: 0,
+  ds18b20Disconnect: false,
+};
+
+/** Default `inp-ramp-s` (s): the 30 s ramp of scenario S4 (D-047). */
+export const DEFAULT_RAMP_s = 30;
+
 export interface UiSlice {
   ui: {
     selectedId: string | null;
@@ -28,6 +43,10 @@ export interface UiSlice {
     legendOpen: boolean;
     /** Frames per second drawn by the 3D viewport. */
     fps: number;
+    /** Values the M4 controls last asked for (the live values come in the snapshot). */
+    faultTargets: FaultValues;
+    /** `tgl-ramp` and `inp-ramp-s` (s): numeric faults move over `ramp_s` when on. */
+    ramp: { on: boolean; ramp_s: number };
     select(id: string | null): void;
     setCamera(camera: CameraPreset): void;
     setToggle(toggle: ViewToggle, on: boolean): void;
@@ -37,6 +56,9 @@ export interface UiSlice {
     setDockHeight(px: number): void;
     setLegendOpen(open: boolean): void;
     setFps(fps: number): void;
+    setFaultTarget(key: FaultKey, value: number | boolean): void;
+    resetFaultTargets(): void;
+    setRamp(ramp: { on: boolean; ramp_s: number }): void;
   };
 }
 
@@ -55,6 +77,8 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       dockHeight_px: DOCK_HEIGHT_px.initial,
       legendOpen: false,
       fps: 0,
+      faultTargets: { ...NO_FAULTS },
+      ramp: { on: false, ramp_s: DEFAULT_RAMP_s },
       select: (selectedId) => patch({ selectedId }),
       setCamera: (camera) => patch({ camera }),
       setToggle: (toggle, on) => set((s) => ({ ui: { ...s.ui, toggles: { ...s.ui.toggles, [toggle]: on } } })),
@@ -63,6 +87,9 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       setTheme: (theme) => patch({ theme }),
       setLegendOpen: (legendOpen) => patch({ legendOpen }),
       setFps: (fps) => patch({ fps }),
+      setFaultTarget: (key, value) => set((s) => ({ ui: { ...s.ui, faultTargets: { ...s.ui.faultTargets, [key]: value } } })), // prettier-ignore
+      resetFaultTargets: () => patch({ faultTargets: { ...NO_FAULTS } }),
+      setRamp: ({ on, ramp_s }) => patch({ ramp: { on, ramp_s: Math.max(0, ramp_s) } }),
       setDockHeight: (px) => patch({ dockHeight_px: Math.min(DOCK_HEIGHT_px.max, Math.max(DOCK_HEIGHT_px.min, px)) }),
     },
   };
