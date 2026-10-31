@@ -7,6 +7,7 @@ import { appStore } from './store/index.ts';
 import type { Speed } from './store/slices/sim.ts';
 import { actions, bindWorkers } from './ui/actions.ts';
 import { inspectStore, type SimDebug, simDebug, type StoreView } from './ui/debug.ts';
+import { StatusPanel } from './ui/StatusPanel.tsx';
 import { TopBar } from './ui/TopBar.tsx';
 import { AppShell } from './ui/layout/AppShell.tsx';
 import { ViewportControls } from './ui/ViewportControls.tsx';
@@ -212,7 +213,12 @@ export function App() {
           <ViewportControls />
         </>
       }
-      right={<Pending name="M3 status · M9 inspector" />}
+      right={
+        <>
+          <StatusPanel />
+          <Pending name="M9 inspector" />
+        </>
+      }
       dock={{
         charts: <Pending name="M6 charts" />,
         console: <Pending name="M7 console" />,
