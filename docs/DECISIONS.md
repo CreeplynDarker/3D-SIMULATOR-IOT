@@ -364,3 +364,11 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   and shows the newest x/y/z (extra test ID `raw-mpu`). Extra test IDs: `console-line` (with `data-kind`) and
   `console-json`. Affects `ui/Console.tsx`, `ui/consoleFormat.ts`, `ui/download.ts`, `store/slices/{console,sim}.ts`,
   `App.tsx`.
+- **D-051 · 2026-10-31 · Inspector (P5.8).** `ui/inspectorData.ts` holds, for each of the 14 parts, the key specs
+  (from §1.2/§1.3 and §5.1), the photo crop where `public/textures/` has one (fan, ESP32, ACS712, relay, adapter;
+  the others show none), and live pin lines formatted from the snapshot. The ACS712 line is the §8.2 example,
+  `ACS712 OUT 2.533 V → GPIO34 1965 counts`; the laptop shows the model status and last score. "Its wires" means the
+  §13.3 wires on the part's anchors; for resistors, the wires on their two breadboard holes' nodes; for the
+  breadboard, every `bb.*` wire. Each wire shows its colour swatch and net. The adapter and jack show the sag fault
+  and the fan-side voltage instead of computing a supply voltage, because the UI computes nothing physical. Extra test
+  ID: `inspector-pin`. The debug API gains `select(id)`. Affects `ui/Inspector.tsx`, `ui/inspectorData.ts`.

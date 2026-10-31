@@ -11,6 +11,7 @@ import { Charts } from './ui/Charts.tsx';
 import { Console } from './ui/Console.tsx';
 import { packetLine, verdictLine } from './ui/consoleFormat.ts';
 import { FaultPanel } from './ui/FaultPanel.tsx';
+import { Inspector } from './ui/Inspector.tsx';
 import { OperatorPanel, ResetDialog } from './ui/OperatorPanel.tsx';
 import { StatusPanel } from './ui/StatusPanel.tsx';
 import { TopBar } from './ui/TopBar.tsx';
@@ -41,6 +42,8 @@ export interface DebugApi {
   inspect(): StoreView;
   /** Events kept for the charts, oldest first. */
   events(): SimEvent[];
+  /** Selects a component, as a click in the 3D view does. */
+  select(id: string | null): void;
 }
 
 declare global {
@@ -187,6 +190,7 @@ function installDebugApi(workers: Workers): () => void {
     train: () => workers.postRcf({ type: 'train' }),
     inspect: () => inspectStore(appStore.getState()),
     events: () => appStore.getState().series.events.toArray(),
+    select: (id) => appStore.getState().ui.select(id),
   };
   window.__sim = simDebug(() => appStore.getState());
   return () => {
@@ -233,7 +237,7 @@ export function App() {
       right={
         <>
           <StatusPanel />
-          <Pending name="M9 inspector" />
+          <Inspector />
         </>
       }
       dock={{
