@@ -590,3 +590,16 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   distinct steps seen. Its real check, that the card shows and has reached the last step with `scenarioDone`, is
   unchanged. Affects `scene/models/FanMotion.tsx`, `scene/wires/SignalFlow.tsx`, `tests/e2e/workers.spec.ts`,
   `tests/e2e/p6-guided.spec.ts`.
+- **D-070 · 2026-10-31 · ESP32 ↔ bridge transport is UDP; browser ↔ bridge is a WebSocket at `/ui` (team
+  decision).** As in `reference-cpp/main.cpp`: the board sends each packet as one JSON datagram to the laptop's port
+  4211 and listens on port 4210 for verdicts and commands. This replaces the WebSocket `/esp32` in the original P8.1
+  text. The browser talks to the bridge over a WebSocket at `/ui`. PLAN §11 P8 is updated to match.
+  Affects P8.1, P8.2, `bridge-py/`, `src/bridge/`.
+- **D-071 · 2026-10-31 · In live mode, RCF scoring stays in the browser's RCF worker (team decision).** It uses the same
+  TS model and threshold as the simulation. The bridge only relays and validates; it doesn't run Python rrcf (the
+  original P8.1 text had it do so). The verdict a board receives therefore comes from exactly the code the
+  simulator tests. Affects P8.1, P8.2.
+- **D-072 · 2026-10-31 · The bridge serves the built `dist/` at http://localhost:8765, so live mode runs same-origin
+  (team decision).** No CORS and no mixed-content issues: the page and its `/ui` WebSocket share one origin. If Live
+  is chosen on the published Pages site, the app shows a clear message to run the bridge and open
+  http://localhost:8765. Affects P8.1, P8.2.

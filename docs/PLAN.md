@@ -827,15 +827,31 @@ on a normal connection · [human] the Baseline → Imbalance → Trip → Reset 
 
 ### P8 — Live bridge (optional)
 
-**P8.1** `bridge-py/app.py` (FastAPI + uvicorn): WebSocket `/esp32` for the board, `/ui` for the browser;
-validates with the JSON Schemas from `public/schema/`; forwards packets up and verdicts/commands down; runs the
-same RCF via the exported model JSON (Python `rrcf`).
-**P8.2** `src/bridge/wsClient.ts` and `sel-mode` = Live: replaces the sim worker as the data source; the scene is
-driven from packets (RPM, relay, state), with fields the board doesn't send shown as "—".
-**P8.3** Replay: load an exported session JSON and play it through the UI at 1–10×.
-**P8.4** Calibration: fit `fan.*`, `thermal.*` and sensor noise from a recorded healthy session.
-Accept: [human] real packets render with no change outside `src/bridge/` · [human] `btn-estop` opens the real
-relay · [auto] after calibration, the simulated baseline means are within 10% of the recorded ones.
+Team decisions D-070 to D-072 (2026-10-31). No hardware or real firmware yet, so every P8 test runs against an
+emulated ESP32 (`bridge-py/fake_esp32.py`) that speaks the board's UDP protocol and runs the real TS plant and
+firmware.
+
+**P8.1** `bridge-py/app.py` (FastAPI + uvicorn, pinned in `bridge-py/requirements.txt`, venv setup in its README).
+ESP32 ↔ bridge over UDP, as in `reference-cpp/main.cpp`: the board sends packets to the laptop's port 4211 and
+listens for verdicts and commands on port 4210. Browser ↔ bridge over a WebSocket at `/ui`. Every message is
+validated against `public/schema/*.schema.json`; invalid ones are dropped and counted. Every message is logged to a
+JSON-lines session file that P8.3 can replay. The bridge only relays and validates: RCF scoring stays in the
+browser's RCF worker (same TS model and threshold as the simulation). It serves the built `dist/` at
+http://localhost:8765, so live mode runs same-origin.
+**P8.2** `src/bridge/wsClient.ts` and `sel-mode` = Live: the sim worker pauses and the store is fed from bridge
+packets. The scene runs from packet fields (rpm drives the blade angle, `relay_ch2` the relay arm, `state` the badge,
+`t_C` the heat tint, `a_rms_g` the jitter), and every snapshot field the board doesn't send shows "—" in M3 and M9.
+M4 is disabled; M5 commands go to the bridge, with a visible note that E-STOP over Wi-Fi is not a safety stop. On
+the published Pages site, Live shows a message to run the bridge and open http://localhost:8765.
+**P8.3** Replay: load a session file (from the bridge, or the M7 JSON export) and play it at 1×, 4× or 10× through
+the same Live code path.
+**P8.4** Calibration: `scripts/calibrate.ts` fits `fan.*`, `thermal.*` and sensor noise from a recorded healthy
+session and writes a proposed config diff (it never edits `config.ts`).
+Accept: [auto] the fake ESP32 runs START → NORMAL → imbalance → CRITICAL → RESET through the bridge with the browser
+RCF's verdicts (tests run only when Python is available) · [auto] invalid messages are dropped and counted ·
+[auto] a session replays through the Live path · [auto] calibration recovers known parameters from simulated
+recordings within 10 %, and the simulated baseline means with the proposed config are within 10 % of the recorded
+ones · [human] real packets render with no change outside `src/bridge/` · [human] `btn-estop` opens the real relay.
 
 ---
 
