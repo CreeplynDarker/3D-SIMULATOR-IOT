@@ -33,7 +33,8 @@ test('P6.5: in each state the active line in M8 carries the expected @map id', a
   await page.getByTestId('sel-speed').selectOption('4');
   await state(page, 'CRITICAL');
   await expect(active(page)).toHaveAttribute('data-map', 'sm.warn.trip');
-  await page.waitForFunction(() => (window.__pdm?.snapshot()?.rpm ?? 1e9) < 100, undefined, { timeout: 60_000 });
+  // RESET is accepted below resetMaxRpm as the firmware measures it (the last window's tach), not the plant's rpm
+  await page.waitForFunction(() => (window.__sim?.packetRpm ?? 1e9) < 100, undefined, { timeout: 60_000 });
   await page.getByTestId('btn-reset').click();
   await page.getByTestId('btn-reset-confirm').click();
   await state(page, 'OFF');

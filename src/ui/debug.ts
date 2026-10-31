@@ -51,6 +51,8 @@ export interface SimDebug {
   readonly t_s: number;
   readonly scenarioDone: boolean;
   readonly lastEvent: SimEvent | null;
+  /** Tach rpm of the newest packet: what the firmware's RESET guard (rpm < resetMaxRpm) checks. */
+  readonly packetRpm: number | null;
 }
 
 /** Builds `window.__sim` over the store; every read is live. */
@@ -70,6 +72,9 @@ export function simDebug(get: () => AppState): SimDebug {
     },
     get lastEvent() {
       return get().series.events.last() ?? null;
+    },
+    get packetRpm() {
+      return get().series.windows.last()?.rpm ?? null;
     },
   };
 }

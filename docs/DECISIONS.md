@@ -702,5 +702,9 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   where the card reached step 2 before the pause landed. As in D-068, the specs that don't check rendering stop
   the 3D loop after load (`__pdm.setRendering(false)`): p5-faults, p5-operator, p5-shell, p5-topbar, p6-code and
   p6-guided. The M8 spec now reads the active line's marker and text in one call; the M11 spec steps Back to the
-  first step before checking that Back is disabled there. No limit or accept item changed; the rendering specs
-  (camera, scene, p6-fan, p6-flow, p6-heat, p6-relay, p7-perf) still render.
+  first step before checking that Back is disabled there. Stopping the render loop exposed one more race: three
+  specs (p5-operator, p5-gate, p6-code) waited for the plant's rpm < 100 before RESET, but the firmware guards
+  RESET with its own tach rpm from the last 1 s window (`sm.reset.ok`, `resetMaxRpm`), so a fast click was refused
+  and the run stayed CRITICAL; slow rendering had hidden it. They now wait on the newest packet's rpm, exposed as
+  the debug-only `window.__sim.packetRpm` (an addition to the §8.2 hook). No limit or accept item changed; the
+  rendering specs (camera, scene, p6-fan, p6-flow, p6-heat, p6-relay, p7-perf) still render.

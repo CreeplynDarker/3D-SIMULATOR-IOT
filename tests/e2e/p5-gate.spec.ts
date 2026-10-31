@@ -29,7 +29,8 @@ test('P5.G: imbalance 0.3 trips on RCF within 15 s of sim time; reset with confi
   await expect(page.getByTestId('btn-reset')).toBeEnabled();
 
   // The firmware accepts RESET once the fan is below 100 rpm.
-  await page.waitForFunction(() => (window.__pdm?.snapshot()?.rpm ?? 1e9) < 100, undefined, { timeout: 60_000 });
+  // RESET is accepted below resetMaxRpm as the firmware measures it (the last window's tach), not the plant's rpm
+  await page.waitForFunction(() => (window.__sim?.packetRpm ?? 1e9) < 100, undefined, { timeout: 60_000 });
   await page.getByTestId('btn-reset').click();
   await expect(page.getByTestId('dlg-reset-confirm')).toBeVisible();
   await page.getByTestId('btn-reset-confirm').click();
