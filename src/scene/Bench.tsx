@@ -307,10 +307,12 @@ function CameraButtons() {
 
 /** M1 viewport: the 3D bench in a full-size canvas with the camera presets. */
 export function BenchViewport() {
+  const rendering = useAppStore((s) => s.ui.rendering);
   const start = CAMERA_PRESETS.overview;
   return (
     <div data-testid="viewport" className="relative h-full w-full">
       <Canvas
+        frameloop={rendering ? 'always' : 'never'}
         shadows
         dpr={[1, 1.5]}
         camera={{ position: [...start.position_m], fov: CAMERA_FOV_deg, near: 0.005, far: 20 }}

@@ -132,7 +132,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · instanced repeated parts, Points pulses/airflow, WebP photos, 1024 px breadboard canvas, batched sim → main messages; overview draw calls 208 → 183, vertices 58,408 → 52,050, textures 20.4 → 16.2 MB, dist gzip 791 → 653 KiB · no tuning
 - [x] P7.3 Copy
   2026-10-31 · copy test (glossary = §14, vocabulary, no markdown in text); fixed glossary backticks, §14 labels, fault help text (imbalance in grams); README.md with run/test/layout and screenshots · no tuning
-- [ ] P7.4 Publish
+- [x] P7.4 Publish
+  2026-10-31 · .github/workflows/deploy.yml (push to main → build → Pages) and ci.yml (PR: verify, coverage, e2e), actions pinned by SHA; sub-path build checked; timing specs stop the render loop on GPU-less runners · no tuning
 
 ## P8 — Live bridge, optional (deps: P7)
 
@@ -155,4 +156,6 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - P6 · at least 50 fps at 1920 × 1080 with every view toggle on, on the team laptop (this container renders WebGL in software: 2–5 fps before and after P6)
 - P6.3/P6.4 · the relay click and the fan hum sound right (Sound toggle; muted by default)
 - P7.3 · tooltips, help text, glossary and guided steps read right against the project report (checked here against PLAN §14 only; the report isn't in the repo)
+- P7.4 · first load under 4 s on a normal connection (the published Pages site)
+- P7.4 · the Baseline → Imbalance → Trip → Reset demo fits in 3 minutes
 - P1.6 · at least 50 fps at 1920 × 1080 on an integrated-graphics laptop (measured 60 fps vsync-locked on Intel Iris Xe in headless Chromium; confirm in a normal browser window on the team laptop)

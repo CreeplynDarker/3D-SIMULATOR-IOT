@@ -564,3 +564,20 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   exist and that it names the commands and the link. Affects `ui/legend.ts`, `ui/FaultPanel.tsx`,
   `ui/OperatorPanel.tsx`, `ui/StatusPanel.tsx`, `ui/Console.tsx`, `ui/chartData.ts`, `shared/guided.ts`,
   `README.md`.
+- **D-068 · 2026-10-31 · Hosting: GitHub Pages, built by GitHub Actions (P7.4).** The app is a static site
+  (`base: './'`, no backend before P8), so GitHub Pages serves it from the repository, with no other account or
+  cost. The site is at https://creeplyndarker.github.io/3D-SIMULATOR-IOT/. `.github/workflows/deploy.yml` runs on
+  every push to main (and by hand): `pnpm install --frozen-lockfile`, `pnpm build`, `actions/upload-pages-artifact`
+  with `dist/`, then `actions/deploy-pages` into the `github-pages` environment. It needs `pages: write` and
+  `id-token: write`, and runs one deployment at a time. `.github/workflows/ci.yml` runs on pull requests: `pnpm
+  verify` and `pnpm test:cov` (the P7.1 coverage gate) in one job, and in another `pnpm test:e2e` with Playwright's
+  Chromium, uploading the report on failure. Every action is pinned to the commit SHA of an exact release, with the
+  version beside it; each tag was checked against GitHub: checkout v4.2.2, pnpm/action-setup v4.1.0, setup-node
+  v4.4.0, configure-pages v5.0.0, upload-pages-artifact v3.0.1, deploy-pages v4.0.5, upload-artifact v4.6.2. Pages
+  must be switched on once by the repo owner (Settings → Pages → Source: GitHub Actions). The build was checked from
+  a `/3D-SIMULATOR-IOT/` sub-path: it reaches NORMAL with no console errors and no failed requests. GitHub's runners
+  have no GPU, like this container, where the worker ping, the sim clock rate and the RCF verdict latency checks
+  failed because software WebGL starved the main thread (D-026, D-056). A debug-only `__pdm.setRendering(false)`
+  stops the 3D render loop (`ui.rendering` → the canvas `frameloop`), and those three specs call it before measuring.
+  Their limits are unchanged, and they now pass here every time. Affects `.github/workflows/`, `scene/Bench.tsx`,
+  `store/slices/ui.ts`, `App.tsx`, `tests/e2e/{workers,sim,rcf}.spec.ts`.

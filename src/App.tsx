@@ -52,6 +52,8 @@ export interface DebugApi {
   verdictLatencies_ms(): number[];
   modelStatus(): { status: ModelStatus; progress: number; reason: string | null };
   train(): void;
+  /** Stops (false) or restarts the 3D render loop, so timing checks measure the workers, not software WebGL. */
+  setRendering(on: boolean): void;
   /** Plain-data view of the store. */
   inspect(): StoreView;
   /** Events kept for the charts, oldest first. */
@@ -211,6 +213,7 @@ function installDebugApi(workers: Workers): () => void {
       return { status, progress, reason };
     },
     train: () => workers.postRcf({ type: 'train' }),
+    setRendering: (on) => appStore.getState().ui.setRendering(on),
     inspect: () => inspectStore(appStore.getState()),
     events: () => appStore.getState().series.events.toArray(),
     select: (id) => appStore.getState().ui.select(id),

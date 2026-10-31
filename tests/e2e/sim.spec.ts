@@ -3,6 +3,8 @@ import { expect, type Page, test } from '@playwright/test';
 async function ready(page: Page) {
   await page.goto('./?debug=1');
   await page.waitForFunction(() => window.__pdm?.snapshot() !== null);
+  // The clock is read on the main thread; without a GPU the 3D render loop would starve it (D-068).
+  await page.evaluate(() => window.__pdm?.setRendering(false));
 }
 
 /** Sim seconds per wall second over `wall_ms`, measured inside the page; also returns the lagging flag. */
