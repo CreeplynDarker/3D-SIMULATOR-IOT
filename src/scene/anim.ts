@@ -68,3 +68,12 @@ export function bezier(p0: Vec3, p1: Vec3, p2: Vec3, u: number): [number, number
   const c = u * u;
   return [0, 1, 2].map((i) => a * (p0[i] as number) + b * (p1[i] as number) + c * (p2[i] as number)) as [number, number, number]; // prettier-ignore
 }
+
+/** Hub tint range (§11 P6.4): blue at 25 °C, red at 70 °C. */
+const HEAT = { cold_C: 25, hot_C: 70, cold: [0x3b, 0x82, 0xf6], hot: [0xef, 0x44, 0x44] } as const;
+
+/** Hub tint for motor temperature `t_C` (°C) as `#rrggbb`, linear between blue and red, clamped. */
+export function heatColor(t_C: number): string {
+  const k = clamp01((t_C - HEAT.cold_C) / (HEAT.hot_C - HEAT.cold_C));
+  return `#${HEAT.cold.map((c, i) => Math.round(c + k * ((HEAT.hot[i] as number) - c)).toString(16).padStart(2, '0')).join('')}`; // prettier-ignore
+}

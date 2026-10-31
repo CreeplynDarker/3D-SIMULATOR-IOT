@@ -459,3 +459,12 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   first rendered frame that showed the open contact, so it includes this GPU-less container's ~4 fps (about 0.8 s
   of sim time per frame at 4×). Affects `scene/models/Relay.tsx`, `scene/models/Parts.tsx`, `ui/audio.ts`,
   `ui/ViewportControls.tsx`, `store/slices/ui.ts`.
+- **D-060 · 2026-10-31 · Heat tint and hum (P6.4).** (a) With `tgl-heat` on, the hub label is tinted by
+  `tMotor_C`, linearly from #3b82f6 at 25 °C to #ef4444 at 70 °C and clamped (`anim.heatColor`). The hub disc is now
+  its own part group (`hub`) with its own material, so the tint touches nothing else. Its colour is set only when it
+  changes, and it casts no new shadow. (b) With sound on, the hum is a sawtooth oscillator at the blade-pass
+  frequency (rpm/60 · 7 blades, ≈ 443 Hz at 3,800 rpm). Its gain is 0.03 + 0.25 · a_RMS (capped at 0.2), scaled
+  by rpm/rated. It falls silent when the fan stops or the sim is paused, so pausing freezes the sound as well. Gain
+  and pitch glide over 50 ms (`setTargetAtTime`), so window steps don't crackle. Sound stays muted until
+  `tgl-sound` (D-059). Affects `scene/anim.ts`, `scene/models/FanMotion.tsx`, `scene/models/geometry.ts`,
+  `ui/audio.ts`.

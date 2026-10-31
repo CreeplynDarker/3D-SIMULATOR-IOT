@@ -1,13 +1,23 @@
-// P6.1: blades turn by the plant's theta_rad and crossfade to a blur disc above bladeBlurRpm; the frame jitters with
+// P6.1 and P6.4: blades turn by the plant's theta_rad and crossfade to a blur disc above bladeBlurRpm; the frame jitters with
 // the last window's a_RMS at vibVisual_Hz (slowed for visibility); airflow streaks leave the outlet with the speed.
+// With tgl-heat the hub is tinted by the motor temperature, and with sound on the hum follows rpm and a_RMS.
 // Everything is read from the store inside useFrame and depends on sim time only. Moving parts cast no shadow, so
 // the frozen shadow map stays valid (D-057).
 import { useFrame } from '@react-three/fiber';
 import { type ReactNode, useLayoutEffect, useMemo, useRef } from 'react';
-import { DoubleSide, type Group, type Material, type Mesh, MeshBasicMaterial, type Sprite } from 'three';
+import {
+  DoubleSide,
+  type Group,
+  type Material,
+  type Mesh,
+  MeshBasicMaterial,
+  type MeshStandardMaterial,
+  type Sprite,
+} from 'three';
 import { CONFIG } from '../../shared/config.ts';
 import { appStore, useAppStore } from '../../store/index.ts';
-import { airflowPhase, bladeMix, jitterAmplitude_mm, jitterOffset_mm } from '../anim.ts';
+import { humFor, setHum } from '../../ui/audio.ts';
+import { airflowPhase, bladeMix, heatColor, jitterAmplitude_mm, jitterOffset_mm } from '../anim.ts';
 import { animDebug } from '../animDebug.ts';
 import { getGlowMaterial } from './materials.ts';
 
@@ -73,11 +83,18 @@ export function FanMotion({ children }: { children: ReactNode }) {
   const outer = useRef<Group>(null);
   const disc = useRef<Mesh>(null);
   const blades = useRef<{ group: Group; mats: Material[] } | null>(null);
+  const hub = useRef<MeshStandardMaterial | null>(null);
   const discMat = useMemo(() => new MeshBasicMaterial({ color: DISC.color, transparent: true, opacity: 0, depthWrite: false, side: DoubleSide }), []); // prettier-ignore
 
   useLayoutEffect(() => {
     const g = outer.current?.getObjectByName('blades') as Group | undefined;
     if (g) blades.current = { group: g, mats: ownTransparent(g) };
+    // The hub label gets its own material, so the heat tint (P6.4) touches nothing else.
+    const hubMesh = outer.current?.getObjectByName('hub')?.children[0] as Mesh | undefined;
+    if (hubMesh) {
+      hub.current = (hubMesh.material as MeshStandardMaterial).clone();
+      hubMesh.material = hub.current;
+    }
   }, []);
 
   useFrame(() => {
@@ -96,6 +113,12 @@ export function FanMotion({ children }: { children: ReactNode }) {
     const amp_mm = snap && snap.rpm > 1 ? jitterAmplitude_mm(a_rms_g, s.ui.vibExaggeration, CONFIG.ui) : 0;
     const [x, y] = jitterOffset_mm(amp_mm, snap?.t_s ?? 0, CONFIG.ui.vibVisual_Hz);
     outer.current?.position.set(x * MM, y * MM, 0);
+    const hubColor = s.ui.toggles.heat && snap ? heatColor(snap.tMotor_C) : '#ffffff';
+    if (hub.current && animDebug.fan.hubColor !== hubColor) hub.current.color.set(hubColor);
+    animDebug.fan.hubColor = hubColor;
+    const sound = s.ui.soundOn ? humFor(snap?.rpm ?? 0, a_rms_g, s.sim.playing) : { freq_Hz: 0, gain: 0 };
+    if (s.ui.soundOn) setHum(sound.freq_Hz, sound.gain);
+    Object.assign(animDebug.sound, { on: s.ui.soundOn, ...sound });
     Object.assign(animDebug.fan, { bladeAngle_rad: snap?.theta_rad ?? 0, bladeOpacity: 1 - mix, discOpacity: mix, jitterAmp_mm: amp_mm, jitter_mm: [x, y] }); // prettier-ignore
   });
 

@@ -11,7 +11,7 @@ export function fanParts(): Part[] {
   const parts: Part[] = [
     { kind: 'frame', outer: 70, holeR: 33.2, depth: 15, mountR: 2.2, mountInset: 4.5, pos: [0, 0, 0], mat: 'fanBlack' },
     cyl(14, 13, 'z', [0, 0, 0], 'fanBlack', { seg: 40 }),
-    { kind: 'disc', r: 13.6, pos: [0, 0, 6.55], mat: 'label', tex: 'fan-hub' },
+    { kind: 'disc', r: 13.6, pos: [0, 0, 6.55], mat: 'label', tex: 'fan-hub', group: 'hub' },
   ];
   for (let i = 0; i < 4; i++) {
     const a = Math.PI / 4 + (i * Math.PI) / 2;

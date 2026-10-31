@@ -117,7 +117,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · traffic counters in the snapshot; scene/wires/SignalFlow.tsx (power glow, §13.3 energised rules, I²C/ADC/tach/1-Wire pulses), Wi-Fi arc up/down pulses and red drop flash, name tags, hover tooltip · no tuning
 - [x] P6.3 Relay
   2026-10-31 · CH2 arm follows contact, CH2 LED with the coil (CH1 off), Web Audio click per change behind tgl-sound, W04 dims when open (§13.3, D-059); e2e S2 order CRITICAL 65.013 → RELAY_OPEN 65.018 → W04 dim 65.375 → rpm < 100 75.214 s · no tuning
-- [ ] P6.4 Heat and sound
+- [x] P6.4 Heat and sound
+  2026-10-31 · hub tint from tMotor_C with tgl-heat (blue 25 °C → red 70 °C); Web Audio hum at blade-pass pitch, gain from a_RMS, muted by default, silent when paused · no tuning
 - [ ] P6.5 M8 code panel
 - [ ] P6.6 M11 guided scenarios
 

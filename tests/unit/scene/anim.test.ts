@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   airflowPhase,
   bezier,
+  heatColor,
   bladeMix,
   continuousU,
   fade,
@@ -85,5 +86,15 @@ describe('P6.2 signal-flow math', () => {
     expect(fade(4, 3, 0.8)).toBe(0);
     expect(fade(2, 3, 0.8)).toBe(0);
     expect(bezier([0, 0, 0], [1, 2, 0], [2, 0, 0], 0.5)).toEqual([1, 1, 0]);
+  });
+});
+
+describe('P6.4 heat tint', () => {
+  it('runs from blue at 25 °C to red at 70 °C, clamped outside', () => {
+    expect(heatColor(25)).toBe('#3b82f6');
+    expect(heatColor(70)).toBe('#ef4444');
+    expect(heatColor(10)).toBe('#3b82f6');
+    expect(heatColor(90)).toBe('#ef4444');
+    expect(heatColor(47.5)).toBe('#95639d');
   });
 });

@@ -16,8 +16,9 @@ export const animDebug = {
   },
   wifi: { up: null as number | null, down: null as number | null, flash: 0, packets: 0, verdicts: 0, dropped: 0 },
   labels: 0,
+  sound: { on: false, freq_Hz: 0, gain: 0 },
   relay: { arm: 'NC' as 'NC' | 'NO', led: false, changes: 0, clicks: 0 },
-  fan: { bladeAngle_rad: 0, bladeOpacity: 1, discOpacity: 0, jitterAmp_mm: 0, jitter_mm: [0, 0] as [number, number], airflowVisible: false }, // prettier-ignore
+  fan: { bladeAngle_rad: 0, bladeOpacity: 1, discOpacity: 0, jitterAmp_mm: 0, jitter_mm: [0, 0] as [number, number], airflowVisible: false, hubColor: '#ffffff' }, // prettier-ignore
 };
 
 export type AnimDebug = typeof animDebug;
