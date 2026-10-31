@@ -73,7 +73,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 - [x] P4.1 RRCF
   2026-10-31 · rcf/rrcf.ts: RCTree class (insert/forget/codisp/query, duplicates share a leaf, parent links); property test of 1,000 ops checks n, exact boxes and cuts; rcf/ coverage threshold on · no tuning
-- [ ] P4.2 Normalise
+- [x] P4.2 Normalise
+  2026-10-31 · rcf/normalise.ts: fitNormaliser (μ, population σ), floorsFor, normalise with max(σ, floor); NumPy fixture matches to 1e-12 · no tuning
 - [ ] P4.3 Model (deps: P4.1, P4.2)
 - [ ] P4.4 RCF worker (deps: P4.3, P0.6)
 - [ ] P4.5 Harness, scenarios and default model (deps: P4.3)

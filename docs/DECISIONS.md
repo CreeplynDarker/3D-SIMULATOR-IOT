@@ -224,3 +224,9 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   the C++; `tests/unit/firmware/mapMarkers.test.ts` checks both against PLAN §7.6. There is no shared header, so
   each file declares what it uses from the others (`extern`, forward declarations), which keeps the set at the four
   files the plan lists. Affects `src/firmware/reference-cpp/`.
+- **D-039 · 2026-10-31 · Normalisation keeps the raw σ and the floor separately.** `rcf/normalise.ts` fits μ and
+  the population σ (ddof = 0) and divides by `max(σ, stdFloor)` at use, so a saved model can report the measured
+  spread of each feature. `tests/fixtures/normalise.json` holds 120 six-column rows drawn with NumPy
+  (`default_rng(20261029)`; the dT/dt column is constant, so its floor applies) and NumPy's mean and std; the TS fit
+  matches to 1e-12 relative. The fixture is static, so the test needs no Python. Affects `rcf/normalise.ts`,
+  `tests/fixtures/normalise.json`.
