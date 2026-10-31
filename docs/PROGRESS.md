@@ -66,7 +66,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-30 · firmware/link.ts: seeded loss + latency 20 ± 10 ms, late RCF answers held until arrival; link_lost at +6 s with loss 1.0, cleared by the next verdict · no tuning
 - [x] P3.6 Firmware orchestrator and logs (deps: P3.1–P3.5)
   2026-10-30 · firmware/firmware.ts + logger.ts; healthy 60 s run → 60 valid packets, OFF→CALIBRATING→STARTING→NORMAL, required logs; ESTOP → contacts open ≤ 20 ms; worker now runs the real firmware · no tuning
-- [ ] P3.7 Reference C++ (deps: P3.6)
+- [x] P3.7 Reference C++ (deps: P3.6)
+  2026-10-30 · reference-cpp/{main,features,state_machine,relay}.cpp with all 24 @map ids once each; parity test against TS and PLAN §7.6 · no tuning
 
 ## P4 — RCF and harness (deps: P3.6)
 
@@ -121,4 +122,5 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - P1.2 · each part is recognisable next to its photo in `assets/photos/`
 - P1.3 · the layout reads like a tidy lab bench
 - P1.4 · no wire passes through a component (also covered by `tests/unit/scene/route.test.ts`)
+- P3.7 · the C++ in `src/firmware/reference-cpp/` reads as plausible ESP32 Arduino code
 - P1.6 · at least 50 fps at 1920 × 1080 on an integrated-graphics laptop (measured 60 fps vsync-locked on Intel Iris Xe in headless Chromium; confirm in a normal browser window on the team laptop)

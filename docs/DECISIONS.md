@@ -215,3 +215,12 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   copies go to main, and verdicts from the stub enter the firmware's link. The worker emits `RELAY_OPEN` and
   `RELAY_CLOSED` when the plant's contact changes, because the firmware cannot sense the contact. Affects
   `firmware/firmware.ts`, `firmware/logger.ts`, `sim/worker.ts`.
+- **D-038 · 2026-10-30 · Reference C++ layout.** Four files for ESP32 Arduino core 3.x, meant for reading.
+  `main.cpp` holds the pins, `setup()` (Wire for the MPU6050 with DLPF 184 Hz and ±2 g, DallasTemperature in
+  non-blocking mode at 12 bits, ADC 11 dB on GPIO34, the IDF 5 `pulse_cnt` driver on GPIO27, a 1 kHz `esp_timer`,
+  UDP and ArduinoJson for packets and verdicts), the window-end limits (`link.lost`), the calibration and grace
+  timers, and `loop()`. `features.cpp` has the `feat.*` markers, `state_machine.cpp` the `sm.*` markers, and
+  `relay.cpp` `relay.on`/`relay.off`. Each of the 24 §7.6 ids appears exactly once in the TS firmware and once in
+  the C++; `tests/unit/firmware/mapMarkers.test.ts` checks both against PLAN §7.6. There is no shared header, so
+  each file declares what it uses from the others (`extern`, forward declarations), which keeps the set at the four
+  files the plan lists. Affects `src/firmware/reference-cpp/`.
