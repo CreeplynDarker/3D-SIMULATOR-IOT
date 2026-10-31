@@ -80,7 +80,7 @@ export type MainToSim =
   | { type: 'raw'; on: boolean }
   | { type: 'ping'; id: number };
 
-/** Sim worker → main. `raw` buffers are transferred, not copied. */
+/** Sim worker → main. `raw` buffers are transferred, not copied; `scenario` reports a script's start and end. */
 export type SimToMain =
   | { type: 'snapshot'; snapshot: Snapshot }
   | { type: 'packet'; packet: Packet }
@@ -88,6 +88,7 @@ export type SimToMain =
   | { type: 'log'; line: string }
   | { type: 'event'; event: SimEvent }
   | { type: 'raw'; ax: Float32Array; ay: Float32Array; az: Float32Array }
+  | { type: 'scenario'; id: string; done: boolean }
   | { type: 'pong'; id: number };
 
 /** Sim → RCF over the MessageChannel ("Wi-Fi" uplink). */

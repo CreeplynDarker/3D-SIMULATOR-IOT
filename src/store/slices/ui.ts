@@ -24,6 +24,10 @@ export interface UiSlice {
     dockTab: DockTab;
     theme: Theme;
     dockHeight_px: number;
+    /** M12 legend and help modal. */
+    legendOpen: boolean;
+    /** Frames per second drawn by the 3D viewport. */
+    fps: number;
     select(id: string | null): void;
     setCamera(camera: CameraPreset): void;
     setToggle(toggle: ViewToggle, on: boolean): void;
@@ -31,6 +35,8 @@ export interface UiSlice {
     setDockTab(tab: DockTab): void;
     setTheme(theme: Theme): void;
     setDockHeight(px: number): void;
+    setLegendOpen(open: boolean): void;
+    setFps(fps: number): void;
   };
 }
 
@@ -47,12 +53,16 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => {
       dockTab: 'charts',
       theme: 'dark',
       dockHeight_px: DOCK_HEIGHT_px.initial,
+      legendOpen: false,
+      fps: 0,
       select: (selectedId) => patch({ selectedId }),
       setCamera: (camera) => patch({ camera }),
       setToggle: (toggle, on) => set((s) => ({ ui: { ...s.ui, toggles: { ...s.ui.toggles, [toggle]: on } } })),
       setVibExaggeration: (x) => patch({ vibExaggeration: Math.min(max, Math.max(min, x)) }),
       setDockTab: (dockTab) => patch({ dockTab }),
       setTheme: (theme) => patch({ theme }),
+      setLegendOpen: (legendOpen) => patch({ legendOpen }),
+      setFps: (fps) => patch({ fps }),
       setDockHeight: (px) => patch({ dockHeight_px: Math.min(DOCK_HEIGHT_px.max, Math.max(DOCK_HEIGHT_px.min, px)) }),
     },
   };

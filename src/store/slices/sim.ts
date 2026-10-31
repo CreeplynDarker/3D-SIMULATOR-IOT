@@ -12,9 +12,12 @@ export interface SimSlice {
     playing: boolean;
     speed: Speed;
     lagging: boolean;
+    /** The §12 script being played from `sel-scenario`, if any. */
+    scenario: { id: string; done: boolean } | null;
     setSnapshot(snapshot: Snapshot): void;
     setPlaying(playing: boolean): void;
     setSpeed(speed: Speed): void;
+    setScenario(scenario: { id: string; done: boolean } | null): void;
   };
 }
 
@@ -27,9 +30,11 @@ export const createSimSlice: StateCreator<AppState, [], [], SimSlice> = (set) =>
       playing: false,
       speed: 1,
       lagging: false,
+      scenario: null,
       setSnapshot: (snapshot) => patch({ snapshot, lagging: snapshot.lagging }),
       setPlaying: (playing) => patch({ playing }),
       setSpeed: (speed) => patch({ speed }),
+      setScenario: (scenario) => patch({ scenario }),
     },
   };
 };

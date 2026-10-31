@@ -202,6 +202,23 @@ function DebugProbe() {
   return null;
 }
 
+const FPS_SAMPLE_ms = 500;
+
+/** Counts drawn frames and writes the rate to `ui.fps` twice a second (M2 `fps`). */
+function FpsProbe() {
+  const acc = useRef({ frames: 0, since_ms: performance.now() });
+  useFrame(() => {
+    const a = acc.current;
+    a.frames++;
+    const now_ms = performance.now();
+    if (now_ms - a.since_ms < FPS_SAMPLE_ms) return;
+    appStore.getState().ui.setFps((a.frames * 1000) / (now_ms - a.since_ms));
+    a.frames = 0;
+    a.since_ms = now_ms;
+  });
+  return null;
+}
+
 /** Camera preset buttons (`cam-*`, spec §8.2). */
 function CameraButtons() {
   const current = useAppStore((s) => s.ui.camera);
@@ -239,6 +256,7 @@ export function BenchViewport() {
         <OrbitControls makeDefault target={[...start.target_m]} />
         <CameraRig />
         <DebugProbe />
+        <FpsProbe />
       </Canvas>
       <CameraButtons />
     </div>

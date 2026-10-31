@@ -2,9 +2,11 @@
 // main and, over the "Wi-Fi" MessageChannel, to the RCF worker.
 import { createFirmware, type Firmware } from '../firmware/firmware.ts';
 import { CONFIG } from '../shared/config.ts';
-import type { MainToSim, RcfToSim, SimToMain, SimToRcf } from '../shared/messages.ts';
+import type { MainToSim, RcfToSim, SimEvent, SimToMain, SimToRcf } from '../shared/messages.ts';
 import type { Packet } from '../shared/protocol.ts';
+import { scenarioById, SCENARIOS } from '../shared/scenarios.ts';
 import { type Controller, createPlant, type Plant, schedule, stepPlant, toSnapshot } from './plant.ts';
+import { scriptDone, scriptEvent, type ScriptRun, startScript } from './script.ts';
 import type { SimConfig } from './types.ts';
 
 interface WorkerScope {
@@ -34,6 +36,7 @@ let lastSnapshot_ms = -Infinity;
 let wifi: MessagePort | null = null;
 let rawOn = false;
 let raw: number[][] = [[], [], []];
+let script: ScriptRun | null = null;
 
 /** Uplink: a packet that survived the link goes to the RCF worker, and a copy to main for the console and charts. */
 function uplink(packet: Packet): void {
@@ -74,10 +77,13 @@ function postSnapshot(now_ms: number): void {
   }
 }
 
-/** Forwards plant and firmware events and the firmware's log lines. */
+/** Forwards plant and firmware events (a running script sees them first) and the firmware's log lines. */
 function flush(): void {
   for (const event of plant.events.splice(0)) scope.postMessage({ type: 'event', event });
-  for (const event of firmware.drainEvents()) scope.postMessage({ type: 'event', event });
+  for (const event of firmware.drainEvents()) {
+    if (script) scriptEvent(script, plant, event);
+    scope.postMessage({ type: 'event', event });
+  }
   for (const line of firmware.drainLogs()) scope.postMessage({ type: 'log', line });
 }
 
@@ -96,14 +102,39 @@ function tick(): void {
     if (plant.relay.contact !== lastContact) {
       lastContact = plant.relay.contact;
       const type = lastContact === 'NO' ? 'RELAY_CLOSED' : 'RELAY_OPEN';
-      scope.postMessage({ type: 'event', event: { t_s: plant.t_s, type } });
+      scope.postMessage({ type: 'event', event: { t_s: plant.t_s, type } satisfies SimEvent });
+    }
+    if (script && scriptDone(script, plant.t_s)) {
+      endScript();
+      break;
     }
   }
   flush();
   if (now_ms - lastSnapshot_ms >= 1000 / CONFIG.ui.snapshotHz) postSnapshot(now_ms);
 }
 
+/** A script reached its end: the sim pauses there (§12 end times). */
+function endScript(): void {
+  if (!script) return;
+  playing = false;
+  debt_s = 0;
+  scope.postMessage({ type: 'scenario', id: script.scenario.id, done: true });
+  script = null;
+  postSnapshot(performance.now());
+}
+
+/** Plays a §12 script from the current sim time (D-046); unknown ids are logged and ignored. */
+function playScenario(id: string): void {
+  if (!SCENARIOS.some((s) => s.id === id)) {
+    scope.postMessage({ type: 'log', line: `WARN sim: unknown scenario ${id}` });
+    return;
+  }
+  script = startScript(plant, scenarioById(id), plant.t_s);
+  scope.postMessage({ type: 'scenario', id, done: false });
+}
+
 function reset(): void {
+  script = null;
   build();
   debt_s = 0;
   lagging = false;
@@ -148,8 +179,7 @@ function handle(msg: MainToSim): void {
     case 'command':
       return schedule(plant, { at_s, kind: 'command', cmd: msg.command.cmd });
     case 'scenario':
-      scope.postMessage({ type: 'log', line: `scenario ${msg.id}: guided scenarios arrive in P4.5/P6.6` });
-      return;
+      return playScenario(msg.id);
     case 'raw':
       rawOn = msg.on;
       raw = [[], [], []];

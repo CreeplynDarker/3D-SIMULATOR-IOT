@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { BenchViewport } from './scene/Bench.tsx';
 import { CONFIG } from './shared/config.ts';
-import type { MainToRcf, MainToSim, ModelStatus, RcfToMain, SimToMain, Snapshot } from './shared/messages.ts';
+import type { MainToRcf, MainToSim, ModelStatus, RcfToMain, SimEvent, SimToMain, Snapshot } from './shared/messages.ts';
 import type { Command, Packet, Verdict } from './shared/protocol.ts';
 import { appStore } from './store/index.ts';
 import type { Speed } from './store/slices/sim.ts';
 import { actions, bindWorkers } from './ui/actions.ts';
-import { inspectStore, type StoreView } from './ui/debug.ts';
+import { inspectStore, type SimDebug, simDebug, type StoreView } from './ui/debug.ts';
+import { TopBar } from './ui/TopBar.tsx';
 import { AppShell } from './ui/layout/AppShell.tsx';
 import { ViewportControls } from './ui/ViewportControls.tsx';
 
@@ -32,11 +33,14 @@ export interface DebugApi {
   train(): void;
   /** Plain-data view of the store. */
   inspect(): StoreView;
+  /** Events kept for the charts, oldest first. */
+  events(): SimEvent[];
 }
 
 declare global {
   interface Window {
     __pdm?: DebugApi;
+    __sim?: SimDebug;
   }
 }
 
@@ -86,6 +90,10 @@ function routeToStore(workers: Workers): void {
     else if (msg.type === 'packet') s.series.pushPacket(msg.packet);
     else if (msg.type === 'event') s.series.pushEvent(msg.event);
     else if (msg.type === 'log') s.console.append({ kind: 'log', text: msg.line });
+    else if (msg.type === 'scenario') {
+      s.sim.setScenario({ id: msg.id, done: msg.done });
+      if (msg.done) s.sim.setPlaying(false);
+    }
   });
   workers.rcf.addEventListener('message', (event: MessageEvent<RcfToMain>) => {
     const msg = event.data;
@@ -165,9 +173,12 @@ function installDebugApi(workers: Workers): () => void {
     },
     train: () => workers.postRcf({ type: 'train' }),
     inspect: () => inspectStore(appStore.getState()),
+    events: () => appStore.getState().series.events.toArray(),
   };
+  window.__sim = simDebug(() => appStore.getState());
   return () => {
     delete window.__pdm;
+    delete window.__sim;
   };
 }
 
@@ -193,7 +204,7 @@ export function App() {
 
   return (
     <AppShell
-      topBar={<span className="text-sm font-semibold">IoT predictive maintenance · Grupo 7</span>}
+      topBar={<TopBar />}
       left={<Pending name="M4 faults · M5 operator" />}
       viewport={
         <>

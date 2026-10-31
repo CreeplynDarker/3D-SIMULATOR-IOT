@@ -5,8 +5,9 @@ import { createFirmware } from '../firmware/firmware.ts';
 import { loadModel, type ModelJson, type RcfModel, scorePacket } from '../rcf/model.ts';
 import type { SimEvent } from '../shared/messages.ts';
 import type { Packet, State, TripReason, Verdict } from '../shared/protocol.ts';
-import type { Scenario, ScenarioAction } from '../shared/scenarios.ts';
-import { createPlant, type FirmwareView, type Plant, type PlantAction, schedule, stepPlant } from '../sim/plant.ts';
+import type { Scenario } from '../shared/scenarios.ts';
+import { createPlant, type FirmwareView, type Plant, stepPlant } from '../sim/plant.ts';
+import { scriptEvent, startScript } from '../sim/script.ts';
 import type { SimConfig } from '../sim/types.ts';
 
 export interface RunOptions {
@@ -45,13 +46,6 @@ export interface ScenarioResult {
   events: SimEvent[];
   timeline: TimelineRow[];
 }
-
-const toPlantAction = (at_s: number, a: ScenarioAction): PlantAction =>
-  a.kind === 'fault'
-    ? { at_s, kind: 'fault', key: a.key, value: a.value, ramp_s: a.ramp_s }
-    : a.kind === 'clearFaults'
-      ? { at_s, kind: 'clearFaults' }
-      : { at_s, kind: 'command', cmd: a.cmd };
 
 /** Timeline row from the plant and the firmware's view (units as in `TimelineRow`). */
 const row = (p: Plant, fw: FirmwareView): TimelineRow => ({
@@ -92,24 +86,18 @@ export function runScenario(scenario: Scenario, opts: RunOptions): ScenarioResul
     },
   });
 
-  for (const s of scenario.steps) if (!s.after) schedule(plant, toPlantAction(s.at_s, s.action));
+  const script = startScript(plant, scenario, plant.t_s);
   const stepsPerSecond = Math.round(1 / plant.dt_s);
-  let end_s = scenario.end_s;
-  let critical_s: number | null = null;
   let contact = plant.relay.contact;
   out.timeline.push(row(plant, firmware.view()));
 
   // Inclusive end: the step starting at end_s runs, so the window that closes at end_s is sent.
-  while (plant.t_s < end_s + plant.dt_s / 2) {
+  while (plant.t_s < script.end_s + plant.dt_s / 2) {
     stepPlant(plant, firmware);
     out.events.push(...plant.events.splice(0));
     for (const e of firmware.drainEvents()) {
       out.events.push(e);
-      if (e.type === 'CRITICAL' && critical_s === null) {
-        critical_s = e.t_s;
-        for (const s of scenario.steps) if (s.after) schedule(plant, toPlantAction(e.t_s + s.at_s, s.action));
-        if (scenario.endAfterCritical_s !== undefined) end_s = Math.min(end_s, e.t_s + scenario.endAfterCritical_s);
-      }
+      scriptEvent(script, plant, e);
     }
     if (plant.relay.contact !== contact) {
       contact = plant.relay.contact;

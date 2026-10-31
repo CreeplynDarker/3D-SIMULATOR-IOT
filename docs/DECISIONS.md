@@ -304,3 +304,18 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   `index.css`), driven by `ui.theme`. Components send worker messages only through `ui/actions.ts`, which App binds
   to the workers. The e2e tests read the store through `window.__pdm.inspect()` (`ui/debug.ts`), which grows with
   each module. Affects `src/ui/`, `App.tsx`, `store/slices/ui.ts`, `index.css`.
+- **D-046 · 2026-10-31 · Top bar and scenario playback (P5.2).** (a) The worker's `scenario{id}` handler schedules
+  the script's steps as plant actions from the current sim time. Steps with `after: 'CRITICAL'` are scheduled when
+  the first CRITICAL event comes through the worker's event flush, which is timed from that event's own `t_s`. At
+  the script's end the worker pauses. The logic is in `sim/script.ts` (`startScript`, `scriptEvent`, `scriptDone`),
+  which the harness now uses as well, so there is no second copy; the S1–S8 results and the default model are
+  unchanged. (b) `sel-scenario` resets the sim first (`reset`, charts cleared), then sends `scenario{id}` and plays,
+  so a script starts from OFF at t = 0 as §12 assumes, and S9 also sets 10×. (c) `shared/messages.ts` gains
+  `SimToMain { type: 'scenario'; id; done }`, so main knows when a script has ended (`window.__sim.scenarioDone`,
+  §8.2). Worker messages aren't the §10.1 protocol, so `PROTOCOL_VERSION` stays 1. (d) `fps` comes from an
+  `FpsProbe` in the canvas that writes `ui.fps` every 500 ms. (e) `btn-sim-reset` keeps the play state. `btn-help`
+  sets `ui.legendOpen`; the modal itself is M12 (P5.10). The mode label is an extra test ID, `mode-label`. `sel-mode`
+  is disabled until P8. (f) With `?debug=1`, `window.__sim` exposes live getters for `fps`, `state`, `t_s`,
+  `scenarioDone` and `lastEvent` (the newest series event), and `__pdm.events()` returns the series events.
+  Affects `sim/script.ts`, `sim/worker.ts`, `harness/runScenario.ts`, `shared/messages.ts`, `ui/TopBar.tsx`,
+  `ui/actions.ts`, `scene/Bench.tsx`, `store/slices/{sim,ui}.ts`.
