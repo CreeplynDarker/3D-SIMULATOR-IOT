@@ -508,3 +508,17 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   lines, the README and everything in `docs/`. A check on 2026-10-31 found no text in another language; the only
   non-ASCII characters are units and symbols (°C, m/s², Ω, §, →). Translations, if wanted later, are a new task.
   Affects all user-facing text.
+- **D-065 · 2026-10-31 · Coverage counts the workers (P7.1).** Since P0.1, `vite.config.ts` had excluded
+  `src/**/worker.ts` from coverage; with them counted, sim/ fell to 58 % and rcf/ to 89 %. The exclusion is gone. Both
+  workers now run in Node under unit tests (`tests/unit/sim/worker.test.ts`, `tests/unit/rcf/worker.test.ts`): `self`
+  is a stand-in worker scope with a stand-in "Wi-Fi" port, and Vitest's fake timers drive `setInterval` and
+  `performance.now`. The tests cover real behaviour: wall-clock pacing at 1× and 4×, pause, the 0.2 s per-tick cap
+  and `lagging`, START through the real firmware with packets on the channel and verdicts back as `verdictIn`,
+  faults, params, init and reset, the raw MPU stream, and playing S8 with its after-CRITICAL steps to its paused
+  end. For the RCF worker: boot status, ping, loading and rejecting models, scoring, threshold, and training
+  progress and abort. Result, per folder (statements / branches / functions / lines): sim 99.4 / 96.3 / 100 / 100,
+  firmware 99.1 / 93.2 / 98.6 / 99.6, rcf 99.3 / 98.0 / 100 / 99.5, harness 97.1 / 87.0 / 100 / 100. No file in
+  these folders is under 80 % on any metric; the lowest are `firmware/link.ts` functions at 80 % and
+  `harness/trainDefault.ts` branches at 81.8 %. The 1,000-operation RRCF property test took 6 s under coverage
+  instrumentation, over Vitest's 5 s default, so it gets an explicit 30 s budget. Affects `vite.config.ts`,
+  `tests/unit/sim/worker.test.ts`, `tests/unit/rcf/worker.test.ts`, `tests/unit/rcf/rrcf.test.ts`.

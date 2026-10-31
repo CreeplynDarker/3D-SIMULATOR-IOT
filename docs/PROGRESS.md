@@ -126,7 +126,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 
 ## P7 — Verification and delivery (deps: P6)
 
-- [ ] P7.1 Tests
+- [x] P7.1 Tests
+  2026-10-31 · worker.ts files back in coverage with Node unit tests for both workers; every file in sim/, firmware/, rcf/, harness/ ≥ 80 % (folders 97–99 % statements) · no tuning
 - [ ] P7.2 Performance
 - [ ] P7.3 Copy
 - [ ] P7.4 Publish

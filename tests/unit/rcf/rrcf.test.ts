@@ -83,7 +83,7 @@ describe('RRCF tree (§9.1)', () => {
       }
       checkTree(tree, keys);
     }
-  });
+  }, 30_000); // 1,000 operations with a full invariant check after each: slow under coverage instrumentation
 
   it('a duplicate point joins the existing leaf, and forgetting it restores the leaf', () => {
     const tree = gaussianTree(20, 'dup');
