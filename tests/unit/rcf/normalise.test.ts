@@ -11,9 +11,7 @@ interface Fixture {
   reference: { mean: number[]; std: number[] };
 }
 
-const fixture = JSON.parse(
-  readFileSync(join(import.meta.dirname, '../../fixtures/normalise.json'), 'utf8'),
-) as Fixture;
+const fixture = JSON.parse(readFileSync(join(import.meta.dirname, '../../fixtures/normalise.json'), 'utf8')) as Fixture;
 
 const relClose = (a: number, b: number) => Math.abs(a - b) <= 1e-12 * Math.max(1, Math.abs(b));
 

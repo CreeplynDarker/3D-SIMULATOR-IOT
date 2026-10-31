@@ -75,7 +75,8 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
   2026-10-31 · rcf/rrcf.ts: RCTree class (insert/forget/codisp/query, duplicates share a leaf, parent links); property test of 1,000 ops checks n, exact boxes and cuts; rcf/ coverage threshold on · no tuning
 - [x] P4.2 Normalise
   2026-10-31 · rcf/normalise.ts: fitNormaliser (μ, population σ), floorsFor, normalise with max(σ, floor); NumPy fixture matches to 1e-12 · no tuning
-- [ ] P4.3 Model (deps: P4.1, P4.2)
+- [x] P4.3 Model (deps: P4.1, P4.2)
+  2026-10-31 · rcf/model.ts: fitModel (μ/σ, 40 trees, holdout validation), scorePacket → Verdict (score = mean CoDisp ÷ nTrain, dominant, z map), zod-checked JSON, loadModel, trainer for the §9.3 flow · no tuning
 - [ ] P4.4 RCF worker (deps: P4.3, P0.6)
 - [ ] P4.5 Harness, scenarios and default model (deps: P4.3)
 - [ ] P4.6 Python cross-check (deps: P4.5)

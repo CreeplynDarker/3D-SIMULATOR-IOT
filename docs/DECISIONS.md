@@ -230,3 +230,13 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   (`default_rng(20261029)`; the dT/dt column is constant, so its floor applies) and NumPy's mean and std; the TS fit
   matches to 1e-12 relative. The fixture is static, so the test needs no Python. Affects `rcf/normalise.ts`,
   `tests/fixtures/normalise.json`.
+- **D-040 · 2026-10-31 · RCF model details that §9.3 leaves open.** (a) The saved model adds `numTrees` and
+  `stdFloor` to the §9.3 fields, so loading never depends on the current config; `std` is the raw population σ
+  (D-039). It is not a protocol shape, so `PROTOCOL_VERSION` is unchanged. (b) Scoring draws cuts from each tree's
+  `rcf-tree-<i>` stream, as Python `rrcf` does, so a score depends on the packets scored before it. To keep "train →
+  serialise → load" bit-for-bit, `fitModel` validates the holdout on a probe forest and returns a forest rebuilt from
+  the saved JSON, which is exactly what a load gives. (c) Every packet gets a verdict; packets outside
+  NORMAL/WARNING, with a null feature, or with no model get `score = null`, `alert = clear = false`. The firmware
+  needs these: its link timer runs in STARTING too (D-034). (d) The trainer waits for the first NORMAL packet,
+  skips packets with a null feature, and aborts (`state left NORMAL (<state>)`) when a later packet isn't NORMAL.
+  (e) `clear` uses `firmware.clearHysteresis`, the only hysteresis key in §5.1. Affects `rcf/model.ts`.

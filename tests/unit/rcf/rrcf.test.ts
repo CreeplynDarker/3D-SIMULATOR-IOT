@@ -6,7 +6,11 @@ const SEED = 20261029;
 const DIMS = 3;
 
 /** Checks every invariant below `node`: counts, exact bounding boxes, parent links and the leaf map. */
-function checkNode(tree: RCTree, node: RcfNode, seen: Set<string | number>): { n: number; min: number[]; max: number[] } {
+function checkNode(
+  tree: RCTree,
+  node: RcfNode,
+  seen: Set<string | number>,
+): { n: number; min: number[]; max: number[] } {
   if (node.kind === 'leaf') {
     expect(node.n).toBe(node.keys.length);
     for (const k of node.keys) {
@@ -45,7 +49,11 @@ function checkTree(tree: RCTree, keys: Set<string | number>): void {
 function gaussianTree(n: number, name: string): RCTree {
   const data = stream(SEED, `data-${name}`);
   const tree = new RCTree(stream(SEED, `tree-${name}`));
-  for (let i = 0; i < n; i++) tree.insertPoint(Array.from({ length: DIMS }, () => data.normal(0, 1)), i);
+  for (let i = 0; i < n; i++)
+    tree.insertPoint(
+      Array.from({ length: DIMS }, () => data.normal(0, 1)),
+      i,
+    );
   return tree;
 }
 
