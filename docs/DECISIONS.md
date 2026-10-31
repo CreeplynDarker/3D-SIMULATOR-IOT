@@ -503,3 +503,8 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   Playwright's default 30 s test timeout on this GPU-less container (26–28 s in P5); with the P6 animations they
   went over, so they now allow 90 s. Their checks are unchanged. Affects `ui/actions.ts`,
   `tests/e2e/p5-console.spec.ts`.
+- **D-064 · 2026-10-31 · All UI text, guided text and docs stay in English (team decision).** This covers every label,
+  tooltip, help and glossary text in `src/ui/` and `src/scene/`, the guided steps in `src/shared/guided.ts`, log
+  lines, the README and everything in `docs/`. A check on 2026-10-31 found no text in another language; the only
+  non-ASCII characters are units and symbols (°C, m/s², Ω, §, →). Translations, if wanted later, are a new task.
+  Affects all user-facing text.
