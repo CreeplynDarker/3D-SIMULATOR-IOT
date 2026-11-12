@@ -56,7 +56,7 @@ Demo story the app must support end to end:
 | --- | --- | --- |
 | MPU6050 SDA / SCL | GPIO21 / GPIO22 | I²C, 3V3, address 0x68 (AD0 left unconnected; GY-521 pulls it low) |
 | DS18B20 DATA | GPIO4 | 4.7 kΩ pull-up to 3V3 |
-| ACS712 OUT via divider | GPIO34 | ADC1_CH6, input-only, 11 dB attenuation; works with Wi-Fi on |
+| ACS712 OUT via divider | GPIO34 | 10 kΩ / 10 kΩ divider (× 0.5: 2.5 V at 0 A → 1.25 V); ADC1_CH6, input-only, 11 dB attenuation; works with Wi-Fi on |
 | Fan tach (blue) | — | Not connected: the blue wire is left free and the ESP32 measures no speed (D-078) |
 | Relay IN2 | GPIO26 | LOW = coil on = NO2 closed = fan powered; HIGH or floating at boot = fan off |
 | Relay IN1 | — | Not connected |
@@ -191,7 +191,7 @@ export const CONFIG = {
   sensors: {
     mpu: { range_g: 2, lsbPerG: 16384, noise_g: 0.007, dlpfCutoff_Hz: 184 },
     acs712: { vZero_V: 2.5, sens_VperA: 0.185, noise_V: 0.005 },
-    divider: { rTop_ohm: 10000, rBottom_ohm: 20000 },
+    divider: { rTop_ohm: 10000, rBottom_ohm: 10000 },
     adc: { maxCount: 4095, vMin_V: 0.075, vSpan_V: 3.05, noise_counts: 2, inl_counts: 6 },
     ds18b20: { probeTau_s: 8, resolution_C: 0.0625, conversion_s: 0.75, period_s: 1,
                disconnected_C: -127, powerOn_C: 85 },
@@ -330,7 +330,7 @@ clip to `±range_g`.
 
 ```
 V_out  = vZero + sens · I_inst + N(0, noise_V²)          (ACS712, volts)
-V_pin  = V_out · rBottom / (rTop + rBottom)               (= × 0.6667)
+V_pin  = V_out · rBottom / (rTop + rBottom)               (= × 0.5 with 10 kΩ / 10 kΩ, D-079)
 counts = clamp(round( maxCount · (V_pin − vMin)/vSpan + inl · sin(π · V_pin / 3.1) + N(0, noise_counts²) ), 0, maxCount)
 ```
 
@@ -898,7 +898,7 @@ arrangement.
 | breadboard | 830-point | 165 × 9.5 × 55 | (0.05, 0.005, 0.08) | Long axis along x; left rail +=3V3, right rail +=5 V, both − = GND |
 | esp32 | DevKit V1 30-pin | 52 × 13 × 28 | (0.02, 0.017, 0.08) | Straddles the centre channel; USB-C toward −x |
 | r_pu_ds | 4.7 kΩ | 6 × 2.3 × 2.3 | on breadboard | DS18B20 pull-up |
-| r_div_top / r_div_bot | 10 kΩ / 20 kΩ | 6 × 2.3 × 2.3 | on breadboard | ACS712 divider |
+| r_div_top / r_div_bot | 10 kΩ / 10 kΩ | 6 × 2.3 × 2.3 | on breadboard | ACS712 divider (× 0.5, D-079) |
 | acs712 | Current module | 31 × 12 × 13 | (0.00, 0.006, −0.10) | Terminals toward −x |
 | relay | 2-ch module | 50 × 19 × 38 | (0.14, 0.0095, −0.08) | Terminals toward −z; CH1 marked unused |
 | dcjack | Female barrel jack, screw terminals | 25 × 12 × 15 | (−0.12, 0.006, −0.15) | OPEN-6 |

@@ -167,7 +167,7 @@ describe('plant integration (§6.10)', () => {
     expect(s.gpio26).toBe(GPIO_LOW);
     expect(s.rpm).toBeGreaterThan(3000);
     expect(s.acsOut_V).toBeGreaterThan(2.5);
-    expect(s.adcPin_V).toBeCloseTo((s.acsOut_V * 2) / 3, 9);
+    expect(s.adcPin_V).toBeCloseTo(s.acsOut_V / 2, 9); // 10 kΩ / 10 kΩ divider (D-079)
     expect(s.state).toBe('OFF');
     expect(s.faults).not.toBe(p.faults.values); // a copy, safe to post
   });

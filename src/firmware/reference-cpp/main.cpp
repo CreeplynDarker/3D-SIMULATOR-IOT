@@ -13,7 +13,7 @@
 // ---- pins (§1.3) ---------------------------------------------------------------------------------------------
 static constexpr uint8_t PIN_SDA = 21, PIN_SCL = 22;   // MPU6050, I2C at 400 kHz
 static constexpr uint8_t PIN_DS18B20 = 4;              // 1-Wire, 4.7 k pull-up to 3V3
-static constexpr uint8_t PIN_ACS712 = 34;              // ADC1_CH6 through the 10 k / 20 k divider
+static constexpr uint8_t PIN_ACS712 = 34;              // ADC1_CH6 through the 10 k / 10 k divider (× 0.5)
 // The fan's blue tach wire is left free on the bench: no speed sensing (D-078).
 static constexpr uint8_t MPU_ADDR = 0x68;
 
@@ -54,7 +54,7 @@ static int n = 0;
 static uint32_t tickMs = 0, windowSeq = 0, stateSinceMs = 0;
 static uint32_t lastVerdictMs = 0, lastValidTempMs = 0;
 static double calibSum = 0; static uint32_t calibN = 0;
-static float counts0 = 2047.0f;
+static float counts0 = 1578.0f;   // nominal zero (2.5 V × 0.5 = 1.25 V) until START calibrates it
 static int iOverRun = 0;
 static bool sensorFault = false;
 

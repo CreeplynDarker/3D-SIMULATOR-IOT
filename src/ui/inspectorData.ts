@@ -28,8 +28,8 @@ const SPECS: Record<ComponentId, string[]> = {
   breadboard: ['830 points', 'Left rail + = 3V3, right rail + = 5 V, both − = GND'],
   esp32: ['ESP32-WROOM-32, 30-pin DevKit V1, USB-C from the laptop', 'GPIO26 relay IN2, GPIO34 ADC (ACS712), GPIO4 DS18B20, GPIO21/22 I²C'], // prettier-ignore
   r_pu_ds: ['4.7 kΩ pull-up, DS18B20 DATA to 3V3'],
-  r_div_top: ['10 kΩ, top of the ACS712 → GPIO34 divider (×2/3)'],
-  r_div_bot: ['20 kΩ, bottom of the ACS712 → GPIO34 divider'],
+  r_div_top: ['10 kΩ, top of the ACS712 → GPIO34 divider (×1/2: 2.5 V at 0 A reads 1.25 V)'],
+  r_div_bot: ['10 kΩ, bottom of the ACS712 → GPIO34 divider'],
   acs712: ['5 A variant, 0.185 V/A, 2.5 V at 0 A, 5 V supply', 'IP+ from the jack +12 V, IP− to relay COM2'],
   relay: ['2 channels, JQC-3FF-S-Z 5 VDC coils, IN LOW = coil on', 'Only CH2 used: +12 V → COM2, NO2 → fan red (fail-safe)'], // prettier-ignore
   dcjack: ['5.5 × 2.1 mm female jack with screw terminals'],

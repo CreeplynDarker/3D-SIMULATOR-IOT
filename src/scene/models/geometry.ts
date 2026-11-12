@@ -89,8 +89,8 @@ export function breadboardParts(): Part[] {
 /** Resistor colour bands (4-band code). */
 export const RESISTOR_BANDS = {
   r_pu_ds: ['#f5d000', '#7b2fbe', '#c62828', '#c9a227'], // 4.7 kΩ: yellow violet red gold
-  r_div_top: ['#6d4c41', '#151515', '#ef6c00', '#c9a227'], // 10 kΩ
-  r_div_bot: ['#c62828', '#151515', '#ef6c00', '#c9a227'], // 20 kΩ: red black orange gold
+  r_div_top: ['#6d4c41', '#151515', '#ef6c00', '#c9a227'], // 10 kΩ: brown black orange gold
+  r_div_bot: ['#6d4c41', '#151515', '#ef6c00', '#c9a227'], // 10 kΩ: brown black orange gold
 } as const;
 
 /** Axial resistor body along x with four colour bands. */

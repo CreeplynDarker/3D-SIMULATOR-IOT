@@ -337,7 +337,7 @@ de la interfaz, aunque la verificación se apruebe.
    | ---------------------------- | -------------------------------------- |
    | MPU6050 (I²C, 400 kHz)       | SDA GPIO21, SCL GPIO22, dirección 0x68 |
    | DS18B20 (pull-up de 4.7 k)   | GPIO4                                  |
-   | ACS712 (divisor 10 k / 20 k) | GPIO34 (ADC1)                          |
+   | ACS712 (divisor 10 k / 10 k) | GPIO34 (ADC1)                          |
    | Tacómetro (pull-up de 10 k)  | GPIO27 (PCNT)                          |
    | Relé CH2                     | GPIO26 → IN2 (activo en bajo)          |
 

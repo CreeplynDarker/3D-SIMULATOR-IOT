@@ -151,7 +151,7 @@ export const COMPONENTS: readonly ComponentSpec[] = [
   },
   resistor('r_pu_ds', '4.7 kΩ', 90),
   resistor('r_div_top', '10 kΩ', 0),
-  resistor('r_div_bot', '20 kΩ', 90),
+  resistor('r_div_bot', '10 kΩ', 90),
   {
     id: 'acs712',
     part: 'ACS712 current module (5 A)',

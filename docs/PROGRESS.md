@@ -152,6 +152,8 @@ Seven changes from the team's wiring document, one commit each.
 
 - [x] B1 No speed sensing (OPEN-1 → no, protocol v2)
   2026-11-12 · 5 RCF features; Packet/FeatureKey without rpm, no STALL, PROTOCOL_VERSION 2, schemas, bridge-py v2; firmware without PCNT/rpm/STALL (TS and reference-cpp); RESET guard = resetMinDelay_s 15 s since the trip; plant keeps the speed for the scene; M3 rpm-readout and M6 chart-rpm removed; M9 "simulated"/"estimated"; Live blades from relay_ch2; S4 dominant i_rms_A; model retrained (holdout max 0.159) · no tuning
+- [x] B2 Divider 10 kΩ / 10 kΩ
+  2026-11-12 · sensors.divider.rBottom_ohm 20000 → 10000 (hardware fact, not §5.2 tuning); reference-cpp R_BOTTOM and nominal counts0; r_div_bot 10 kΩ in 3D and M9; ADC 1583 counts at 0 A, 1606 at 0.18 A (8.05 mA/count); model retrained (holdout max 0.203) · no tuning
 
 ## Waiting for human review
 

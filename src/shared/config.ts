@@ -21,7 +21,7 @@ export const CONFIG = {
   sensors: {
     mpu: { range_g: 2, lsbPerG: 16384, noise_g: 0.007, dlpfCutoff_Hz: 184 },
     acs712: { vZero_V: 2.5, sens_VperA: 0.185, noise_V: 0.005 },
-    divider: { rTop_ohm: 10000, rBottom_ohm: 20000 },
+    divider: { rTop_ohm: 10000, rBottom_ohm: 10000 },
     adc: { maxCount: 4095, vMin_V: 0.075, vSpan_V: 3.05, noise_counts: 2, inl_counts: 6 },
     ds18b20: { probeTau_s: 8, resolution_C: 0.0625, conversion_s: 0.75, period_s: 1,
                disconnected_C: -127, powerOn_C: 85 },

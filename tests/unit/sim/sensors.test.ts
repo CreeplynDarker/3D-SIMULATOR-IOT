@@ -18,8 +18,8 @@ describe('ACS712 (§6.5)', () => {
 });
 
 describe('divider and ADC (§6.5)', () => {
-  it('divides by rBottom / (rTop + rBottom) = 2/3', () => {
-    expect(dividerOut_V(2.5, S.divider)).toBeCloseTo(2.5 * (2 / 3), 12);
+  it('divides by rBottom / (rTop + rBottom) = 1/2 (10 kΩ / 10 kΩ, D-079)', () => {
+    expect(dividerOut_V(2.5, S.divider)).toBeCloseTo(1.25, 12);
   });
 
   it('includes the INL term and stays within [0, 4095]', () => {

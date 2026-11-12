@@ -744,3 +744,14 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   §11 as superseded. Affects `src/shared/{protocol,config,messages,guided,calibration,wiring,components}.ts`,
   `src/firmware/*` (TS and C++), `src/sim/{plant.ts,sensors/tach.ts}`, `src/bridge/liveSnapshot.ts`, `src/ui/*`,
   `src/scene/*`, `src/harness/calibrate.ts`, `scripts/*`, `bridge-py/*`, `public/`, `tests/`, `PENDING_CHECKS.md`.
+
+- **D-079 · 2026-11-12 · ACS712 divider is 10 kΩ / 10 kΩ.** The wiring document puts two 10 kΩ resistors between
+  ACS712 OUT and GND, with the middle to GPIO34, so `sensors.divider.rBottom_ohm` = 10000 (was 20000). This is a
+  hardware fact, not §5.2 tuning. The divider halves the output: 2.5 V at 0 A reads 1.25 V at the pin, and the
+  ACS712-05B's full 0.5–4.5 V range maps to 0.25–2.25 V, inside the ADC's 11 dB span. Ideal counts (with the INL
+  term, no noise): **1583 at 0 A and 1606 at 0.18 A** (were 2143 and 2173); one count is now 8.05 mA (was 6.04 mA),
+  so the ADC's 2-count noise weighs more on I_RMS. The reference C++ (`R_BOTTOM`, the nominal `counts0` = 1578 before
+  calibration) follows (rule 10); `r_div_bot` is 10 kΩ in §13.2, in 3D (brown-black-orange bands) and in M9. Model,
+  fixtures and Python references regenerated: holdout max 0.203 (0.159 before), S1–S8 pass with no tuning. Affects
+  `src/shared/config.ts`, `src/firmware/reference-cpp/{features,main}.cpp`, `src/shared/components.ts`,
+  `src/scene/models/geometry.ts`, `src/ui/inspectorData.ts`, `public/models/`, `tests/fixtures/`, two sensor tests.
