@@ -7,13 +7,12 @@ static constexpr int N = 1000;
 static constexpr float V_SPAN = 3.05f, MAX_COUNT = 4095.0f;      // ADC1, 11 dB attenuation
 static constexpr float R_TOP = 10000.0f, R_BOTTOM = 20000.0f;    // ACS712 OUT divider
 static constexpr float ACS_SENS_V_PER_A = 0.185f;                // ACS712-05B
-static constexpr float PULSES_PER_REV = 2.0f, WINDOW_S = 1.0f;
 static constexpr float DS_DISCONNECTED_C = -127.0f, DS_POWER_ON_C = 85.0f, T_JUMP_REJECT_C = 10.0f;
 static constexpr float DTDT_SPAN_S = 60.0f;
 static constexpr int DTDT_MIN_SAMPLES = 10;
 
 struct Features {
-  float aRms_g, cf, iRms_A, rpm;
+  float aRms_g, cf, iRms_A;
   bool tValid;
   float t_C;
   bool dtdtValid;
@@ -95,11 +94,10 @@ static void temperatureFeatures(float now_s, Features &f) {
 }
 
 Features computeFeatures(const float ax[N], const float ay[N], const float az[N], const uint16_t counts[N],
-                         float counts0, uint32_t tachEdges, float now_s) {
+                         float counts0, float now_s) {
   Features f = {};
   vibrationFeatures(ax, ay, az, f);
   currentFeature(counts, counts0, f);
-  f.rpm = tachEdges * 60.0f / (PULSES_PER_REV * WINDOW_S);  // @map feat.rpm
   temperatureFeatures(now_s, f);
   return f;
 }

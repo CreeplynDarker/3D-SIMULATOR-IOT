@@ -7,7 +7,7 @@ import { type Packet, PROTOCOL_VERSION } from '../../../src/shared/protocol.ts';
 
 const packet = (seq: number): Packet => ({
   v: PROTOCOL_VERSION, kind: 'packet', seq, ts_ms: (seq + 1) * 1000, win_ms: 1000, a_rms_g: 0.12, cf: 2.5,
-  i_rms_A: 0.18, t_C: 34, dtdt_C_per_min: 0, rpm: 3800, state: 'NORMAL', relay_ch2: 'ON', link_lost: false,
+  i_rms_A: 0.18, t_C: 34, dtdt_C_per_min: 0, state: 'NORMAL', relay_ch2: 'ON', link_lost: false,
   sensor_fault: false, warn_reason: null, trip_reason: null,
 }); // prettier-ignore
 

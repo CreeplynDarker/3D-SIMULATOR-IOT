@@ -23,7 +23,6 @@ const HEALTHY: Record<FeatureKey, [number, number]> = {
   i_rms_A: [0.18, 0.003],
   t_C: [34.07, 0.03],
   dtdt_C_per_min: [0, 0.03],
-  rpm: [3800, 20],
 };
 
 function packet(seq: number, values: Partial<Record<FeatureKey, number | null>> = {}, state: State = 'NORMAL'): Packet {

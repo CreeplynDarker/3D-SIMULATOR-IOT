@@ -8,14 +8,13 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <Wire.h>
-#include <driver/pulse_cnt.h>
 #include <esp_timer.h>
 
 // ---- pins (§1.3) ---------------------------------------------------------------------------------------------
 static constexpr uint8_t PIN_SDA = 21, PIN_SCL = 22;   // MPU6050, I2C at 400 kHz
 static constexpr uint8_t PIN_DS18B20 = 4;              // 1-Wire, 4.7 k pull-up to 3V3
 static constexpr uint8_t PIN_ACS712 = 34;              // ADC1_CH6 through the 10 k / 20 k divider
-static constexpr uint8_t PIN_TACH = 27;                // open collector, 10 k pull-up to 3V3
+// The fan's blue tach wire is left free on the bench: no speed sensing (D-078).
 static constexpr uint8_t MPU_ADDR = 0x68;
 
 // ---- timing and limits (src/shared/config.ts) -----------------------------------------------------------------
@@ -24,17 +23,18 @@ static constexpr uint32_t CALIB_MS = 500, START_GRACE_MS = 10000;
 static constexpr uint32_t DS_PERIOD_MS = 1000, DS_CONVERSION_MS = 750;
 static constexpr uint32_t LINK_TIMEOUT_MS = 5000, SENSOR_TIMEOUT_MS = 10000;
 static constexpr float I_MAX_A = 0.30f, I_MAX_START_A = 0.40f, T_MAX_C = 60.0f, T_WARN_MARGIN_C = 5.0f;
-static constexpr float I_WARN_FRACTION = 0.9f, STALL_RPM = 0.5f * 3800.0f;
-static constexpr int N_I_LIMIT = 3, N_STALL = 3;
+static constexpr float I_WARN_FRACTION = 0.9f;
+static constexpr int N_I_LIMIT = 3;
+static constexpr int PROTOCOL_VERSION = 2;                       // src/shared/protocol.ts
 
 // ---- from the other reference files ---------------------------------------------------------------------------
 enum class State : uint8_t { OFF, CALIBRATING, STARTING, NORMAL, WARNING, CRITICAL };
-enum class Reason : uint8_t { NONE, RCF, I_MAX, T_MAX, STALL, ESTOP, I_SOFT, T_SOFT, SENSOR };
-struct Fsm { State state; int alertRun, clearRun; Reason tripReason, warnReason; bool linkLost, softActive; float rpm; };
+enum class Reason : uint8_t { NONE, RCF, I_MAX, T_MAX, ESTOP, I_SOFT, T_SOFT, SENSOR };
+struct Fsm { State state; int alertRun, clearRun; Reason tripReason, warnReason; bool linkLost, softActive; uint32_t trippedAtMs; };
 extern Fsm fsm;
-struct Features { float aRms_g, cf, iRms_A, rpm; bool tValid; float t_C; bool dtdtValid; float dtdt_C_per_min; };
+struct Features { float aRms_g, cf, iRms_A; bool tValid; float t_C; bool dtdtValid; float dtdt_C_per_min; };
 Features computeFeatures(const float ax[N], const float ay[N], const float az[N], const uint16_t counts[N],
-                         float counts0, uint32_t tachEdges, float now_s);
+                         float counts0, float now_s);
 bool addTemperature(float t_s, float value_C);
 void relayInit();
 bool relayIsOn();
@@ -46,7 +46,6 @@ void smLimitTrip(Reason r); void smSoftCondition(Reason r); void smVerdict(bool 
 OneWire oneWire(PIN_DS18B20);
 DallasTemperature ds18b20(&oneWire);
 WiFiUDP udp;
-static pcnt_unit_handle_t tachUnit = nullptr;
 static volatile bool tickDue = false;
 
 static float ax[N], ay[N], az[N];
@@ -56,7 +55,7 @@ static uint32_t tickMs = 0, windowSeq = 0, stateSinceMs = 0;
 static uint32_t lastVerdictMs = 0, lastValidTempMs = 0;
 static double calibSum = 0; static uint32_t calibN = 0;
 static float counts0 = 2047.0f;
-static int iOverRun = 0, stallRun = 0;
+static int iOverRun = 0;
 static bool sensorFault = false;
 
 void logLine(const char *level, const char *module, const char *fmt, ...) {
@@ -64,6 +63,9 @@ void logLine(const char *level, const char *module, const char *fmt, ...) {
   va_list args; va_start(args, fmt); vsnprintf(msg, sizeof msg, fmt, args); va_end(args);
   Serial.printf("[t=%010.3f] %s %s: %s\n", tickMs / 1000.0, level, module, msg);
 }
+
+// The firmware's millisecond clock (1 kHz ticks); state_machine.cpp times the RESET delay with it.
+uint32_t firmwareMs() { return tickMs; }
 
 void startCalibration() { calibSum = 0; calibN = 0; stateSinceMs = tickMs; lastVerdictMs = tickMs; }
 
@@ -80,15 +82,6 @@ static void mpuRead(float &x, float &y, float &z) {
   x = rx / 16384.0f; y = ry / 16384.0f; z = rz / 16384.0f;   // ±2 g range
 }
 
-static void tachInit() {
-  pcnt_unit_config_t unit = {.low_limit = -1, .high_limit = 32767};
-  pcnt_new_unit(&unit, &tachUnit);
-  pcnt_chan_config_t chan = {.edge_gpio_num = PIN_TACH, .level_gpio_num = -1};
-  pcnt_channel_handle_t ch; pcnt_new_channel(tachUnit, &chan, &ch);
-  pcnt_channel_set_edge_action(ch, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_HOLD);  // rising edges
-  pcnt_unit_enable(tachUnit); pcnt_unit_clear_count(tachUnit); pcnt_unit_start(tachUnit);
-}
-
 void setup() {
   relayInit();                                  // fan off before anything else
   Serial.begin(115200);
@@ -98,7 +91,6 @@ void setup() {
   mpuWrite(0x1C, 0x00);                         // ±2 g
   ds18b20.begin(); ds18b20.setResolution(12); ds18b20.setWaitForConversion(false);
   analogSetPinAttenuation(PIN_ACS712, ADC_11db);
-  tachInit();
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   udp.begin(4210);
   const esp_timer_create_args_t args = {.callback = onTick, .name = "sample"};
@@ -107,7 +99,7 @@ void setup() {
 
 // Names as in the §10.1 protocol (public/schema/packet.schema.json); the bridge drops packets that don't match.
 static const char *const STATE_NAMES[] = {"OFF", "CALIBRATING", "STARTING", "NORMAL", "WARNING", "CRITICAL"};
-static const char *const REASON_NAMES[] = {nullptr, "RCF", "I_MAX", "T_MAX", "STALL", "ESTOP", "I_SOFT", "T_SOFT", "SENSOR"};
+static const char *const REASON_NAMES[] = {nullptr, "RCF", "I_MAX", "T_MAX", "ESTOP", "I_SOFT", "T_SOFT", "SENSOR"};
 
 static void setReason(JsonDocument &doc, const char *key, Reason r) {
   if (r == Reason::NONE) doc[key] = nullptr; else doc[key] = REASON_NAMES[(int)r];
@@ -116,8 +108,8 @@ static void setReason(JsonDocument &doc, const char *key, Reason r) {
 // One §10.1 packet per window, as one JSON datagram to the laptop's bridge (UDP 4211, D-070).
 static void sendPacket(const Features &f) {
   JsonDocument doc;
-  doc["v"] = 1; doc["kind"] = "packet"; doc["seq"] = windowSeq; doc["ts_ms"] = tickMs; doc["win_ms"] = 1000;
-  doc["a_rms_g"] = f.aRms_g; doc["cf"] = f.cf; doc["i_rms_A"] = f.iRms_A; doc["rpm"] = f.rpm;
+  doc["v"] = PROTOCOL_VERSION; doc["kind"] = "packet"; doc["seq"] = windowSeq; doc["ts_ms"] = tickMs; doc["win_ms"] = 1000;
+  doc["a_rms_g"] = f.aRms_g; doc["cf"] = f.cf; doc["i_rms_A"] = f.iRms_A;
   if (f.tValid) doc["t_C"] = f.t_C; else doc["t_C"] = nullptr;
   if (f.dtdtValid) doc["dtdt_C_per_min"] = f.dtdt_C_per_min; else doc["dtdt_C_per_min"] = nullptr;
   doc["state"] = STATE_NAMES[(int)fsm.state]; doc["relay_ch2"] = relayIsOn() ? "ON" : "OFF";
@@ -131,7 +123,6 @@ static void evaluateLimits(const Features &f) {
   const bool supervised = fsm.state == State::NORMAL || fsm.state == State::WARNING;
   const bool running = supervised || fsm.state == State::STARTING;
   iOverRun = (supervised && f.iRms_A > I_MAX_A) ? iOverRun + 1 : 0;
-  stallRun = (supervised && f.rpm < STALL_RPM) ? stallRun + 1 : 0;
   sensorFault = tickMs - lastValidTempMs > SENSOR_TIMEOUT_MS;
   if (running && tickMs - lastVerdictMs > LINK_TIMEOUT_MS && !fsm.linkLost) {
     fsm.linkLost = true;  // @map link.lost
@@ -139,7 +130,6 @@ static void evaluateLimits(const Features &f) {
   }
   if (iOverRun >= N_I_LIMIT || (fsm.state == State::STARTING && f.iRms_A > I_MAX_START_A)) smLimitTrip(Reason::I_MAX);
   else if (running && f.tValid && f.t_C > T_MAX_C) smLimitTrip(Reason::T_MAX);
-  else if (stallRun >= N_STALL) smLimitTrip(Reason::STALL);
   else if (f.iRms_A > I_WARN_FRACTION * I_MAX_A) smSoftCondition(Reason::I_SOFT);
   else if (f.tValid && f.t_C > T_MAX_C - T_WARN_MARGIN_C) smSoftCondition(Reason::T_SOFT);
   else if (sensorFault) smSoftCondition(Reason::SENSOR);
@@ -148,9 +138,7 @@ static void evaluateLimits(const Features &f) {
 static void sampleTick() {
   tickMs++;
   if (n == N) {                                  // window end
-    int edges = 0; pcnt_unit_get_count(tachUnit, &edges); pcnt_unit_clear_count(tachUnit);
-    const Features f = computeFeatures(ax, ay, az, counts, counts0, edges, tickMs / 1000.0f);
-    fsm.rpm = f.rpm;
+    const Features f = computeFeatures(ax, ay, az, counts, counts0, tickMs / 1000.0f);
     evaluateLimits(f);
     sendPacket(f);
     windowSeq++; n = 0;

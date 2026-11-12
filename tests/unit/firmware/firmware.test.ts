@@ -92,7 +92,7 @@ describe('firmware orchestrator (P3.6)', () => {
     const normal = b.packets.filter((p) => p.state === 'NORMAL');
     const last = normal.at(-1);
     expect(last?.relay_ch2).toBe('ON');
-    expect(Math.abs((last?.rpm ?? 0) - 3800)).toBeLessThan(60);
+    expect(last).not.toHaveProperty('rpm'); // no speed sensing on the bench (D-078)
     expect(Math.abs((last?.i_rms_A ?? 0) - 0.18)).toBeLessThan(0.01);
     expect(Math.abs((last?.a_rms_g ?? 0) - 0.12)).toBeLessThan(0.02);
     expect(last?.t_C).toBeCloseTo(34.07, 0);
@@ -118,23 +118,27 @@ describe('firmware orchestrator (P3.6)', () => {
     const tCrit = b.events.find((e) => e.type === 'CRITICAL')?.t_s ?? NaN;
     expect(tCrit - tWarn).toBeCloseTo(CONFIG.firmware.nCritical - 1, 0);
     expect(b.firmware.view()).toMatchObject({ state: 'CRITICAL', tripReason: 'RCF', activeMap: 'sm.warn.trip' });
-    expect(b.logs.join('\n')).toMatch(/ERR fsm: trip RCF a_rms=\d\.\d+g cf=\d\.\d+ i_rms=\d\.\d+A t=\d+\.\d+C rpm=\d+/);
+    expect(b.logs.join('\n')).toMatch(/ERR fsm: trip RCF a_rms=\d\.\d+g cf=\d\.\d+ i_rms=\d\.\d+A t=\d+\.\d+C$/m);
   });
 
-  it('refuses START while latched and RESET while the fan still turns, then resets once it has coasted down', () => {
+  it('refuses START while latched and RESET within resetMinDelay_s of the trip, then resets after it (D-078)', () => {
     const b = bench();
     b.run(15);
-    schedule(b.plant, { at_s: b.plant.t_s, kind: 'command', cmd: 'ESTOP' });
-    schedule(b.plant, { at_s: b.plant.t_s + 1, kind: 'command', cmd: 'START' });
-    schedule(b.plant, { at_s: b.plant.t_s + 1.2, kind: 'command', cmd: 'RESET' });
-    b.run(2);
+    const trip_s = b.plant.t_s;
+    const delay_s = CONFIG.firmware.resetMinDelay_s;
+    schedule(b.plant, { at_s: trip_s, kind: 'command', cmd: 'ESTOP' });
+    schedule(b.plant, { at_s: trip_s + 1, kind: 'command', cmd: 'START' });
+    schedule(b.plant, { at_s: trip_s + 1.2, kind: 'command', cmd: 'RESET' });
+    schedule(b.plant, { at_s: trip_s + delay_s - 0.1, kind: 'command', cmd: 'RESET' });
+    b.run(delay_s);
+    expect(b.firmware.view()).toMatchObject({ state: 'CRITICAL', trippedAt_s: expect.closeTo(trip_s, 3) });
     expect(b.logs.join('\n')).toMatch(/ERR fsm: start refused: latched/);
-    expect(b.logs.join('\n')).toMatch(/WARN fsm: reset refused: fan still turning/);
-    b.run(15); // coast-down ≈ 9 s, then the next window measures rpm < 100
+    expect(b.logs.join('\n')).toMatch(/WARN fsm: reset refused: wait 15 s after the trip/);
+    expect(b.plant.fan.rpm).toBeLessThan(100); // the plant's fan has coasted down by then (it is not measured)
     schedule(b.plant, { at_s: b.plant.t_s, kind: 'command', cmd: 'RESET' });
     b.run(0.01);
-    expect(b.firmware.view()).toMatchObject({ state: 'OFF', tripReason: null });
-    expect(b.events.filter((e) => e.type === 'REFUSED')).toHaveLength(2);
+    expect(b.firmware.view()).toMatchObject({ state: 'OFF', tripReason: null, trippedAt_s: null });
+    expect(b.events.filter((e) => e.type === 'REFUSED')).toHaveLength(3);
   });
 
   it('overheat: T_SOFT warning, then a T_MAX trip', () => {

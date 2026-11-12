@@ -6,12 +6,11 @@ import { GPIO_LOW } from '../../../src/sim/types.ts';
 
 interface Closed {
   /** scalar fields copied at close time (the buffers are reused two windows later) */
-  window: Pick<WindowData, 'index' | 'tEnd_s' | 'n' | 'edges'>;
+  window: Pick<WindowData, 'index' | 'tEnd_s' | 'n'>;
   /** copies, since the sampler reuses its buffers */
   ax: number[];
   ay: number[];
   counts: number[];
-  revs: number;
 }
 
 /** Runs the plant with the fan on and a sampler as the firmware; records windows and DS18B20 reads. */
@@ -20,7 +19,6 @@ function run(t_s: number) {
   const sampler = createSampler(CONFIG);
   const windows: Closed[] = [];
   const reads: DsRead[] = [];
-  let theta0 = 0;
   runPlant(
     plant,
     {
@@ -28,14 +26,11 @@ function run(t_s: number) {
         const out = samplerTick(sampler, view);
         if (out.window) {
           const w = out.window;
-          const revs = (plant.fan.theta_rad - theta0) / (2 * Math.PI);
-          theta0 = plant.fan.theta_rad;
           windows.push({
-            window: { index: w.index, tEnd_s: w.tEnd_s, n: w.n, edges: w.edges },
+            window: { index: w.index, tEnd_s: w.tEnd_s, n: w.n },
             ax: [...w.ax_g.subarray(0, w.n)],
             ay: [...w.ay_g.subarray(0, w.n)],
             counts: [...w.counts.subarray(0, w.n)],
-            revs,
           });
         }
         if (out.dsRead) reads.push(out.dsRead);
@@ -72,7 +67,6 @@ describe('sampler (§7.1)', () => {
       adcCounts: 1500,
       dsReading_C: 30,
       dsReadings: 0,
-      tachEdges: 0,
     });
     let closed: WindowData | null = null;
     for (let k = 0; k <= 1500; k++) {
@@ -91,10 +85,7 @@ describe('sampler (§7.1)', () => {
       expect(Number.isInteger(r.value_C / CONFIG.sensors.ds18b20.resolution_C)).toBe(true);
   });
 
-  it('counts tach edges per window: the plant revolutions × 2 ± 1', () => {
-    for (const { window: w, revs } of windows) {
-      expect(Math.abs(w.edges - 2 * revs)).toBeLessThanOrEqual(1);
-    }
-    expect(windows[5]?.window.edges).toBeGreaterThan(120); // ≈ 3,800 rpm · 2 / 60
+  it('reads no tach: the window holds only the MPU6050 and ADC samples (D-078)', () => {
+    expect(Object.keys(windows[0]?.window ?? {}).sort()).toEqual(['index', 'n', 'tEnd_s']);
   });
 });

@@ -42,7 +42,7 @@ function fit(file: string) {
   const w = result.windows;
   const lines = [
     `session ${file}: ${packets.length} packets${skipped ? ` (${skipped} skipped)` : ''}`,
-    `windows: rest ${w.rest}, spin-up ${w.spinUp}, running ${w.steady}, coast ${w.coast}, current noise ${w.currentNoise}, heating ${w.heating}`, // prettier-ignore
+    `windows: rest ${w.rest}, running ${w.steady}, current noise ${w.currentNoise}, heating ${w.heating}`,
     `relay closed at ${result.switch_s.on.toFixed(3)} s, opened at ${result.switch_s.off?.toFixed(3) ?? '— (no E-STOP)'} s`,
     '',
     `${'key'.padEnd(28)}${'config'.padStart(10)}${'proposed'.padStart(11)}${'change'.padStart(9)}  from`,

@@ -11,7 +11,6 @@ const row = (seq: number, state: State, score: number | null = null): WindowRow 
   i_rms_A: 0.18,
   t_C: seq === 3 ? null : 34,
   dtdt_C_per_min: 0,
-  rpm: 3800,
   state,
   score,
   threshold: score === null ? null : 0.5,
@@ -20,7 +19,7 @@ const row = (seq: number, state: State, score: number | null = null): WindowRow 
 
 describe('M6 chart data (§8.2)', () => {
   it('lists the six strips with their test IDs', () => {
-    expect(STRIPS.map((s) => s.testId)).toEqual(['chart-arms', 'chart-cf', 'chart-irms', 'chart-temp', 'chart-rpm', 'chart-score']); // prettier-ignore
+    expect(STRIPS.map((s) => s.testId)).toEqual(['chart-arms', 'chart-cf', 'chart-irms', 'chart-temp', 'chart-score']); // prettier-ignore
   });
 
   it('keeps the last window_s seconds, with nulls where a value is missing', () => {

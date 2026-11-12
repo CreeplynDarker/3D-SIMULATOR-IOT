@@ -28,9 +28,8 @@ test('P5.G: imbalance 0.3 trips on RCF within 15 s of sim time; reset with confi
   await expect(page.getByTestId('trip-reason')).toHaveText('RCF');
   await expect(page.getByTestId('btn-reset')).toBeEnabled();
 
-  // The firmware accepts RESET once the fan is below 100 rpm.
-  // RESET is accepted below resetMaxRpm as the firmware measures it (the last window's tach), not the plant's rpm
-  await page.waitForFunction(() => (window.__sim?.packetRpm ?? 1e9) < 100, undefined, { timeout: 60_000 });
+  // The firmware accepts RESET resetMinDelay_s after the trip: the bench has no speed sensor (D-078)
+  await page.waitForFunction(() => window.__sim?.resetReady === true, undefined, { timeout: 60_000 });
   await page.getByTestId('btn-reset').click();
   await expect(page.getByTestId('dlg-reset-confirm')).toBeVisible();
   await page.getByTestId('btn-reset-confirm').click();
@@ -48,5 +47,5 @@ test('P5.G: imbalance 0.3 trips on RCF within 15 s of sim time; reset with confi
   process.stdout.write(`GATE csvRows=${rows.length} consolePackets=${consolePackets}\n`);
   expect(rows.length).toBe(consolePackets);
   expect(rows.length).toBeGreaterThan(20);
-  for (const r of rows) expect(r.split(',')).toHaveLength(22);
+  for (const r of rows) expect(r.split(',')).toHaveLength(21); // 16 packet fields (v2) + 5 verdict fields
 });

@@ -9,7 +9,6 @@ export interface WindowFeatures {
   a_rms_g: number;
   cf: number;
   i_rms_A: number;
-  rpm: number;
 }
 
 /** Calibrated current (A) for a raw ADC reading, given the zero-current reading `counts0`. */
@@ -43,8 +42,7 @@ export function computeFeatures(w: WindowData, counts0: number, cfg: SimConfig):
   let iSq = 0;
   for (let i = 0; i < n; i++) iSq += currentFromCounts_A(w.counts[i] as number, counts0, cfg) ** 2;
   const i_rms_A = Math.sqrt(iSq / n); // @map feat.irms
-  const rpm = (w.edges * 60) / (cfg.fan.tachPulsesPerRev * cfg.firmware.window_s); // @map feat.rpm
-  return { a_rms_g, cf, i_rms_A, rpm };
+  return { a_rms_g, cf, i_rms_A };
 }
 
 /** Valid DS18B20 readings kept for t_C and dT/dt. */

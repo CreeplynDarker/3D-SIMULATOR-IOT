@@ -5,7 +5,7 @@ import type { SimEvent } from '../shared/messages.ts';
 import type { State } from '../shared/protocol.ts';
 import type { WindowRow } from '../store/slices/series.ts';
 
-export type StripId = 'chart-arms' | 'chart-cf' | 'chart-irms' | 'chart-temp' | 'chart-rpm' | 'chart-score';
+export type StripId = 'chart-arms' | 'chart-cf' | 'chart-irms' | 'chart-temp' | 'chart-score';
 
 export interface StripSpec {
   testId: StripId;
@@ -19,7 +19,6 @@ export const STRIPS: readonly StripSpec[] = [
   { testId: 'chart-cf', title: 'Crest factor (CF)', series: ['cf'] },
   { testId: 'chart-irms', title: 'I_RMS (A)', series: ['i_rms'] },
   { testId: 'chart-temp', title: 'T (°C) · dT/dt (°C/min)', series: ['T', 'dT/dt'] },
-  { testId: 'chart-rpm', title: 'RPM', series: ['rpm'] },
   { testId: 'chart-score', title: 'RCF score · threshold', series: ['score', 'threshold'] },
 ];
 
@@ -66,7 +65,6 @@ export function chartData(
       'chart-cf': [col((r) => r.cf)],
       'chart-irms': [col((r) => r.i_rms_A)],
       'chart-temp': [col((r) => r.t_C), col((r) => r.dtdt_C_per_min)],
-      'chart-rpm': [col((r) => r.rpm)],
       'chart-score': [col((r) => r.score), col((r) => r.threshold ?? threshold)],
     },
     bands,

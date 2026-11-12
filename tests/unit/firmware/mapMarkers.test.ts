@@ -29,7 +29,7 @@ describe('@map markers (§7.6)', () => {
   const cpp = markers(cppDir, '.cpp');
 
   it('the TS firmware carries exactly the §7.6 ids, once each', () => {
-    expect(specIds()).toHaveLength(24);
+    expect(specIds()).toHaveLength(22); // the stall-limit and rpm-feature markers went with the tach (D-078)
     expect([...new Set(ts)].sort()).toEqual([...specIds()].sort());
     expect([...count(ts)].filter(([, n]) => n !== 1)).toEqual([]);
   });

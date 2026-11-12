@@ -22,13 +22,12 @@ const PHOTOS: Partial<Record<ComponentId, string>> = {
 };
 
 const SPECS: Record<ComponentId, string[]> = {
-  fan: ['12 VDC (4.0–13.8 V), 3,800 rpm, 0.18 A typical', '70 × 70 × 15 mm, 47 g, 7 blades', 'Wires: red +12 V (NO2), black GND, blue tach → GPIO27'], // prettier-ignore
+  fan: ['12 VDC (4.0–13.8 V), 3,800 rpm, 0.18 A typical', '70 × 70 × 15 mm, 47 g, 7 blades', 'Wires: red +12 V (NO2), black GND, blue tach left free (no speed sensing)'], // prettier-ignore
   mpu6050: ['±2 g, 16,384 LSB/g, DLPF 184 Hz', 'I²C 0x68: SDA GPIO21, SCL GPIO22, 3V3'],
   ds18b20: ['12-bit, 0.0625 °C, 750 ms conversion', '1-Wire on GPIO4, 4.7 kΩ pull-up to 3V3', 'Disconnected reads −127 °C; power-on 85 °C'], // prettier-ignore
   breadboard: ['830 points', 'Left rail + = 3V3, right rail + = 5 V, both − = GND'],
-  esp32: ['ESP32-WROOM-32, 30-pin DevKit V1, USB-C from the laptop', 'GPIO26 relay IN2, GPIO34 ADC (ACS712), GPIO27 tach, GPIO4 DS18B20, GPIO21/22 I²C'], // prettier-ignore
+  esp32: ['ESP32-WROOM-32, 30-pin DevKit V1, USB-C from the laptop', 'GPIO26 relay IN2, GPIO34 ADC (ACS712), GPIO4 DS18B20, GPIO21/22 I²C'], // prettier-ignore
   r_pu_ds: ['4.7 kΩ pull-up, DS18B20 DATA to 3V3'],
-  r_pu_tach: ['10 kΩ pull-up, tach (open collector) to 3V3'],
   r_div_top: ['10 kΩ, top of the ACS712 → GPIO34 divider (×2/3)'],
   r_div_bot: ['20 kΩ, bottom of the ACS712 → GPIO34 divider'],
   acs712: ['5 A variant, 0.185 V/A, 2.5 V at 0 A, 5 V supply', 'IP+ from the jack +12 V, IP− to relay COM2'],
@@ -41,6 +40,12 @@ const SPECS: Record<ComponentId, string[]> = {
 const f = (x: number, digits: number) => x.toFixed(digits);
 const level = (high: boolean) => (high ? 'HIGH' : 'LOW');
 
+/** The fan speed and where it comes from: the bench has no speed sensor (D-078), so it is never a measurement. */
+function speedLine(s: Snapshot): string {
+  const rpm = Math.round(s.rpm);
+  return s.unknown ? `speed ≈ ${rpm} rpm (estimated from relay CH2)` : `speed ${rpm} rpm (simulated, not measured on the bench)`; // prettier-ignore
+}
+
 /** Live pin lines for one component (units in the text); in Live mode a field the board doesn't send reads "—". */
 function pins(id: ComponentId, s: Snapshot, model: { status: ModelStatus; score: number | null } | null): string[] {
   const known = (k: keyof Snapshot) => !s.unknown?.includes(k);
@@ -50,7 +55,7 @@ function pins(id: ComponentId, s: Snapshot, model: { status: ModelStatus; score:
   const [ax, ay, az] = s.accel_g;
   switch (id) {
     case 'fan':
-      return [`red +${n('fanV_V', s.fanV_V, 2)} V, ${n('current_A', s.current_A, 3)} A`, `blue tach ${lv('tachHigh', s.tachHigh)} → GPIO27, ${Math.round(s.rpm)} rpm`, `motor ${n('tMotor_C', s.tMotor_C, 2)} °C`]; // prettier-ignore
+      return [`red +${n('fanV_V', s.fanV_V, 2)} V, ${n('current_A', s.current_A, 3)} A`, speedLine(s), `motor ${n('tMotor_C', s.tMotor_C, 2)} °C`]; // prettier-ignore
     case 'mpu6050':
       return [`SDA/SCL → GPIO21/22: x=${n('accel_g', ax, 3)} y=${n('accel_g', ay, 3)} z=${n('accel_g', az, 3)} g`];
     case 'ds18b20':
@@ -63,8 +68,6 @@ function pins(id: ComponentId, s: Snapshot, model: { status: ModelStatus; score:
       return [`IN2 ← GPIO26 ${lv('gpio26', s.gpio26 === 1)} (coil ${s.coilOn ? 'on' : 'off'})`, `COM2 → NO2 ${s.contact === 'NO' ? 'closed' : 'open'}`]; // prettier-ignore
     case 'esp32':
       return [`state ${s.state}`, `GPIO26 ${lv('gpio26', s.gpio26 === 1)}`, `GPIO34 ${counts} counts`, `GPIO4 ${n('dsReading_C', s.dsReading_C, 4)} °C`]; // prettier-ignore
-    case 'r_pu_tach':
-      return [`tach line ${lv('tachHigh', s.tachHigh)}`];
     case 'r_pu_ds':
       return [`DATA ${n('dsReading_C', s.dsReading_C, 4)} °C`];
     case 'dcjack':

@@ -84,7 +84,8 @@ alguien debe tener a mano el interruptor o el enchufe de la fuente de 12 V.
 2. Pulsar **E-STOP** (`btn-estop`, o la tecla E).
 3. Comprobar en el banco que el relé CH2 hace clic, su LED se apaga y el ventilador se frena hasta pararse.
 4. En la app: el estado pasa a CRITICAL con motivo ESTOP y el relé aparece abierto.
-5. Esperar a que baje de 100 rpm, hacer RESET → confirmar y comprobar que vuelve a OFF.
+5. Esperar 15 s desde el disparo (la placa no mide la velocidad, así que el firmware espera a que el ventilador se
+   detenga), hacer RESET → confirmar y comprobar que vuelve a OFF. Un RESET antes de 15 s debe rechazarse.
 6. Repetir 3 veces y anotar el retraso aproximado entre pulsar el botón y el clic del relé.
 
 **Aprobado si** el relé real se abre las 3 veces, en menos de 1 s aproximadamente.
@@ -104,7 +105,7 @@ alguien debe tener a mano el interruptor o el enchufe de la fuente de 12 V.
 3. **Desequilibrio:** subir `sld-imbalance` a 0.3 en M4 y mostrar cómo sube la vibración y el puntaje.
 4. **Disparo:** esperar a CRITICAL, mostrar el relé abierto, el motivo del disparo (RCF) y la variable dominante
    (`a_rms_g`).
-5. **Reset:** esperar a que el ventilador baje de 100 rpm, pulsar RESET → confirmar, volver a OFF y limpiar las
+5. **Reset:** esperar 15 s desde el disparo, pulsar RESET → confirmar, volver a OFF y limpiar las
    fallas (`btn-clear-faults`).
 6. Alternativa guiada: **Scenario → S2 imbalance** hace la misma secuencia sola.
 
@@ -133,7 +134,8 @@ JSON por UDP al puerto 4211 del portátil y escuchar en el 4210.
 
 3. Comprobar en http://localhost:8765/status que el contador `packet` sube cada segundo y que `invalid_up` sigue en 0. Si sube `invalid_up`, el archivo de sesión `bridge-py/sessions/session-*.jsonl` indica qué campo falla.
 4. Abrir http://localhost:8765, elegir **Mode → Live** y comprobar que:
-   - las rpm, la vibración, la corriente, la temperatura y el estado coinciden con el banco real;
+   - la vibración, la corriente, la temperatura y el estado coinciden con el banco real (la velocidad no se mide:
+     las aspas siguen una estimación a partir del relé CH2 y el Inspector la marca como "estimated");
    - las aspas giran, el relé se mueve y el color de calor cambia;
    - los campos que la placa no envía muestran "—".
 5. Comprobar con git que no hizo falta cambiar nada fuera de `src/bridge/`:
@@ -209,7 +211,7 @@ Después:
 
 1. Abrir http://localhost:8765, elegir **Mode → Live** y esperar el aviso verde.
 2. Pulsar START, esperar NORMAL y luego CRITICAL (el desequilibrio entra a los 60 s simulados).
-3. Esperar a que el ventilador baje de 100 rpm y hacer RESET.
+3. Esperar 15 s desde el disparo y hacer RESET.
 
 En Windows, aceptar el aviso del firewall para el puerto UDP 4211 la primera vez.
 
@@ -473,7 +475,7 @@ cada uno. Escribe además `bridge-py/sessions/session-AAAAMMDD-HHMMSS.config.dif
 Para ver que la herramienta funciona antes de usar la placa, se puede probar con una grabación simulada:
 
 ```bash
-pnpm calibrate --record prueba.jsonl --set fan.rpmRated=3500
+pnpm calibrate --record prueba.jsonl --set fan.residualUnbalance_gmm=2.6
 ```
 
 ```bash
@@ -483,7 +485,8 @@ pnpm calibrate prueba.jsonl
 **Cómo revisar:**
 
 1. Comparar los valores propuestos con la realidad:
-   - `fan.rpmRated` ≈ rpm medidas con la placa;
+   - la velocidad (`fan.rpmRated`, `fan.tauUp_s`, `fan.tauDown_s`) no se calibra: el banco no tiene sensor de
+     velocidad;
    - `thermal.ambient_C` ≈ temperatura de la sala;
    - `fan.iIdle_A` + `fan.iAero_A` ≈ corriente medida con un multímetro;
    - los ruidos de sensor deben estar en el mismo orden de magnitud que los actuales.

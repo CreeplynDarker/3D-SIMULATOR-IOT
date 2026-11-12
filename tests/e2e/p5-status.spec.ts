@@ -1,6 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 
-const IDS = ['status-badge', 'rcf-gauge', 'dominant-var', 'persistence', 'relay-state', 'rpm-readout', 'link-indicator', 'sensor-indicator', 'trip-reason']; // prettier-ignore
+const IDS = ['status-badge', 'rcf-gauge', 'dominant-var', 'persistence', 'relay-state', 'link-indicator', 'sensor-indicator', 'trip-reason']; // prettier-ignore
 
 async function open(page: Page) {
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -35,7 +35,7 @@ test('M3 follows the sim: NORMAL with a score, then ESTOP → CRITICAL with its 
   await expect(page.getByTestId('relay-state')).toHaveText('CH2 NO closed');
   await expect(page.getByTestId('rcf-gauge')).toHaveText(/^0\.\d\d \/ 0\.50$/);
   await expect(page.getByTestId('dominant-var')).not.toHaveText('—');
-  await expect(page.getByTestId('rpm-readout')).toHaveText(/^3[78]\d\d rpm$/);
+  await expect(page.getByTestId('rpm-readout')).toHaveCount(0); // no speed sensing on the bench (D-078)
   await page.evaluate(() => window.__pdm?.command('ESTOP'));
   await expect(page.getByTestId('status-badge')).toHaveText('CRITICAL');
   await expect(page.getByTestId('status-badge')).toHaveAttribute('data-tone', 'red');

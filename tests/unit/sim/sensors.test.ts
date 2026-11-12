@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../../../src/shared/config.ts';
 import { stream } from '../../../src/shared/rng.ts';
-import { createFan, stepFan } from '../../../src/sim/fan.ts';
 import { acs712Out_V } from '../../../src/sim/sensors/acs712.ts';
 import { adcCounts, dividerOut_V } from '../../../src/sim/sensors/adc.ts';
 import { createDs18b20, stepDs18b20 } from '../../../src/sim/sensors/ds18b20.ts';
 import { createMpu, filterMpu, quantiseMpu_g, sampleMpu } from '../../../src/sim/sensors/mpu6050.ts';
-import { createTach, stepTach } from '../../../src/sim/sensors/tach.ts';
 
 const S = CONFIG.sensors;
 const dt_s = CONFIG.physics.dt_s;
@@ -117,36 +115,5 @@ describe('DS18B20 (§6.6)', () => {
       (t) => t > 2 && t < 4,
     );
     expect(readings.map(([, v]) => v)).toEqual([85, 30, -127, -127, 30, 30]);
-  });
-});
-
-describe('tach (§6.7)', () => {
-  it('gives 2 edges per revolution (±1 per 1 s window) and toggles the pin level', () => {
-    const fan = createFan();
-    const tach = createTach();
-    for (let k = 0; k < Math.round(5 / dt_s); k++) {
-      stepFan(fan, CONFIG.fan, 12, 0, dt_s);
-      stepTach(tach, fan.theta_rad, CONFIG.fan.tachPulsesPerRev);
-    }
-    for (let w = 0; w < 5; w++) {
-      const edges0 = tach.edges;
-      const theta0 = fan.theta_rad;
-      let levels = new Set<boolean>();
-      for (let k = 0; k < Math.round(1 / dt_s); k++) {
-        stepFan(fan, CONFIG.fan, 12, 0, dt_s);
-        stepTach(tach, fan.theta_rad, CONFIG.fan.tachPulsesPerRev);
-        levels = levels.add(tach.high);
-      }
-      const revs = (fan.theta_rad - theta0) / (2 * Math.PI);
-      expect(Math.abs(tach.edges - edges0 - 2 * revs)).toBeLessThanOrEqual(1);
-      expect(levels.size).toBe(2);
-    }
-  });
-
-  it('counts no edges when the rotor is still', () => {
-    const tach = createTach();
-    for (let k = 0; k < 100; k++) stepTach(tach, 0.1, 2);
-    expect(tach.edges).toBe(0);
-    expect(tach.high).toBe(true);
   });
 });

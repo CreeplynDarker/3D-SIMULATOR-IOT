@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { LIVE_UNKNOWN, liveSnapshot, packetEvents, sceneTime } from '../../../src/bridge/liveSnapshot.ts';
+import { estimatedRpm, LIVE_UNKNOWN, liveSnapshot, packetEvents, sceneTime } from '../../../src/bridge/liveSnapshot.ts';
+import { CONFIG } from '../../../src/shared/config.ts';
 import { type Packet, PROTOCOL_VERSION } from '../../../src/shared/protocol.ts';
 
 const packet = (seq: number, extra: Partial<Packet> = {}): Packet => ({
   v: PROTOCOL_VERSION, kind: 'packet', seq, ts_ms: (seq + 1) * 1000, win_ms: 1000, a_rms_g: 0.121, cf: 2.5,
-  i_rms_A: 0.181, t_C: 34.06, dtdt_C_per_min: 0, rpm: 3810, state: 'NORMAL', relay_ch2: 'ON', link_lost: false,
+  i_rms_A: 0.181, t_C: 34.06, dtdt_C_per_min: 0, state: 'NORMAL', relay_ch2: 'ON', link_lost: false,
   sensor_fault: false, warn_reason: null, trip_reason: null, ...extra,
 }); // prettier-ignore
 
 describe('live snapshot from packets (P8.2)', () => {
   it('maps what the board sends and marks the rest unknown', () => {
     const s = liveSnapshot(packet(9), null, { nCritical: 5 });
-    expect(s).toMatchObject({ t_s: 10, rpm: 3810, state: 'NORMAL', contact: 'NO', coilOn: true, gpio26: 0, tProbe_C: 34.06, dsReading_C: 34.06, linkLost: false, sensorFault: false, tripReason: null, nCritical: 5, activeMap: null }); // prettier-ignore
-    expect(s.omega_radps).toBeCloseTo((3810 * 2 * Math.PI) / 60, 9);
+    expect(s).toMatchObject({ t_s: 10, rpm: 3800, state: 'NORMAL', contact: 'NO', coilOn: true, gpio26: 0, tProbe_C: 34.06, dsReading_C: 34.06, linkLost: false, sensorFault: false, tripReason: null, nCritical: 5, activeMap: null }); // prettier-ignore
+    expect(s.omega_radps).toBeCloseTo((3800 * 2 * Math.PI) / 60, 9);
     expect(s.unknown).toEqual(LIVE_UNKNOWN);
     for (const k of [
       'fanV_V',
@@ -22,7 +23,6 @@ describe('live snapshot from packets (P8.2)', () => {
       'acsOut_V',
       'adcPin_V',
       'adcCounts',
-      'tachHigh',
       'alertRun',
       'theta_rad',
     ]) {
@@ -31,6 +31,19 @@ describe('live snapshot from packets (P8.2)', () => {
     }
     const off = liveSnapshot(packet(10, { relay_ch2: 'OFF', state: 'CRITICAL', trip_reason: 'RCF', t_C: null }), s, { nCritical: 5 }); // prettier-ignore
     expect(off).toMatchObject({ contact: 'NC', coilOn: false, gpio26: 1, tripReason: 'RCF', tProbe_C: 34.06 }); // keeps the last temperature
+  });
+
+  it('estimates the fan speed from relay CH2 (no speed sensing, D-078) and the trip time from the first CRITICAL', () => {
+    const { rpmRated, tauUp_s, tauDown_s } = CONFIG.fan;
+    expect(estimatedRpm(true, 0, 1)).toBeCloseTo(rpmRated * (1 - Math.exp(-1 / tauUp_s)), 9);
+    expect(estimatedRpm(false, rpmRated, 1)).toBeCloseTo(rpmRated * Math.exp(-1 / tauDown_s), 9);
+    expect(estimatedRpm(false, rpmRated, 60)).toBeLessThan(1);
+    expect(liveSnapshot(packet(0, { relay_ch2: 'OFF', state: 'OFF' }), null, { nCritical: 5 }).rpm).toBe(0);
+    const run = liveSnapshot(packet(9), null, { nCritical: 5 });
+    const crit = liveSnapshot(packet(10, { relay_ch2: 'OFF', state: 'CRITICAL', trip_reason: 'RCF' }), run, { nCritical: 5 }); // prettier-ignore
+    const later = liveSnapshot(packet(11, { relay_ch2: 'OFF', state: 'CRITICAL', trip_reason: 'RCF' }), crit, { nCritical: 5 }); // prettier-ignore
+    expect(crit.rpm).toBeCloseTo(rpmRated * Math.exp(-1 / tauDown_s), 6);
+    expect([run.trippedAt_s, crit.trippedAt_s, later.trippedAt_s]).toEqual([null, 11, 11]);
   });
 
   it('counts traffic: packets and their sim time', () => {

@@ -3,23 +3,25 @@
 #include <Arduino.h>
 
 enum class State : uint8_t { OFF, CALIBRATING, STARTING, NORMAL, WARNING, CRITICAL };
-enum class Reason : uint8_t { NONE, RCF, I_MAX, T_MAX, STALL, ESTOP, I_SOFT, T_SOFT, SENSOR };
+enum class Reason : uint8_t { NONE, RCF, I_MAX, T_MAX, ESTOP, I_SOFT, T_SOFT, SENSOR };
 
 static constexpr int N_CRITICAL = 5;      // consecutive alert verdicts that trip
 static constexpr int N_CLEAR = 3;         // consecutive clear verdicts that return to NORMAL
-static constexpr float RESET_MAX_RPM = 100.0f;
+// No speed sensor on the bench (D-078): RESET waits this long after the trip so the fan has coasted to a stop.
+static constexpr uint32_t RESET_MIN_DELAY_MS = 15000;
 
 void relayOn();
 void relayOff();
 void logLine(const char *level, const char *module, const char *fmt, ...);
 void startCalibration();
+uint32_t firmwareMs();
 
 struct Fsm {
   State state = State::OFF;
   int alertRun = 0, clearRun = 0;
   Reason tripReason = Reason::NONE, warnReason = Reason::NONE;
   bool linkLost = false, softActive = false;
-  float rpm = 0.0f;
+  uint32_t trippedAtMs = 0;  // firmware clock at the last trip
 };
 Fsm fsm;
 
@@ -33,10 +35,12 @@ static void enter(State next) {
   fsm.state = next;
 }
 
-// Trip: relay off in the same tick, latch the reason, log ERR. Only RESET (with the fan stopped) leaves CRITICAL.
+// Trip: relay off in the same tick, latch the reason and the time, log ERR. Only RESET (RESET_MIN_DELAY_MS after
+// the trip) leaves CRITICAL.
 static void trip(Reason reason) {
   relayOff();
   fsm.tripReason = reason;
+  fsm.trippedAtMs = firmwareMs();
   enter(State::CRITICAL);
   logLine("ERR", "fsm", "trip %d", (int)reason);
 }
@@ -57,10 +61,10 @@ void smCommandEstop() {
 
 void smCommandReset() {
   if (fsm.state != State::CRITICAL) return;
-  if (fsm.rpm < RESET_MAX_RPM) {  // @map sm.reset.ok
-    fsm = Fsm{};  // clears trip reason, flags and counters; relay is already off
+  if (firmwareMs() - fsm.trippedAtMs >= RESET_MIN_DELAY_MS) {  // @map sm.reset.ok
+    fsm = Fsm{};  // clears trip reason, trip time, flags and counters; relay is already off
   } else {  // @map sm.reset.refused
-    logLine("WARN", "fsm", "reset refused: fan still turning");
+    logLine("WARN", "fsm", "reset refused: wait %u s after the trip", (unsigned)(RESET_MIN_DELAY_MS / 1000));
   }
 }
 
@@ -76,13 +80,11 @@ void smGraceDone() {
   enter(State::NORMAL);  // @map sm.start.done
 }
 
-// Local limits at a window end (§7.3). STALL is not checked while the fan is still spinning up.
+// Local limits at a window end (§7.3).
 void smLimitTrip(Reason reason) {
   const bool running = fsm.state == State::STARTING || fsm.state == State::NORMAL || fsm.state == State::WARNING;
-  const bool supervised = fsm.state == State::NORMAL || fsm.state == State::WARNING;
   if (reason == Reason::I_MAX && running) trip(Reason::I_MAX);  // @map sm.limit.imax
   else if (reason == Reason::T_MAX && running) trip(Reason::T_MAX);  // @map sm.limit.tmax
-  else if (reason == Reason::STALL && supervised) trip(Reason::STALL);  // @map sm.limit.stall
 }
 
 void smSoftCondition(Reason reason) {

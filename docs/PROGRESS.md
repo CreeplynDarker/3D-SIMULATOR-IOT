@@ -146,6 +146,13 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 - [x] P8.4 Calibration
   2026-10-31 · src/harness/calibrate.ts (pure fit: spin-up/coast curves, steady rpm/current/vibration, cold-start two-lag heating, noise from rest windows), configDiff.ts, shared/calibration.ts (recording protocol, fit settings, kept keys), `pnpm calibrate` writes a git-apply diff, never config.ts; 12 keys recovered within 2 % on defaults and shifted params, baseline means within 1 % · no tuning
 
+## Real bench wiring (after P8, 2026-11-12)
+
+Seven changes from the team's wiring document, one commit each.
+
+- [x] B1 No speed sensing (OPEN-1 → no, protocol v2)
+  2026-11-12 · 5 RCF features; Packet/FeatureKey without rpm, no STALL, PROTOCOL_VERSION 2, schemas, bridge-py v2; firmware without PCNT/rpm/STALL (TS and reference-cpp); RESET guard = resetMinDelay_s 15 s since the trip; plant keeps the speed for the scene; M3 rpm-readout and M6 chart-rpm removed; M9 "simulated"/"estimated"; Live blades from relay_ch2; S4 dominant i_rms_A; model retrained (holdout max 0.159) · no tuning
+
 ## Waiting for human review
 
 List every `[human]` check here with its task ID, so a person can sign it off.
@@ -166,4 +173,5 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - P8 · real packets from the board render with no change outside `src/bridge/` (sel-mode Live through `python bridge-py/app.py`, page at http://localhost:8765)
 - P8 · `btn-estop` in Live opens the real relay (CH2 clicks and the fan coasts down); the 12 V switch stays the safety stop
 - P8.1 · the bridge venv installs and runs on the team laptop (Windows and Linux steps in `bridge-py/README.md`)
+- B1 · the team's real firmware has no tach input and refuses RESET until 15 s after the trip (`millis()` at the trip; reference in `src/firmware/reference-cpp/state_machine.cpp`)
 - P8.4 · `pnpm calibrate` on a real healthy recording (CALIBRATION_SCENARIO protocol) gives plausible values; review the diff before `git apply`

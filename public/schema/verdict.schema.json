@@ -4,7 +4,7 @@
   "properties": {
     "v": {
       "type": "number",
-      "const": 1
+      "const": 2
     },
     "kind": {
       "type": "string",
@@ -45,8 +45,7 @@
             "cf",
             "i_rms_A",
             "t_C",
-            "dtdt_C_per_min",
-            "rpm"
+            "dtdt_C_per_min"
           ]
         },
         {
@@ -65,8 +64,7 @@
               "cf",
               "i_rms_A",
               "t_C",
-              "dtdt_C_per_min",
-              "rpm"
+              "dtdt_C_per_min"
             ]
           },
           "additionalProperties": {
@@ -101,5 +99,5 @@
   ],
   "additionalProperties": false,
   "title": "verdict",
-  "description": "PROTOCOL_VERSION 1"
+  "description": "PROTOCOL_VERSION 2"
 }

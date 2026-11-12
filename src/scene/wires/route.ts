@@ -197,7 +197,7 @@ function routeOne(w: Wire, used: Set<string>, all: Obstacle[]): WireRoute {
 }
 
 /** Rail holes under the pull-up bodies, which arch from row a over the L− rail to the L+ rail. */
-const COVERED_HOLES_m: Vec3[] = [bbRailHole_m('L.n', BB_NODE_COLUMNS.dq), bbRailHole_m('L.n', BB_NODE_COLUMNS.tach)];
+const COVERED_HOLES_m: Vec3[] = [bbRailHole_m('L.n', BB_NODE_COLUMNS.dq)];
 
 /** Routes W01–W29 in order; breadboard holes are never shared (resistor holes are taken first). */
 let cached: WireRoute[] | null = null;

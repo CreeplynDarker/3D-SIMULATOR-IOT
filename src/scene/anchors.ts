@@ -222,7 +222,6 @@ export function worldAnchorOut(id: string): Vec3 {
 
 const NODE_FREE_ROWS: Record<BbNode, readonly BbRow[]> = {
   dq: ['b', 'c', 'd', 'e'], // row a holds r_pu_ds
-  tach: ['b', 'c', 'd', 'e'], // row a holds r_pu_tach
   divTop: ['a', 'b', 'c', 'd'], // row e holds r_div_top
   divMid: ['c', 'd'], // rows b and e hold r_div_bot and r_div_top; r_div_bot's body covers row a
 };

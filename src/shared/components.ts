@@ -9,7 +9,6 @@ export type ComponentId =
   | 'breadboard'
   | 'esp32'
   | 'r_pu_ds'
-  | 'r_pu_tach'
   | 'r_div_top'
   | 'r_div_bot'
   | 'acs712'
@@ -49,7 +48,7 @@ export type BbRow = keyof typeof BREADBOARD.rowOffset_mm;
 export type BbRail = keyof typeof BREADBOARD.railOffset_mm;
 
 /** Columns of the breadboard nodes chosen for §13.3 (`bb.node.*`), clear of the ESP32. */
-export const BB_NODE_COLUMNS = { dq: 30, tach: 25, divTop: 20, divMid: 17 } as const;
+export const BB_NODE_COLUMNS = { dq: 30, divTop: 20, divMid: 17 } as const;
 export type BbNode = keyof typeof BB_NODE_COLUMNS;
 
 /** Column under ESP32 pins EN and D23 (the antenna end); pin k of each header sits in column first + k. */
@@ -91,12 +90,11 @@ function between(a: Vec3, b: Vec3): Vec3 {
   return [(a[0] + b[0]) / 2, RESISTOR_Y_m, (a[2] + b[2]) / 2];
 }
 
-const { dq, tach, divTop, divMid } = BB_NODE_COLUMNS;
+const { dq, divTop, divMid } = BB_NODE_COLUMNS;
 
 /** Where each resistor's leads go: two holes on the breadboard (§13.3). */
 export const RESISTOR_HOLES_m = {
   r_pu_ds: [bbHole_m(dq, 'a'), bbRailHole_m('L.p', dq)],
-  r_pu_tach: [bbHole_m(tach, 'a'), bbRailHole_m('L.p', tach)],
   r_div_top: [bbHole_m(divTop, 'e'), bbHole_m(divMid, 'e')],
   r_div_bot: [bbHole_m(divMid, 'b'), bbRailHole_m('L.n', divMid)],
 } as const satisfies Record<string, readonly [Vec3, Vec3]>;
@@ -152,7 +150,6 @@ export const COMPONENTS: readonly ComponentSpec[] = [
     notes: 'Straddles the centre channel, pins in rows b and i; USB-C toward −x.',
   },
   resistor('r_pu_ds', '4.7 kΩ', 90),
-  resistor('r_pu_tach', '10 kΩ', 90),
   resistor('r_div_top', '10 kΩ', 0),
   resistor('r_div_bot', '20 kΩ', 90),
   {

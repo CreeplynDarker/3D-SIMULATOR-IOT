@@ -1,6 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 
-const CHARTS = ['chart-arms', 'chart-cf', 'chart-irms', 'chart-temp', 'chart-rpm', 'chart-score'];
+const CHARTS = ['chart-arms', 'chart-cf', 'chart-irms', 'chart-temp', 'chart-score'];
 
 async function running(page: Page) {
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -14,9 +14,10 @@ async function running(page: Page) {
 const points = (page: Page, id: string) =>
   page.getByTestId(id).evaluate((el) => Number(el.getAttribute('data-points')));
 
-test('M6: six uPlot strips, the window selector and freeze', async ({ page }) => {
+test('M6: five uPlot strips (no RPM: D-078), the window selector and freeze', async ({ page }) => {
   test.setTimeout(120_000);
   await running(page);
+  await expect(page.getByTestId('chart-rpm')).toHaveCount(0);
   for (const id of [...CHARTS, 'sel-chart-window', 'btn-chart-freeze'])
     await expect(page.getByTestId(id), id).toBeVisible();
   for (const id of CHARTS) {
@@ -26,14 +27,14 @@ test('M6: six uPlot strips, the window selector and freeze', async ({ page }) =>
   await page.getByTestId('sel-chart-window').selectOption('30');
   expect((await page.evaluate(() => window.__pdm?.inspect().ui))?.chartWindow_s).toBe(30);
   await page.waitForFunction(() => (window.__sim?.t_s ?? 0) > 40, undefined, { timeout: 60_000 });
-  await expect.poll(() => points(page, 'chart-rpm')).toBeLessThanOrEqual(30);
+  await expect.poll(() => points(page, 'chart-arms')).toBeLessThanOrEqual(30);
   await page.getByTestId('btn-chart-freeze').click();
   expect((await page.evaluate(() => window.__pdm?.inspect().ui))?.chartFrozen).toBe(true);
-  const frozenLast = await page.getByTestId('chart-rpm').getAttribute('data-last-t');
+  const frozenLast = await page.getByTestId('chart-arms').getAttribute('data-last-t');
   await page.waitForFunction(() => (window.__sim?.t_s ?? 0) > 50, undefined, { timeout: 60_000 });
-  expect(await page.getByTestId('chart-rpm').getAttribute('data-last-t')).toBe(frozenLast);
+  expect(await page.getByTestId('chart-arms').getAttribute('data-last-t')).toBe(frozenLast);
   await page.getByTestId('btn-chart-freeze').click();
-  await expect.poll(() => page.getByTestId('chart-rpm').getAttribute('data-last-t')).not.toBe(frozenLast);
+  await expect.poll(() => page.getByTestId('chart-arms').getAttribute('data-last-t')).not.toBe(frozenLast);
 });
 
 test('M6: cursors are synced across the strips', async ({ page }) => {

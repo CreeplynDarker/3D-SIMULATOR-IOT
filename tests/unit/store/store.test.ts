@@ -18,7 +18,6 @@ const packet = (seq: number): Packet => ({
   i_rms_A: 0.18,
   t_C: 34,
   dtdt_C_per_min: 0,
-  rpm: 3800,
   state: 'NORMAL',
   relay_ch2: 'ON',
   link_lost: false,
@@ -68,12 +67,12 @@ const snapshot = (t_s: number, lagging: boolean): Snapshot => ({
   adcPin_V: 1.689,
   adcCounts: 1965,
   dsReading_C: 34,
-  tachHigh: false,
   alertRun: 0,
   nCritical: 5,
   linkLost: false,
   sensorFault: false,
   tripReason: null,
+  trippedAt_s: null,
   activeMap: null,
   lagging,
 });
@@ -119,7 +118,7 @@ describe('series slice', () => {
     const { series } = store.getState();
     expect(series.rev).toBe(before + 2);
     expect(series.windows.toArray()).toEqual([
-      expect.objectContaining({ seq: 7, t_s: 7, a_rms_g: 0.03, rpm: 3800, state: 'NORMAL', score: 0.61, alert: true }),
+      expect.objectContaining({ seq: 7, t_s: 7, a_rms_g: 0.03, state: 'NORMAL', score: 0.61, alert: true }),
     ]);
   });
 

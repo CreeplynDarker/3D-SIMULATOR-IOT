@@ -24,7 +24,6 @@ describe('component catalogue (§13.2)', () => {
       'breadboard',
       'esp32',
       'r_pu_ds',
-      'r_pu_tach',
       'r_div_top',
       'r_div_bot',
       'acs712',

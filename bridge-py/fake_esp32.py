@@ -33,7 +33,7 @@ def log(t_s: float | None, text: str) -> None:
 
 def packet_line(p: dict) -> str:
     t = "—" if p.get("t_C") is None else f"{p['t_C']:.2f}"
-    return (f"↑ #{p['seq']} {p['state']} rpm={round(p['rpm'])} a={p['a_rms_g']:.3f}g I={p['i_rms_A']:.3f}A T={t} "
+    return (f"↑ #{p['seq']} {p['state']} a={p['a_rms_g']:.3f}g I={p['i_rms_A']:.3f}A T={t} "
             f"relay={p['relay_ch2']} link_lost={str(p['link_lost']).lower()} trip={p['trip_reason'] or '—'}")
 
 

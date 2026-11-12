@@ -58,7 +58,6 @@ const MODELS: Record<ComponentId, () => ReactNode> = {
   breadboard: () => <Breadboard />,
   esp32: () => <Esp32 />,
   r_pu_ds: () => <Resistor id="r_pu_ds" />,
-  r_pu_tach: () => <Resistor id="r_pu_tach" />,
   r_div_top: () => <Resistor id="r_div_top" />,
   r_div_bot: () => <Resistor id="r_div_bot" />,
   acs712: () => <Acs712 />,

@@ -85,11 +85,6 @@ export function StatusPanel() {
           {relayText(snap?.contact ?? 'NC')}
         </span>
       </Row>
-      <Row label="Fan speed">
-        <span data-testid="rpm-readout" className="font-mono tabular-nums">
-          {Math.round(snap?.rpm ?? 0)} rpm
-        </span>
-      </Row>
       <Row label="Wi-Fi link">
         <Indicator testId="link-indicator" ok={!snap?.linkLost} okText="OK" badText="link lost" />
       </Row>

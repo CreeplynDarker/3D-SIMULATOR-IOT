@@ -8,7 +8,7 @@ export const CONFIG = {
     iInrushGain_A: 0.15, iInrushMax_A: 0.33,
     iRipple_A: 0.01, rippleHarmonic: 4,
     frictionSpeedLoss: 0.25, frictionCoastFactor: 0.6,
-    blades: 7, tachPulsesPerRev: 2,
+    blades: 7,
     residualUnbalance_gmm: 2.0, unbalanceRadius_mm: 28, mountMass_kg: 0.25,
     bladePass_g: 0.02,
     looseGain: 1.5, looseH2: 0.5, looseH3: 0.25, looseNoise_g: 0.04,
@@ -34,16 +34,16 @@ export const CONFIG = {
     dtdtSpan_s: 60, dtdtMinSamples: 10, tJumpReject_C: 10,
     iMax_A: 0.30, iMaxStart_A: 0.40, nILimit: 3,
     tMax_C: 60, tWarnMargin_C: 5, iWarnFraction: 0.9,
-    stallFraction: 0.5, nStall: 3, sensorFaultTimeout_s: 10,
-    nCritical: 5, nClear: 3, clearHysteresis: 0.8, resetMaxRpm: 100,
+    sensorFaultTimeout_s: 10,
+    nCritical: 5, nClear: 3, clearHysteresis: 0.8, resetMinDelay_s: 15,
   },
   rcf: {
-    features: ['a_rms_g', 'cf', 'i_rms_A', 't_C', 'dtdt_C_per_min', 'rpm'] as const,   // OPEN-1
+    features: ['a_rms_g', 'cf', 'i_rms_A', 't_C', 'dtdt_C_per_min'] as const,   // OPEN-1: no rpm
     numTrees: 40, treeSize: 256, nTrain: 120, nHoldout: 60,
     threshold: 0.5,                    // on the normalised score (mean CoDisp / nTrain)
     holdoutMaxRatio: 0.8,              // baseline rejected if holdout max ≥ 0.8 × threshold
     warmDtdtMax_C_per_min: 0.2,
-    stdFloor: { a_rms_g: 0.005, cf: 0.05, i_rms_A: 0.002, t_C: 0.1, dtdt_C_per_min: 0.05, rpm: 15 },
+    stdFloor: { a_rms_g: 0.005, cf: 0.05, i_rms_A: 0.002, t_C: 0.1, dtdt_C_per_min: 0.05 },
   },
   faults: {                            // slider ranges
     imbalance_g: { min: 0, max: 0.5, step: 0.05 },

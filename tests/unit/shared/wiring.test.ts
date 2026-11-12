@@ -29,20 +29,17 @@ const SPEC = [
   ['W24', 'bb.node.dq', 'esp32.D4', 'ONEWIRE', '#fdd835'],
   ['W25', 'acs712.out', 'bb.node.divTop', 'ANALOG', '#43a047'],
   ['W26', 'bb.node.divMid', 'esp32.D34', 'ANALOG', '#43a047'],
-  ['W27', 'fan.blue', 'bb.node.tach', 'TACH', '#8e24aa'],
-  ['W28', 'bb.node.tach', 'esp32.D27', 'TACH', '#8e24aa'],
   ['W29', 'esp32.D26', 'relay.in2', 'RELAY_IN', '#eeeeee'],
 ] as const;
 
 describe('wiring (§13.3)', () => {
-  it('lists exactly W01–W29 with their endpoints, net and colour', () => {
+  it('lists exactly the §13.3 wires with their endpoints, net and colour (no tach wires: D-078)', () => {
     expect(WIRES.map((w) => [w.id, w.from, w.to, w.net, WIRE_COLORS[w.color]])).toEqual(SPEC);
   });
 
-  it('places the four resistors between the §13.3 anchors', () => {
+  it('places the three resistors between the §13.3 anchors', () => {
     expect(RESISTOR_LINKS.map((r) => [r.id, r.a, r.b])).toEqual([
       ['r_pu_ds', 'bb.node.dq', 'bb.railL.p'],
-      ['r_pu_tach', 'bb.node.tach', 'bb.railL.p'],
       ['r_div_top', 'bb.node.divTop', 'bb.node.divMid'],
       ['r_div_bot', 'bb.node.divMid', 'bb.railL.n'],
     ]);

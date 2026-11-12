@@ -4,7 +4,7 @@
   "properties": {
     "v": {
       "type": "number",
-      "const": 1
+      "const": 2
     },
     "kind": {
       "type": "string",
@@ -48,10 +48,6 @@
         "number",
         "null"
       ]
-    },
-    "rpm": {
-      "type": "number",
-      "minimum": 0
     },
     "state": {
       "type": "string",
@@ -101,7 +97,6 @@
             "RCF",
             "I_MAX",
             "T_MAX",
-            "STALL",
             "ESTOP"
           ]
         },
@@ -122,7 +117,6 @@
     "i_rms_A",
     "t_C",
     "dtdt_C_per_min",
-    "rpm",
     "state",
     "relay_ch2",
     "link_lost",
@@ -132,5 +126,5 @@
   ],
   "additionalProperties": false,
   "title": "packet",
-  "description": "PROTOCOL_VERSION 1"
+  "description": "PROTOCOL_VERSION 2"
 }

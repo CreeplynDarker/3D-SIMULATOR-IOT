@@ -3,15 +3,16 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { applyCalibration, baselineMeans, calibrate, coastAverage, configValue, minimize1d, recordCalibration, spinUpAverage, twoLagStep, withValues } from '../../../src/harness/calibrate.ts'; // prettier-ignore
+import { applyCalibration, baselineMeans, calibrate, configValue, minimize1d, recordCalibration, twoLagStep, withValues } from '../../../src/harness/calibrate.ts'; // prettier-ignore
 import { patchConfigSource, roundProposal, unifiedDiff } from '../../../src/harness/configDiff.ts';
 import { CALIBRATED_KEYS } from '../../../src/shared/calibration.ts';
 import { CONFIG } from '../../../src/shared/config.ts';
 
 const TOLERANCE = 0.1;
 // Known parameters away from the defaults; iIdle and iAero move by different factors (only their sum is seen).
+// The fan's speed parameters stay at the config's: the bench measures no speed, so they are not fitted (D-078).
 const SHIFTED = {
-  'fan.rpmRated': 3500, 'fan.tauUp_s': 1.2, 'fan.tauDown_s': 3.4, 'fan.iIdle_A': 0.035, 'fan.iAero_A': 0.17,
+  'fan.iIdle_A': 0.035, 'fan.iAero_A': 0.17,
   'fan.residualUnbalance_gmm': 2.6, 'thermal.ambient_C': 22, 'thermal.rTh0_KperW': 21, 'thermal.cTh_JperK': 20,
   'sensors.mpu.noise_g': 0.009, 'sensors.acs712.noise_V': 0.0065, 'sensors.adc.noise_counts': 2.6,
 }; // prettier-ignore
@@ -42,13 +43,13 @@ describe('calibration (P8.4)', () => {
     }, 30_000);
   }
 
-  it('without an E-STOP it keeps tauDown and the current noise, and still fits the rest; flags §5.2 ranges', () => {
+  it('without an E-STOP it keeps the current noise, and still fits the rest; flags §5.2 ranges', () => {
     const recording = recordCalibration(CONFIG, 3).filter((p) => p.ts_ms <= 600_000);
     const lowNoise = withValues(CONFIG, { 'sensors.mpu.noise_g': 0.002 });
     const result = calibrate(recording, lowNoise);
     const by = Object.fromEntries(result.entries.map((e) => [e.key, e]));
     expect(result.switch_s.off).toBeNull();
-    expect(by['fan.tauDown_s']?.proposed).toBeNull();
+    expect(Object.keys(by)).not.toContain('fan.rpmRated'); // no speed sensing (D-078)
     expect(by['sensors.acs712.noise_V']?.proposed).toBeNull();
     expect(by['fan.iIdle_A']?.proposed).toBeCloseTo(CONFIG.fan.iIdle_A, 2);
     expect(by['sensors.mpu.noise_g']?.outOfRange).toBe(true); // 0.007 is 3.5 × the 0.002 it started from
@@ -61,12 +62,7 @@ describe('calibration (P8.4)', () => {
     expect(() => calibrate(recording.slice(0, 15), CONFIG)).toThrow(/no steady running/);
   }, 30_000);
 
-  it('window-averaged curves and the minimiser', () => {
-    expect(spinUpAverage(0, 1, 2, 0.8)).toBe(0); // not started yet
-    expect(spinUpAverage(100, 101, 0, 0.8)).toBeCloseTo(1, 9);
-    expect(spinUpAverage(0, 1, 0, 0.8)).toBeCloseTo(1 - 0.8 * (1 - Math.exp(-1.25)), 9);
-    expect(coastAverage(0, 1, 5, 2.5)).toBe(1); // still at full speed
-    expect(coastAverage(100, 101, 0, 2.5)).toBeCloseTo(0, 9);
+  it('the heating curve and the minimiser', () => {
     expect(twoLagStep(-1, 100, 8)).toBe(0);
     expect(twoLagStep(1e6, 100, 8)).toBeCloseTo(1, 9);
     expect(twoLagStep(10, 8, 8)).toBeCloseTo(1 - (1 + 10 / 8) * Math.exp(-10 / 8), 9); // equal lags

@@ -18,15 +18,9 @@ export const CALIBRATION_SCENARIO: Scenario = {
 
 /** Search ranges and sizes of the fit. */
 export const CALIBRATION_FIT = {
-  /** Spin-up and coast-down time constants searched (s). */
-  fanTau_s: [0.05, 20] as const,
   /** Thermal time constant C_th · R_th searched (s). */
   thermalTau_s: [20, 20000] as const,
-  /** The switching instant is searched this far either side of the window where the relay changed (s). */
-  edgeSearch_s: 1,
-  /** Windows fitted after each switching instant. */
-  transientWindows: 8,
-  /** A coasting fan counts as stopped this many coast-down time constants after the relay opened. */
+  /** A coasting fan counts as stopped this many coast-down time constants (config) after the relay opened. */
   coastSettleTaus: 6,
   /** The unbalance fit runs short healthy sims: warm start, START at 0, settle, then average some windows (s). */
   vibSettle_s: 15,
@@ -39,9 +33,6 @@ export const CALIBRATION_FIT = {
 
 /** Keys the fit proposes, in report order. */
 export const CALIBRATED_KEYS = [
-  'fan.rpmRated',
-  'fan.tauUp_s',
-  'fan.tauDown_s',
   'fan.iIdle_A',
   'fan.iAero_A',
   'fan.residualUnbalance_gmm',
@@ -64,6 +55,7 @@ export const TUNING_RANGES: Partial<Record<CalibratedKey, { relative?: readonly 
 
 /** fan.* and thermal.* keys a healthy session can't separate, and why they are kept. */
 export const KEPT_KEYS: readonly { keys: string; why: string }[] = [
+  { keys: 'fan.rpmRated, fan.tauUp_s, fan.tauDown_s', why: 'the bench has no speed sensor (the tach wire is free, D-078)' }, // prettier-ignore
   { keys: 'fan.vRated_V, fan.vStart_V, fan.vMax_V', why: 'the supply stays at 12 V in a recording' },
   { keys: 'fan.iInrushGain_A, fan.iInrushMax_A', why: 'the inrush is over within one 1 s window' },
   { keys: 'fan.iRipple_A, fan.rippleHarmonic', why: 'the ripple is under 0.2 % of the window RMS' },
@@ -71,7 +63,7 @@ export const KEPT_KEYS: readonly { keys: string; why: string }[] = [
   { keys: 'fan.mountMass_kg, fan.unbalanceRadius_mm', why: 'only residualUnbalance / mountMass is seen; the unbalance absorbs it' }, // prettier-ignore
   { keys: 'fan.bladePass_g', why: 'it is under 1 % of the healthy a_RMS' },
   { keys: 'fan.friction*, fan.loose*, thermal.overheatAmbientMax_K', why: 'fault parameters: a healthy session has no fault' }, // prettier-ignore
-  { keys: 'fan.blades, fan.tachPulsesPerRev', why: 'counted on the part, not fitted' },
+  { keys: 'fan.blades', why: 'counted on the part, not fitted' },
   { keys: 'thermal.heatFraction, thermal.airflowCooling', why: 'only heatFraction · rTh0 / (1 + airflowCooling) is seen; rTh0 absorbs it' }, // prettier-ignore
   { keys: 'sensors.acs712.noise_V : sensors.adc.noise_counts', why: 'one current noise is seen, so both scale by the same factor' }, // prettier-ignore
 ];

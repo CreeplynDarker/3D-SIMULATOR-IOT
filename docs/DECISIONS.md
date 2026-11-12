@@ -709,3 +709,38 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   the debug-only `window.__sim.packetRpm` (an addition to the §8.2 hook). p5-shell waits for the canvas to mount
   (`window.__scene`, which its theme test calls) before it stops the loop. No limit or accept item changed; the
   rendering specs (camera, scene, p6-fan, p6-flow, p6-heat, p6-relay, p7-perf) still render.
+
+- **D-078 · 2026-11-12 · No speed sensing on the real bench: OPEN-1 closed "no", protocol v2.** The team's wiring
+  document leaves the fan's blue tach wire free, so nothing on the bench measures speed. This reverses OPEN-1's
+  2026-10-30 "yes" (D-001's six features). (a) `rcf.features` is the report's five (`a_rms_g, cf, i_rms_A, t_C,
+  dtdt_C_per_min`); the rpm std floor is gone. (b) Protocol v2 (rule 5): `rpm` leaves `Packet` and `FeatureKey`,
+  `STALL` leaves `TripReason`, `PROTOCOL_VERSION` = 2; `public/schema/*` regenerated (a v1 packet, or one carrying
+  `rpm`, is now dropped by the bridge); `bridge-py` tests and `fake_esp32.py` speak v2; the S2 session fixture is
+  regenerated. (c) Firmware, TS and reference C++ together (rule 10): no PCNT sampling, no `rpm` feature, no STALL
+  limit; the `feat.rpm` and `sm.limit.stall` markers are gone (§7.6 lists 22 ids). The config loses
+  `fan.tachPulsesPerRev` (OPEN-3 is moot), `firmware.stallFraction`, `firmware.nStall` and `firmware.resetMaxRpm`.
+  (d) **New RESET rule** (`firmware.resetMinDelay_s` = 15): the firmware records the time of each trip on its own clock
+  and accepts RESET only `resetMinDelay_s` or more after it; earlier, it refuses with `WARN reset refused: wait 15 s
+  after the trip`. The plant's fan coasts from 3,800 rpm to under 100 rpm in about 9 s (§6.1), so 15 s leaves margin.
+  For the team's real firmware: store `millis()` in `trip()` and test `millis() − trippedAtMs >= 15000` in the RESET
+  handler (`reference-cpp/state_machine.cpp`, `firmwareMs()` in `main.cpp`). The snapshot carries `trippedAt_s`, and
+  the e2e specs wait on the debug-only `window.__sim.resetReady` (replacing D-077's `packetRpm`). (e) The plant still
+  models the speed (blades, vibration, current), but it never reaches the firmware; `sim/sensors/tach.ts` and the
+  snapshot's `tachHigh` are removed. M3 loses `rpm-readout`, M6 loses `chart-rpm` (five strips in the 3 × 2 grid),
+  the M7 packet line and CSV lose `rpm`. M9 shows the fan speed as "simulated, not measured on the bench". In Live
+  and Replay the snapshot's speed is an estimate from `relay_ch2` (first-order spin-up to `rpmRated` with `tauUp_s`
+  while ON, coast-down with `tauDown_s` while OFF; `bridge/liveSnapshot.ts`), shown as "estimated from relay CH2",
+  and `trippedAt_s` is the first CRITICAL packet's time. (f) The tach wires W27/W28, `r_pu_tach`, the TACH net and
+  its violet legend entry are removed; the fan's blue lead stays drawn as a loose pigtail (the full rewiring is
+  D-082). (g) S4's expected dominant variable is `i_rms_A` alone (§12); guided cards that pointed at the RPM chart
+  now point at I_RMS, and S2's done text names the 15 s RESET delay. The scenario tests' "rpm < 100" checks read the
+  plant's speed, which still exists. (h) P8.4 calibration can't fit `fan.rpmRated`, `tauUp_s` or `tauDown_s` any
+  more: they move to the kept keys, the relay's switch times come from `relay_ch2` (middle of the window where it
+  changed), and the stopped-fan windows are those `coastSettleTaus · tauDown_s` (config) after the stop. Its
+  simulated test now shifts only the fittable keys. (i) `tests/fixtures/normalise.json` drops its rpm column (the
+  NumPy per-column mean and std are unchanged); the feature fixtures, `rcf_dataset.json` and the Python
+  references were regenerated; `public/models/default-model.json` was retrained with five features (holdout max
+  0.159, was 0.171). S1–S8 all pass with no tuning. (j) Two P2/P3 accept items about the tach are struck through in
+  §11 as superseded. Affects `src/shared/{protocol,config,messages,guided,calibration,wiring,components}.ts`,
+  `src/firmware/*` (TS and C++), `src/sim/{plant.ts,sensors/tach.ts}`, `src/bridge/liveSnapshot.ts`, `src/ui/*`,
+  `src/scene/*`, `src/harness/calibrate.ts`, `scripts/*`, `bridge-py/*`, `public/`, `tests/`, `PENDING_CHECKS.md`.

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { CONFIG } from '../../../src/shared/config.ts';
-import { Command, Packet, PROTOCOL_VERSION, Verdict } from '../../../src/shared/protocol.ts';
+import { Command, FeatureKey, Packet, PROTOCOL_VERSION, TripReason, Verdict } from '../../../src/shared/protocol.ts';
 
 const packet: Packet = {
   v: PROTOCOL_VERSION,
@@ -17,7 +17,6 @@ const packet: Packet = {
   i_rms_A: 0.181,
   t_C: 31.25,
   dtdt_C_per_min: 0.01,
-  rpm: 3790,
   state: 'NORMAL',
   relay_ch2: 'ON',
   link_lost: false,
@@ -35,13 +34,20 @@ const verdict: Verdict = {
   alert: false,
   clear: true,
   dominant: 'a_rms_g',
-  z: { a_rms_g: 0.4, cf: -0.2, i_rms_A: 0.1, t_C: 0, dtdt_C_per_min: 0.05, rpm: -0.3 },
+  z: { a_rms_g: 0.4, cf: -0.2, i_rms_A: 0.1, t_C: 0, dtdt_C_per_min: 0.05 },
   model: 'READY',
 };
 
 const command: Command = { v: PROTOCOL_VERSION, kind: 'command', seq: 0, cmd: 'START' };
 
 describe('protocol', () => {
+  it('is version 2: no rpm field and no STALL trip, since the bench measures no speed (D-078)', () => {
+    expect(PROTOCOL_VERSION).toBe(2);
+    expect(Object.keys(Packet.shape)).not.toContain('rpm');
+    expect(FeatureKey.options).toEqual(['a_rms_g', 'cf', 'i_rms_A', 't_C', 'dtdt_C_per_min']);
+    expect(TripReason.options).toEqual(['RCF', 'I_MAX', 'T_MAX', 'ESTOP']);
+  });
+
   it('parses a valid packet, verdict and command', () => {
     expect(Packet.parse(packet)).toEqual(packet);
     expect(Verdict.parse(verdict)).toEqual(verdict);
@@ -57,9 +63,9 @@ describe('protocol', () => {
   it('accepts a z map with exactly the active features', () => {
     const active = Object.fromEntries(CONFIG.rcf.features.map((k, i) => [k, i * 0.1]));
     expect(Verdict.safeParse({ ...verdict, z: active }).success).toBe(true);
-    // rcf.features is switchable (OPEN-1), so a 5-feature model without rpm must parse too.
-    const { rpm: _rpm, ...withoutRpm } = verdict.z ?? {};
-    expect(Verdict.safeParse({ ...verdict, z: withoutRpm }).success).toBe(true);
+    // OPEN-1 closed "no" (D-078): rpm is not a feature any more, in a z map or a packet
+    expect(Verdict.safeParse({ ...verdict, z: { ...verdict.z, rpm: -0.3 } }).success).toBe(false);
+    expect(Packet.safeParse({ ...packet, rpm: 3790 }).data).not.toHaveProperty('rpm');
   });
 
   it('rejects a z map with an unknown key', () => {
@@ -67,8 +73,8 @@ describe('protocol', () => {
   });
 
   it('rejects a missing field', () => {
-    const { rpm: _rpm, ...noRpm } = packet;
-    expect(Packet.safeParse(noRpm).success).toBe(false);
+    const { i_rms_A: _i, ...noCurrent } = packet;
+    expect(Packet.safeParse(noCurrent).success).toBe(false);
     const { cmd: _cmd, ...noCmd } = command;
     expect(Command.safeParse(noCmd).success).toBe(false);
     const { threshold: _threshold, ...noThreshold } = verdict;

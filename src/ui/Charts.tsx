@@ -1,4 +1,4 @@
-// M6 live charts (spec §8.2): six uPlot strips with synced cursors, state bands and event markers. React renders
+// M6 live charts (spec §8.2): five uPlot strips with synced cursors, state bands and event markers. React renders
 // the frame once; the plots are updated imperatively from a store subscription, never by re-rendering (D-049).
 import { type RefObject, useEffect, useRef } from 'react';
 import uPlot from 'uplot';
@@ -103,7 +103,7 @@ function options(
   };
 }
 
-/** Creates the six plots, keeps them sized and fed from the store, and tears them down on unmount. */
+/** Creates the five plots, keeps them sized and fed from the store, and tears them down on unmount. */
 function usePlots(hosts: RefObject<Partial<Record<StripId, HTMLDivElement | null>>>, theme: Theme): void {
   useEffect(() => {
     let latest: ChartData = chartData([], [], CONFIG.ui.chartWindowDefault_s, CONFIG.rcf.threshold);
@@ -152,7 +152,7 @@ function usePlots(hosts: RefObject<Partial<Record<StripId, HTMLDivElement | null
   }, [hosts, theme]);
 }
 
-/** The M6 tab: window selector, freeze, and the six strips in a 3 × 2 grid. */
+/** The M6 tab: window selector, freeze, and the five strips in a 3 × 2 grid. */
 export function Charts() {
   const window_s = useAppStore((s) => s.ui.chartWindow_s);
   const frozen = useAppStore((s) => s.ui.chartFrozen);
