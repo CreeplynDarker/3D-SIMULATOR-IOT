@@ -45,7 +45,7 @@ Demo story the app must support end to end:
 | Controller | ESP32 DevKit V1, 30 pins, USB-C, ESP32-WROOM-32, powered by the laptop over USB; off the breadboard, wired to its pins with jumpers. Its VIN feeds the 5 V node, its 3V3 the left rail. |
 | Current sensor | ACS712 module (5 A variant assumed, see OPEN-2), 5 V supply, header Vcc/Out/Gnd, 2-screw terminal IP+/IP−, in the switched 12 V line between NO2 and the fan; screws on the left, pins on the right. |
 | Temperature | DS18B20 waterproof probe, steel tip, wires red (VCC) / yellow (DATA) / black (GND). |
-| Vibration | MPU6050 GY-521 module (see OPEN-4). |
+| Vibration | MPU6050 on a GY-521 board (OPEN-4, closed): 8 pins VCC, GND, SCL, SDA, XDA, XCL, AD0, INT; on-board 3.3 V regulator and 2.2 kΩ I²C pull-ups; rigidly fixed to the fan housing. VCC from the 3V3 rail; XDA, XCL, AD0 and INT free (AD0 low: address 0x68). |
 | Power | JSY-1220 wall adapter, 12 V 1 A, barrel plug (see OPEN-6). Its − goes only to the fan's black wire: **no common ground** with the ESP32 side (D-081). |
 | Breadboard | 830-point, two power rails per side. Wired as in the team's wiring document (§13.3, D-082): 3V3 and GND on the left rails, a 5 V node on row 25, the ESP32 off the board. |
 | Laptop | Runs RCF and the dashboard; same Wi-Fi network as the ESP32. |
@@ -89,7 +89,7 @@ USB-C at the bottom, module antenna at the top, viewed from the component side:
 | OPEN-1 | Is RPM a 6th RCF feature? (The report lists 5.) | **Closed 2026-11-12 (team, real bench wiring): no.** The tach wire is left free, so nothing measures speed: `rcf.features` holds the report's 5 features, the packet has no `rpm` (protocol v2), and there is no STALL limit (D-078; it reverses the 2026-10-30 "yes"). | §5.1, §7, §9, §10.1 |
 | OPEN-2 | ACS712 variant (5/20/30 A) | 5 A, 0.185 V/A | §6.5 |
 | OPEN-3 | Tach pulses per revolution | **Moot (2026-11-12):** the tach is not wired (D-078). | — |
-| OPEN-4 | MPU6050 module on hand and its mounting | GY-521 taped flat on the frame's top edge | §13 |
+| OPEN-4 | MPU6050 module on hand and its mounting | **Closed 2026-11-12 (team): GY-521, rigidly fixed to the fan housing.** No team photo: the 3D board is procedural (blue 21 × 16 mm PCB, 8-pin header along one edge, X/Y marks printed), standing on the frame's top edge in the fan plane so its axes are §6.3's (D-084). | §6.3, §13 |
 | OPEN-5 | NO/NC terminal order on each relay block | **Closed 2026-10-30 (team, continuity test): `NC – COM – NO`** from left to right, terminals facing away, as on the board silkscreen. | §1.5, §13 |
 | OPEN-6 | How the barrel plug reaches the breadboard | Female 5.5 × 2.1 mm DC jack with screw terminals | §13 |
 | OPEN-7 | Blade count | 7 | §6.3 |
@@ -303,7 +303,8 @@ Warm start (`thermal.warmStart`): `T(0) = ambient_C + heatFraction · vRated · 
 
 ### 6.3 Vibration, true acceleration in g (`vibration.ts`)
 
-MPU axes: x and y lie in the fan plane (y vertical, so +1 g of gravity), z is the fan axis.
+MPU axes: x and y lie in the fan plane (y vertical, so +1 g of gravity), z is the fan axis. The GY-521 is mounted so
+that this holds: rigidly fixed to the housing, standing in the fan plane on the frame's top edge (OPEN-4, D-084).
 
 ```
 u      = residualUnbalance_gmm + imbalance_g · unbalanceRadius_mm         (g·mm)
@@ -893,7 +894,7 @@ arrangement.
 | id | Part | Size (x × y × z, mm) | Position (m) | Notes |
 | --- | --- | --- | --- | --- |
 | fan | Delta AFB0712HB on a stand | 70 × 70 × 15 | (−0.20, 0.055, −0.05) | Face in the x–y plane, airflow +z; 7 blades; stand 20 mm |
-| mpu6050 | GY-521 | 21 × 1.6 × 16 | (−0.20, 0.091, −0.05) | Flat on the frame's top edge |
+| mpu6050 | GY-521 | 21 × 22 × 3.5 | (−0.20, 0.1011, −0.05) | Blue 21 × 16 × 1 mm PCB standing on the frame's top edge in the fan plane (X right, Y up, Z along the fan axis); 8-pin right-angle header along its top edge, pins up (22 mm with the pins); procedural, no texture (D-084) |
 | ds18b20 | Probe tip | Ø6 × 50 | (−0.20, 0.055, −0.06) | Taped to the hub, cable 1 m coiled |
 | breadboard | 830-point | 165 × 9.5 × 55 | (0.05, 0.005, 0.08) | Long axis along x; left rail + = 3V3, − = GND; right rails unused; 5 V node on row 25 (D-082) |
 | esp32 | DevKit V1 30-pin | 52 × 13 × 28 | (0.05, 0.0065, 0.02) | Off the breadboard: pins down on the bench behind its A–E side, wired to its pins; turned 180°, USB-C toward +x (the laptop) (D-082) |

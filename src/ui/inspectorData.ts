@@ -23,7 +23,7 @@ const PHOTOS: Partial<Record<ComponentId, string>> = {
 
 const SPECS: Record<ComponentId, string[]> = {
   fan: ['12 VDC (4.0–13.8 V), 3,800 rpm, 0.18 A typical', '70 × 70 × 15 mm, 47 g, 7 blades', 'Wires: red +12 V (NO2), black GND, blue tach left free (no speed sensing)'], // prettier-ignore
-  mpu6050: ['±2 g, 16,384 LSB/g, DLPF 184 Hz', 'I²C 0x68: SDA GPIO21, SCL GPIO22, 3V3'],
+  mpu6050: ['GY-521: MPU6050, on-board 3.3 V regulator and 2.2 kΩ I²C pull-ups', '±2 g, 16,384 LSB/g, DLPF 184 Hz', 'I²C 0x68: SDA GPIO21 (via A45/B45), SCL GPIO22 (via A46/B46), VCC from the 3V3 rail', 'Pins VCC GND SCL SDA XDA XCL AD0 INT; XDA, XCL, AD0, INT free (AD0 low: 0x68)', 'Rigidly fixed to the fan housing: X, Y in the fan plane (Y up), Z along the fan axis'], // prettier-ignore
   ds18b20: ['12-bit, 0.0625 °C, 750 ms conversion', '1-Wire on GPIO4, 4.7 kΩ pull-up to 3V3', 'Disconnected reads −127 °C; power-on 85 °C'], // prettier-ignore
   breadboard: ['830 points', 'Left rail + = 3V3, − = GND (every GND); right rails unused', '5 V node on row 25: VIN in A25, ACS712 VCC in B25, relay VCC in C25'], // prettier-ignore
   esp32: ['ESP32-WROOM-32, 30-pin DevKit V1, USB-C from the laptop', 'Off the breadboard: jumper wires to its pins', 'GPIO26 relay IN2, GPIO34 ADC (ACS712), GPIO4 DS18B20, GPIO21/22 I²C'], // prettier-ignore

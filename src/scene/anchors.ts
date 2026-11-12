@@ -56,11 +56,20 @@ function esp32Anchors(): AnchorTable {
   return t;
 }
 
-/** GY-521 header holes along the +z edge, from −x to +x. */
+/** GY-521 header pins along the board's top edge, from −x to +x (D-084). */
 export const MPU_PINS = ['vcc', 'gnd', 'scl', 'sda', 'xda', 'xcl', 'ad0', 'int'] as const;
-export const MPU_DIMS = { pitch: 2.54, rowZ: 6.7, topY: 0.2 } as const;
+/**
+ * GY-521 local geometry (mm, around its bounding-box centre): the 21 × 16 × 1 PCB stands in the x–y plane with its
+ * back on −z; the right-angle header sits on the front face along the top edge and its pins rise to `pinTopY`.
+ */
+export const MPU_DIMS = {
+  pcb: { w: 21, h: 16, thick: 1, y: -3, z: -1.25 },
+  pitch: 2.54,
+  pinTopY: 11,
+  pinZ: 0.5,
+} as const;
 
-/** MPU wires run along the top of the fan frame, one layer per pin, and leave past its +x side (x > 35 mm). */
+/** MPU wires rise from the pin tips, one layer per pin, and leave past the fan frame's +x side (x > 35 mm). */
 export const MPU_EXIT = { layer0_mm: 2.5, layerStep_mm: 1.8, clearX_mm: 36 } as const;
 
 function mpuAnchors(): AnchorTable {
@@ -68,10 +77,10 @@ function mpuAnchors(): AnchorTable {
   const { layer0_mm, layerStep_mm, clearX_mm } = MPU_EXIT;
   MPU_PINS.forEach((name, i) => {
     const x = (i - (MPU_PINS.length - 1) / 2) * MPU_DIMS.pitch;
-    const y = layer0_mm + i * layerStep_mm;
-    const z = MPU_DIMS.rowZ;
+    const y = MPU_DIMS.pinTopY + layer0_mm + i * layerStep_mm;
+    const z = MPU_DIMS.pinZ;
     t[name] = {
-      pos_mm: [x, MPU_DIMS.topY, z],
+      pos_mm: [x, MPU_DIMS.pinTopY, z],
       out: PX,
       exit_mm: [
         [x, y, z],

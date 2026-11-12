@@ -55,6 +55,7 @@ describe('wiring (§13.3)', () => {
       // prettier-ignore
       expect(anchors, free).not.toContain(free);
     expect(WIRES.filter((w) => w.net === 'GND12').map((w) => [w.from, w.to])).toEqual([['fan.black', 'dcjack.minus']]); // no common ground
+    expect(WIRES.find((w) => w.from === 'mpu6050.vcc')?.to).toBe('bb.railL.p'); // GY-521 VCC on the 3V3 rail (D-084)
   });
 
   it('places the four 10 kΩ resistors in the holes the document names', () => {

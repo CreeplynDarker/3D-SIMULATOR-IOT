@@ -833,3 +833,24 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
 
   Every §12 target holds with margin, so no §5.2 key was tuned. Affects nothing but the docs; the files it checks
   were committed in D-078 and D-079.
+
+- **D-084 · 2026-11-12 · OPEN-4 closed: a GY-521, rigidly fixed to the fan housing, modelled procedurally.** The
+  team confirms a GY-521 board (8 pins: VCC, GND, SCL, SDA, XDA, XCL, AD0, INT; on-board 3.3 V regulator and 2.2 kΩ
+  I²C pull-ups), rigidly fixed to the fan housing, and has no photo of its own. The 3D model is built from that
+  description with no texture (`mpuParts`): a blue 21 × 16 × 1 mm PCB, the MPU6050 chip, the regulator, the two
+  pull-ups and the power LED on the front face, X and Y axis arrows printed in white, and the 8-pin header along one
+  long edge. **Mounting:** the old default (flat on the frame's top edge) contradicted the plant: §6.3 puts x and y in
+  the fan plane with gravity on y and z along the fan axis, while a board lying flat would have gravity on its Z.
+  "Rigidly fixed to the housing" leaves the orientation open, so the board stands upright on the frame's top edge,
+  in the fan plane, glued to the housing. Its printed X points along +x, Y up, and Z out of the board along the fan
+  axis, exactly the plant's axes, so no feature or threshold changes. Upright, the header is a right-angle one on the
+  front face with its pins pointing up, and the wires leave the pin tips upward, then run past the frame's +x side
+  as before. The component box is 21 × 22 × 3.5 mm (pins included), centred at (−0.20, 0.1011, −0.05) m with its
+  bottom on the frame top. Its VCC goes to the 3V3 rail as in the wiring document (W21); XDA, XCL, AD0 and INT are
+  free (AD0 pulled low on the board: address 0x68). The GY-521's regulator then runs from 3.3 V, below its usual
+  5 V input, and passes about 3.2 V on; that is normal for this board. The fan's name tag moves 5 cm to −x so it
+  doesn't cover the board, and the `cam-fan` preset rises a little to frame it. Whether the real board is mounted
+  this way is a `[human]` check in PROGRESS: if it lies flat, the plant's axis mapping must change, not just the 3D.
+  Affects `src/scene/models/geometry.ts`, `src/scene/anchors.ts`, `src/shared/components.ts`, `src/scene/Labels.tsx`,
+  `src/scene/cameras.ts`, `src/ui/inspectorData.ts`, §1.2, §2, §6.3, §13.2, `tests/unit/scene/models.test.ts`,
+  `tests/unit/shared/wiring.test.ts`.

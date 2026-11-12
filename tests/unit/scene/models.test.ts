@@ -27,6 +27,20 @@ describe('model geometry (§13.2 sizes)', () => {
     expect(jumper?.kind).toBe('box');
   });
 
+  it('the GY-521 is procedural (no texture): a 21 × 16 mm blue PCB, 8 header pins, X/Y marks (OPEN-4, D-084)', () => {
+    const parts = MODEL_PARTS.mpu6050();
+    expect(parts.filter((p) => p.tex !== undefined)).toEqual([]);
+    const pcb = parts.find((p) => p.mat === 'pcbBlue');
+    expect(pcb?.kind === 'box' ? [pcb.size[0], pcb.size[1]] : null).toEqual([21, 16]);
+    expect(parts.filter((p) => p.name?.startsWith('pin:')).map((p) => p.name)).toEqual(['pin:vcc', 'pin:gnd', 'pin:scl', 'pin:sda', 'pin:xda', 'pin:xcl', 'pin:ad0', 'pin:int']); // prettier-ignore
+    for (const n of ['mpu:header', 'mpu:chip', 'mpu:regulator', 'mpu:pullup:scl', 'mpu:pullup:sda'])
+      expect(
+        parts.some((p) => p.name === n),
+        n,
+      ).toBe(true);
+    expect(parts.filter((p) => p.mat === 'paint' && p.color === '#f2f2f2').length).toBeGreaterThanOrEqual(8); // arrows + letters
+  });
+
   it('the ESP32 has 30 header pins', () => {
     expect(MODEL_PARTS.esp32().filter((p) => p.name?.startsWith('pin:'))).toHaveLength(30);
   });

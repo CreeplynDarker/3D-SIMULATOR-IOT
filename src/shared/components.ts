@@ -147,10 +147,11 @@ export const COMPONENTS: readonly ComponentSpec[] = [
   {
     id: 'mpu6050',
     part: 'MPU6050 GY-521',
-    size_mm: [21, 1.6, 16],
-    position_m: [-0.2, 0.091, -0.05],
+    size_mm: [21, 22, 3.5],
+    // standing on the frame's top edge (y = 0.090 m), in the fan plane: 16 mm PCB plus the 6 mm header pins above it
+    position_m: [-0.2, 0.1011, -0.05],
     rotY_deg: 0,
-    notes: "Flat on the frame's top edge (OPEN-4).",
+    notes: "GY-521 (OPEN-4 closed, D-084): 21 × 16 mm blue PCB glued upright on the frame's top edge, in the fan plane (X right, Y up, Z along the fan axis); 8-pin right-angle header along its top edge.", // prettier-ignore
   },
   {
     id: 'ds18b20',

@@ -162,6 +162,8 @@ Seven changes from the team's wiring document, one commit each.
   2026-11-12 · 26 wires W01–W26 as in the document; holes named as the document (`bb.A25`), A–E of a row one node; 5 V node row 25 (VIN A25, ACS712 VCC B25, relay VCC C25); 3V3 and every GND on the left rails, right rails unused; DS18B20 D18/B18 with 2 × 10 kΩ (A18, A19) + C18–C19 jumper; MPU A45/B45, A46/B46; ACS712 OUT A30, 10 kΩ B30–B35 and C35–GND, D35 → D34; ESP32 off the breadboard (turned 180°, USB-C to the laptop); route tests pass · no tuning
 - [x] B6 Retrain, fixtures, Python cross-checks, S1–S8
   2026-11-12 · on the final code (B1–B5): gen:model, gen:fixtures and both Python references reproduce the committed files byte for byte; default model holdout max 0.203 (limit 0.40); features vs NumPy within 1e-6; TS RRCF vs Python rrcf 0.4.4 Spearman 0.917 (≥ 0.90; 0.944 before); S1–S8 meet every §12 target, timings unchanged (table in D-083) · no tuning
+- [x] B7 OPEN-4 closed: procedural GY-521
+  2026-11-12 · GY-521 built from its description (no photo, no texture): blue 21 × 16 mm PCB upright on the frame's top edge in the fan plane, MPU6050 chip, 3.3 V regulator, two 2.2 kΩ pull-ups, LED, X/Y arrows printed, 8-pin right-angle header (VCC GND SCL SDA XDA XCL AD0 INT) along the top edge; VCC on the 3V3 rail; fan tag and camera adjusted · no tuning
 
 ## Waiting for human review
 
@@ -186,4 +188,5 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - B1 · the team's real firmware has no tach input and refuses RESET until 15 s after the trip (`millis()` at the trip; reference in `src/firmware/reference-cpp/state_machine.cpp`)
 - B3 · on the real board, relay CH2 releases when GPIO26 is HIGH (3.3 V) with the module on 5 V and the jumper fitted (D-080); if it stays on, drive IN2 open-drain or as an input for OFF
 - B5 · the 3D bench matches the team's wiring document hole for hole (camera `cam-breadboard`), and the ESP32's place off the breadboard matches the real bench
+- B7 · the GY-521's mounting on the real fan (upright on the frame, X/Y as printed) matches the 3D board and the plant's axes (x, y in the fan plane, y up); if the real board lies flat, tell us and the axis mapping changes
 - P8.4 · `pnpm calibrate` on a real healthy recording (CALIBRATION_SCENARIO protocol) gives plausible values; review the diff before `git apply`

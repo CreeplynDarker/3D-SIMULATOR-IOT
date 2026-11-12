@@ -10,7 +10,7 @@ export interface CameraPose {
 
 export const CAMERA_PRESETS: Record<CameraPreset, CameraPose> = {
   overview: { position_m: [0.06, 0.56, 0.66], target_m: [0.07, 0.03, -0.02], label: 'Overview' },
-  fan: { position_m: [-0.12, 0.13, 0.12], target_m: [-0.2, 0.052, -0.05], label: 'Fan' },
+  fan: { position_m: [-0.115, 0.15, 0.14], target_m: [-0.2, 0.065, -0.05], label: 'Fan' },
   esp32: { position_m: [0.06, 0.15, 0.17], target_m: [0.05, 0.008, 0.035], label: 'ESP32' },
   relay: { position_m: [0.215, 0.13, -0.185], target_m: [0.135, 0.008, -0.08], label: 'Relay' },
   breadboard: { position_m: [0.05, 0.24, 0.21], target_m: [0.05, 0.005, 0.075], label: 'Breadboard' },

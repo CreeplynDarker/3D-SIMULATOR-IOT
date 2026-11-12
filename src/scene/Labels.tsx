@@ -5,8 +5,9 @@ import { type ComponentId, componentById } from '../shared/components.ts';
 import { useAppStore } from '../store/index.ts';
 import { animDebug } from './animDebug.ts';
 
-const LABELS: { id: ComponentId; text: string }[] = [
-  { id: 'fan', text: 'Fan 12 V' },
+/** One tag per part; `dx_m` moves a tag sideways (the fan's, off the GY-521 standing on its top edge, D-084). */
+const LABELS: { id: ComponentId; text: string; dx_m?: number }[] = [
+  { id: 'fan', text: 'Fan 12 V', dx_m: -0.05 },
   { id: 'mpu6050', text: 'MPU6050' },
   { id: 'ds18b20', text: 'DS18B20' },
   { id: 'breadboard', text: 'Breadboard' },
@@ -49,10 +50,10 @@ export function Labels() {
   const on = useAppStore((s) => s.ui.toggles.labels);
   const tags = useMemo(
     () =>
-      LABELS.map(({ id, text }) => {
+      LABELS.map(({ id, text, dx_m = 0 }) => {
         const c = componentById(id);
         const top = c.position_m[1] + c.size_mm[1] / 2000 + SIZE.gap_m;
-        return { id, material: tagMaterial(text), position: [c.position_m[0], top, c.position_m[2]] as const };
+        return { id, material: tagMaterial(text), position: [c.position_m[0] + dx_m, top, c.position_m[2]] as const };
       }),
     [],
   );
