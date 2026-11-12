@@ -333,16 +333,16 @@ de la interfaz, aunque la verificación se apruebe.
 
 1. Revisar que los pines coinciden con el cableado real:
 
-   | Señal                        | Pin                                    |
-   | ---------------------------- | -------------------------------------- |
-   | MPU6050 (I²C, 400 kHz)       | SDA GPIO21, SCL GPIO22, dirección 0x68 |
-   | DS18B20 (pull-up de 4.7 k)   | GPIO4                                  |
-   | ACS712 (divisor 10 k / 10 k) | GPIO34 (ADC1)                          |
-   | Tacómetro (pull-up de 10 k)  | GPIO27 (PCNT)                          |
-   | Relé CH2                     | GPIO26 → IN2 (activo en bajo)          |
+   | Señal                                  | Pin                                    |
+   | -------------------------------------- | -------------------------------------- |
+   | MPU6050 (I²C, 400 kHz)                 | SDA GPIO21, SCL GPIO22, dirección 0x68 |
+   | DS18B20 (pull-up 2 × 10 k en paralelo) | GPIO4                                  |
+   | ACS712 (divisor 10 k / 10 k)           | GPIO34 (ADC1)                          |
+   | Tacómetro                              | sin conectar (cable azul libre)        |
+   | Relé CH2 (módulo a 5 V, jumper puesto) | GPIO26 → IN2 (activo en bajo)          |
 
 2. Revisar que las bibliotecas existen y son las habituales: `ArduinoJson`, `OneWire`, `DallasTemperature`, `Wire`,
-   `WiFi`, `WiFiUdp`, `driver/pulse_cnt.h` (ESP-IDF 5 / núcleo Arduino-ESP32 3.x).
+   `WiFi`, `WiFiUdp` (núcleo Arduino-ESP32 3.x). Ya no se usa el contador de pulsos (PCNT): no hay tacómetro.
 3. Intentar compilarlo en el Arduino IDE (o con `arduino-cli`) para la placa "ESP32 Dev Module", con las bibliotecas
    anteriores instaladas. Hay que definir antes `WIFI_SSID`, `WIFI_PASSWORD` y `LAPTOP_IP`.
 4. Comprobar que los comentarios `// @map ...` aparecen en las mismas transiciones que en `src/firmware/*.ts`.

@@ -10,7 +10,7 @@ test('M9: shows the selected component with its photo, specs, live pins and wire
   await page.evaluate(() => window.__pdm?.select('acs712'));
   await expect(inspector).toContainText('ACS712 current module (5 A)');
   await expect(inspector.locator('img')).toHaveAttribute('src', /acs712-pcb\.webp$/);
-  await expect(inspector).toContainText('W25');
+  await expect(inspector).toContainText('W14'); // ACS712 OUT → A30 (D-082)
   await page.evaluate(() => {
     window.__pdm?.setSpeed(4);
     window.__pdm?.command('START');

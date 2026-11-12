@@ -2,7 +2,7 @@
 // height 10–30 mm above the bench (8 mm over whatever it crosses), goes around anything taller, and drops into its
 // target. The points feed a centripetal Catmull–Rom curve.
 import {
-  BB_NODE_COLUMNS,
+  bbNamedHole_m,
   bbRailHole_m,
   COMPONENTS,
   type ComponentId,
@@ -196,10 +196,13 @@ function routeOne(w: Wire, used: Set<string>, all: Obstacle[]): WireRoute {
   };
 }
 
-/** Rail holes under the pull-up bodies, which arch from row a over the L− rail to the L+ rail. */
-const COVERED_HOLES_m: Vec3[] = [bbRailHole_m('L.n', BB_NODE_COLUMNS.dq)];
+/**
+ * Holes under resistor bodies: the DS18B20 pull-ups arch from row a over the L− rail to the L+ rail (rows 18, 19);
+ * r_div_bot arches from C35 over B35 and A35 to the L− rail.
+ */
+const COVERED_HOLES_m: Vec3[] = [bbRailHole_m('L.n', 18), bbRailHole_m('L.n', 19), bbNamedHole_m('A35')];
 
-/** Routes W01–W29 in order; breadboard holes are never shared (resistor holes are taken first). */
+/** Routes the wires in order; breadboard holes are never shared (resistor holes are taken first). */
 let cached: WireRoute[] | null = null;
 
 /** `routeWires()` computed once and shared by the wires and the signal-flow pulses. */
@@ -215,19 +218,18 @@ export function routeWires(): WireRoute[] {
   return WIRES.map((w) => routeOne(w, used, all));
 }
 
-/** The grey USB cable: out of the ESP32's USB-C (−x), round the front of the breadboard, into the laptop. */
+/** The grey USB cable: out of the ESP32's USB-C (+x, D-082), down to the bench and across to the laptop. */
 export function usbRoute(): Vec3[] {
   const start = worldAnchor_m(USB_CABLE.from);
+  const away = worldAnchorOut(USB_CABLE.from);
   const end = worldAnchor_m(USB_CABLE.to);
   const out = worldAnchorOut(USB_CABLE.to);
+  const ahead = (d: number, y: number): Vec3 => [start[0] + away[0] * d, y, start[2] + away[2] * d];
   return [
     start,
-    [start[0] - 0.01, start[1], start[2]],
-    [-0.044, 0.012, 0.08],
-    [-0.048, 0.004, 0.114],
-    [0.06, 0.004, 0.126],
-    [0.17, 0.004, 0.115],
-    [end[0] + out[0] * 0.03, 0.005, end[2] + out[2] * 0.03 + 0.02],
+    ahead(0.012, start[1]),
+    ahead(0.03, 0.004),
+    [end[0] + out[0] * 0.03, 0.005, end[2] + out[2] * 0.03],
     [end[0] + out[0] * 0.012, end[1], end[2] + out[2] * 0.012],
     end,
   ];

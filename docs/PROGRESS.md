@@ -158,6 +158,8 @@ Seven changes from the team's wiring document, one commit each.
   2026-11-12 · relay VCC on 5 V (W15, orange), W13 (JD-VCC) and W14 (header-A GND) removed, jumper cap drawn across JD-VCC–VCC; IN2 ← D26, IN1 and NC2 free; the row-25 5 V node arrives with B5 · no tuning
 - [x] B4 12 V path order, ACS712 orientation, no common ground
   2026-11-12 · W02 jack + → COM2, W03 NO2 → ACS712 IP+ (top screw), W04 IP− (bottom screw) → fan red, W05 fan black → jack − on the new GND12 net; W06 (jack − → breadboard GND) removed; ACS712 screws left, pins right · no tuning
+- [x] B5 Breadboard topology from the wiring document
+  2026-11-12 · 26 wires W01–W26 as in the document; holes named as the document (`bb.A25`), A–E of a row one node; 5 V node row 25 (VIN A25, ACS712 VCC B25, relay VCC C25); 3V3 and every GND on the left rails, right rails unused; DS18B20 D18/B18 with 2 × 10 kΩ (A18, A19) + C18–C19 jumper; MPU A45/B45, A46/B46; ACS712 OUT A30, 10 kΩ B30–B35 and C35–GND, D35 → D34; ESP32 off the breadboard (turned 180°, USB-C to the laptop); route tests pass · no tuning
 
 ## Waiting for human review
 
@@ -181,4 +183,5 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - P8.1 · the bridge venv installs and runs on the team laptop (Windows and Linux steps in `bridge-py/README.md`)
 - B1 · the team's real firmware has no tach input and refuses RESET until 15 s after the trip (`millis()` at the trip; reference in `src/firmware/reference-cpp/state_machine.cpp`)
 - B3 · on the real board, relay CH2 releases when GPIO26 is HIGH (3.3 V) with the module on 5 V and the jumper fitted (D-080); if it stays on, drive IN2 open-drain or as an input for OFF
+- B5 · the 3D bench matches the team's wiring document hole for hole (camera `cam-breadboard`), and the ESP32's place off the breadboard matches the real bench
 - P8.4 · `pnpm calibrate` on a real healthy recording (CALIBRATION_SCENARIO protocol) gives plausible values; review the diff before `git apply`

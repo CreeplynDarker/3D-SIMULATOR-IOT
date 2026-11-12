@@ -42,12 +42,12 @@ Demo story the app must support end to end:
 | Fan | Delta AFB0712HB-F00. 70 × 70 × 15 mm, 47 g, 12 VDC, 4.0–13.8 V, 3,800 RPM, 0.18 A typical (0.33 A on label = max), 3 wires: red +12 V, black GND, blue tach — **left free on the bench: no speed sensing** (D-078). Datasheet: https://www.mouser.com/datasheet/2/632/AFB70x70x15mm-515820.pdf |
 | Relay | 2-channel optocoupler module, coils TONGLING JQC-3FF-S-Z **5 VDC**, low-level trigger (IN LOW = coil on). CH1 is dead (marked with an X); **only CH2 is used**. |
 | Relay wiring | Jack +12 V → COM2; NO2 → ACS712 IP+ (top screw); IP− (bottom screw) → fan red (fail-safe: no coil current = fan off; D-081). JD-VCC jumper **fitted** (2026-11-12, D-080): the whole module runs on 5 V, VCC from the breadboard's 5 V node; no separate JD-VCC or header-A GND wire. IN2 ← GPIO26; IN1 and NC2 free. |
-| Controller | ESP32 DevKit V1, 30 pins, USB-C, ESP32-WROOM-32, powered by the laptop over USB. |
+| Controller | ESP32 DevKit V1, 30 pins, USB-C, ESP32-WROOM-32, powered by the laptop over USB; off the breadboard, wired to its pins with jumpers. Its VIN feeds the 5 V node, its 3V3 the left rail. |
 | Current sensor | ACS712 module (5 A variant assumed, see OPEN-2), 5 V supply, header Vcc/Out/Gnd, 2-screw terminal IP+/IP−, in the switched 12 V line between NO2 and the fan; screws on the left, pins on the right. |
 | Temperature | DS18B20 waterproof probe, steel tip, wires red (VCC) / yellow (DATA) / black (GND). |
 | Vibration | MPU6050 GY-521 module (see OPEN-4). |
 | Power | JSY-1220 wall adapter, 12 V 1 A, barrel plug (see OPEN-6). Its − goes only to the fan's black wire: **no common ground** with the ESP32 side (D-081). |
-| Breadboard | 830-point, two power rails per side. |
+| Breadboard | 830-point, two power rails per side. Wired as in the team's wiring document (§13.3, D-082): 3V3 and GND on the left rails, a 5 V node on row 25, the ESP32 off the board. |
 | Laptop | Runs RCF and the dashboard; same Wi-Fi network as the ESP32. |
 
 ### 1.3 Pin map (ESP32)
@@ -55,7 +55,7 @@ Demo story the app must support end to end:
 | Signal | Pin | Notes |
 | --- | --- | --- |
 | MPU6050 SDA / SCL | GPIO21 / GPIO22 | I²C, 3V3, address 0x68 (AD0 left unconnected; GY-521 pulls it low) |
-| DS18B20 DATA | GPIO4 | 4.7 kΩ pull-up to 3V3 |
+| DS18B20 DATA | GPIO4 | Pull-up to 3V3: two 10 kΩ in parallel (5 kΩ), rows 18 and 19 joined by a jumper |
 | ACS712 OUT via divider | GPIO34 | 10 kΩ / 10 kΩ divider (× 0.5: 2.5 V at 0 A → 1.25 V); ADC1_CH6, input-only, 11 dB attenuation; works with Wi-Fi on |
 | Fan tach (blue) | — | Not connected: the blue wire is left free and the ESP32 measures no speed (D-078) |
 | Relay IN2 | GPIO26 | LOW = coil on = NO2 closed = fan powered; HIGH or floating at boot = fan off |
@@ -699,7 +699,7 @@ Accept: [e2e] the scene renders with no console errors · [human] the layout rea
 **P1.4 Wires.** Files: `shared/wiring.ts` (§13.3 as data), `scene/wires/Wire.tsx`, `Wires.tsx`, `WifiArc.tsx`.
 Each wire is a tube (radius 0.8 mm) along a Catmull–Rom curve from anchor to anchor through via points that lift
 it 10–30 mm above the bench.
-Accept: [auto] `wiring.test.ts` asserts the exact W01–W29 list (endpoints, net, colour) from §13.3 ·
+Accept: [auto] `wiring.test.ts` asserts the exact §13.3 list (W01–W26 since D-082; endpoints, net, colour) ·
 [human] no wire passes through a component.
 
 **P1.5 Cameras and selection.** Files: `scene/cameras.ts`, selection in `Bench.tsx`. Five presets with a 600 ms
@@ -895,9 +895,9 @@ arrangement.
 | fan | Delta AFB0712HB on a stand | 70 × 70 × 15 | (−0.20, 0.055, −0.05) | Face in the x–y plane, airflow +z; 7 blades; stand 20 mm |
 | mpu6050 | GY-521 | 21 × 1.6 × 16 | (−0.20, 0.091, −0.05) | Flat on the frame's top edge |
 | ds18b20 | Probe tip | Ø6 × 50 | (−0.20, 0.055, −0.06) | Taped to the hub, cable 1 m coiled |
-| breadboard | 830-point | 165 × 9.5 × 55 | (0.05, 0.005, 0.08) | Long axis along x; left rail +=3V3, right rail +=5 V, both − = GND |
-| esp32 | DevKit V1 30-pin | 52 × 13 × 28 | (0.02, 0.017, 0.08) | Straddles the centre channel; USB-C toward −x |
-| r_pu_ds | 4.7 kΩ | 6 × 2.3 × 2.3 | on breadboard | DS18B20 pull-up |
+| breadboard | 830-point | 165 × 9.5 × 55 | (0.05, 0.005, 0.08) | Long axis along x; left rail + = 3V3, − = GND; right rails unused; 5 V node on row 25 (D-082) |
+| esp32 | DevKit V1 30-pin | 52 × 13 × 28 | (0.05, 0.0065, 0.02) | Off the breadboard: pins down on the bench behind its A–E side, wired to its pins; turned 180°, USB-C toward +x (the laptop) (D-082) |
+| r_pu_ds1 / r_pu_ds2 | 10 kΩ / 10 kΩ | 6 × 2.3 × 2.3 | on breadboard | DS18B20 pull-up: A18 and A19 to the 3V3 rail, in parallel through the C18–C19 jumper (5 kΩ) |
 | r_div_top / r_div_bot | 10 kΩ / 10 kΩ | 6 × 2.3 × 2.3 | on breadboard | ACS712 divider (× 0.5, D-079) |
 | acs712 | Current module | 31 × 12 × 13 | (0.00, 0.006, −0.10) | Screw terminals on the left (−x), header pins on the right (+x); IP+ is the top (−z) screw |
 | relay | 2-ch module | 50 × 19 × 38 | (0.14, 0.0095, −0.08) | Terminals toward −z; CH1 marked unused |
@@ -911,10 +911,12 @@ Colour key: red `#d32f2f` (12 V), black `#212121` (GND), orange `#f57c00` (5 V),
 (SDA), light blue `#4fc3f7` (SCL), yellow `#fdd835` (1-Wire), green `#43a047` (analog),
 white `#eeeeee` (relay control), grey `#9e9e9e` (USB, barrel cable).
 
-`bb.*` anchors: `bb.railL.p` (3V3), `bb.railL.n` (GND), `bb.railR.p` (5 V), `bb.railR.n` (GND), and nodes
-`bb.node.dq`, `bb.node.divTop`, `bb.node.divMid` (breadboard rows chosen by the agent).
-A wire to an ESP32 pin lands in the breadboard hole in the same row, outside the module; where no free hole exists,
-it attaches at the pin.
+`bb.*` anchors (D-082): `bb.railL.p` (left red rail, 3V3) and `bb.railL.n` (left blue rail, GND; every GND lands
+here); a wire to a rail takes a free rail hole nearby. The right rails are unused. Terminal holes are named as in the
+team's wiring document: rows 1–63 with row 1 at the top (the +x end), columns A–E left of the channel (A outermost),
+F–J right of it, so `bb.A25` is column A of row 25 and a wire to it lands in exactly that hole. A–E of one row are
+one node, F–J another. The ESP32 is not on the breadboard: it sits on the bench behind the A–E side, and wires to
+its pins attach at the pin.
 
 | ID | From | To | Net | Colour |
 | --- | --- | --- | --- | --- |
@@ -923,28 +925,35 @@ it attaches at the pin.
 | W03 | relay.no2 | acs712.ipPlus | V12_SW | red |
 | W04 | acs712.ipMinus | fan.red | V12_SW | red |
 | W05 | fan.black | dcjack.minus | GND12 | black |
-| W07 | esp32.VIN | bb.railR.p | V5 | orange |
-| W08 | esp32.3V3 | bb.railL.p | V3V3 | pink |
-| W09 | esp32.GND | bb.railL.n | GND | black |
-| W10 | bb.railL.n | bb.railR.n | GND | black |
-| W11 | bb.railR.p | acs712.vcc | V5 | orange |
-| W12 | bb.railR.n | acs712.gnd | GND | black |
-| W15 | bb.railR.p | relay.vcc | V5 | orange |
-| W16 | bb.railL.n | relay.gnd | GND | black |
-| W17 | bb.railL.p | mpu6050.vcc | V3V3 | pink |
-| W18 | bb.railL.n | mpu6050.gnd | GND | black |
-| W19 | mpu6050.sda | esp32.D21 | SDA | blue |
-| W20 | mpu6050.scl | esp32.D22 | SCL | light blue |
-| W21 | ds18b20.red | bb.railL.p | V3V3 | pink |
-| W22 | ds18b20.black | bb.railL.n | GND | black |
-| W23 | ds18b20.yellow | bb.node.dq | ONEWIRE | yellow |
-| W24 | bb.node.dq | esp32.D4 | ONEWIRE | yellow |
-| W25 | acs712.out | bb.node.divTop | ANALOG | green |
-| W26 | bb.node.divMid | esp32.D34 | ANALOG | green |
-| W29 | esp32.D26 | relay.in2 | RELAY_IN | white |
+| W06 | esp32.VIN | bb.A25 | V5 | orange |
+| W07 | acs712.vcc | bb.B25 | V5 | orange |
+| W08 | relay.vcc | bb.C25 | V5 | orange |
+| W09 | esp32.3V3 | bb.railL.p | V3V3 | pink |
+| W10 | esp32.GND | bb.railL.n | GND | black |
+| W11 | acs712.gnd | bb.railL.n | GND | black |
+| W12 | relay.gnd | bb.railL.n | GND | black |
+| W13 | esp32.D26 | relay.in2 | RELAY_IN | white |
+| W14 | acs712.out | bb.A30 | ANALOG | green |
+| W15 | bb.D35 | esp32.D34 | ANALOG | green |
+| W16 | ds18b20.red | bb.railL.p | V3V3 | pink |
+| W17 | ds18b20.black | bb.railL.n | GND | black |
+| W18 | ds18b20.yellow | bb.D18 | ONEWIRE | yellow |
+| W19 | bb.B18 | esp32.D4 | ONEWIRE | yellow |
+| W20 | bb.C18 | bb.C19 | ONEWIRE | yellow |
+| W21 | mpu6050.vcc | bb.railL.p | V3V3 | pink |
+| W22 | mpu6050.gnd | bb.railL.n | GND | black |
+| W23 | mpu6050.sda | bb.A45 | SDA | blue |
+| W24 | bb.B45 | esp32.D21 | SDA | blue |
+| W25 | mpu6050.scl | bb.A46 | SCL | light blue |
+| W26 | bb.B46 | esp32.D22 | SCL | light blue |
 
-Resistors (placed in breadboard holes, not wires): `r_pu_ds` between `bb.node.dq` and `bb.railL.p`; `r_div_top` between `bb.node.divTop` and `bb.node.divMid`; `r_div_bot`
-between `bb.node.divMid` and `bb.railL.n`. USB: a grey cable `esp32.usb → laptop.usb` (not in the wire list,
+Not connected: the fan's blue tach lead (drawn loose, D-078), relay IN1, NC2 and header A (jumper fitted, D-080),
+GY-521 XDA, XCL, AD0 and INT. There is no wire from the 12 V supply's − to the breadboard (no common ground, D-081).
+
+Resistors (placed in breadboard holes, not wires; all 10 kΩ): `r_pu_ds1` between `bb.A18` and `bb.railL.p`;
+`r_pu_ds2` between `bb.A19` and `bb.railL.p` (with the C18–C19 jumper W20 they are two 10 kΩ in parallel: a 5 kΩ
+DS18B20 pull-up); `r_div_top` between `bb.B30` and `bb.B35`; `r_div_bot` between `bb.C35` and `bb.railL.n` (the
+ACS712 OUT divider, × 0.5, read at D35). USB: a grey cable `esp32.usb → laptop.usb` (not in the wire list,
 always energised). Wi-Fi: `WifiArc` between `esp32.antenna` and `laptop.screenTop`.
 
 Energised rules: V12, GND12, GND: always (GND12 is the 12 V supply's return; it never meets GND, D-081) · V12_SW: iff

@@ -21,7 +21,9 @@ describe('M9 inspector data (§8.2)', () => {
       for (const w of info.wires)
         expect(w.from.startsWith(prefix) || w.to.startsWith(prefix), `${c.id} ${w.id}`).toBe(true);
     }
-    expect(inspectorFor('acs712', snap(), null).wires.map((w) => w.id)).toEqual(['W03', 'W04', 'W11', 'W12', 'W25']);
+    expect(inspectorFor('acs712', snap(), null).wires.map((w) => w.id)).toEqual(['W03', 'W04', 'W07', 'W11', 'W14']);
+    // a resistor lists the wires on its strips: r_div_top sits in B30 and B35, with ACS712 OUT in A30 and GPIO34 from D35
+    expect(inspectorFor('r_div_top', snap(), null).wires.map((w) => w.id)).toEqual(['W14', 'W15']);
   });
 
   it('pins carry live values, e.g. "ACS712 OUT 2.533 V → GPIO34 1965 counts"', () => {

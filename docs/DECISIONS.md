@@ -781,3 +781,31 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   The plant needs no change: the current through the sensor is the fan current either way, and it is zero with the
   relay open, as the CALIBRATING zero assumes. Affects `src/shared/wiring.ts` (Net, W02–W06),
   `src/ui/inspectorData.ts`, §1.2, §13.2, §13.3, `tests/unit/{shared/wiring,ui/inspectorData,scene/anim}.test.ts`.
+
+- **D-082 · 2026-11-12 · Breadboard wired hole for hole from the team's document.** (a) Naming: the document numbers
+  the board's rows 1–63 from the top and names columns A–E left of the channel. Our `BREADBOARD` calls those
+  "columns" and "rows", with column 1 at the +x end and row a the outermost on −z, so the document's hole `A25` is
+  `bbHole_m(25, 'a')`. Every terminal hole is now an anchor by its document name (`bb.A1`…`bb.J63`). A wire to one
+  lands in exactly that hole, and A–E of a row (or F–J) count as one node (`bbNodeOf`, used by M9). The agent-chosen
+  nodes (`bb.node.*`, `BB_NODE_COLUMNS`) are gone. (b) The wire list is the document's, W01–W26 (§13.3): the 12 V
+  path as in D-081; the 5 V node on row 25 (VIN → A25, ACS712 VCC → B25, relay VCC → C25); 3V3 from the ESP32 on
+  the left red rail; every GND on the left blue rail; no right-rail 5 V and no GND bridge between the rails; IN2
+  straight to D26. ACS712 OUT goes into A30, with 10 kΩ B30–B35 and 10 kΩ C35 to the GND rail; GPIO34 reads D35. The
+  DS18B20's yellow goes into D18 and B18 to D4; its pull-up is two 10 kΩ (A18 and A19 to the 3V3 rail) joined by a
+  C18–C19 jumper (W20), i.e. 5 kΩ instead of the 4.7 kΩ assumed before (the plant's 1-Wire model has no pull-up
+  term, so nothing else changes). The MPU's SDA goes into A45 with B45 to D21, and SCL into A46 with B46 to D22.
+  The fan's blue lead stays loose. Wires W01–W05 keep their IDs (the e2e checks on W02, W04 and W05 hold); the rest
+  are renumbered in the document's order. (c) **The ESP32 is off the breadboard.** The document's nodes use columns
+  A–E of rows 18 to 46. A DevKit V1 straddling the board spans 15 rows of pins and about 20 rows of PCB, covering
+  A–E, and no 20-row stretch of a 63-row board is free of those nodes. The document also wires straight to ESP32
+  pins ("B18 → esp32.D4"), so the ESP32 must sit off the board. It now lies pins-down on the bench just behind the
+  A–E side, at (0.05, 0.0065, 0.02) m. It is turned 180° so VIN faces A25, D34 faces D35, D21 and D22 run parallel
+  to B45 and B46, and the USB-C points at the laptop, so the USB cable runs straight across. The `cam-esp32` preset
+  follows. Its exact place on the real bench is a `[human]` check. (d) Resistors: `r_pu_ds1` and `r_pu_ds2` replace
+  `r_pu_ds`, all four are 10 kΩ, and a resistor's leads now span its own two holes (B30–B35 is five rows).
+  `r_div_bot` arches 3.5 mm higher so it clears `r_div_top`'s lead in B35. The holes under the bodies (L− 18 and 19,
+  A35) are kept free for wires. `route.test.ts` passes unchanged: no wire crosses a component, no two wires share a
+  hole, travel 10–30 mm. (e) The Prettier format slip in `wiring.ts` from the previous commit is fixed here.
+  Affects `src/shared/{wiring,components}.ts`, `src/scene/{anchors,cameras}.ts`, `src/scene/wires/route.ts`,
+  `src/scene/models/{Resistor.tsx,geometry.ts}`, `src/scene/Bench.tsx`, `src/ui/inspectorData.ts`, §1.2, §1.3, §13.2,
+  §13.3, `tests/unit/{shared/wiring,shared/components,scene/anchors,ui/inspectorData}.test.ts`.
