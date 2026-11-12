@@ -21,7 +21,7 @@ describe('M9 inspector data (§8.2)', () => {
       for (const w of info.wires)
         expect(w.from.startsWith(prefix) || w.to.startsWith(prefix), `${c.id} ${w.id}`).toBe(true);
     }
-    expect(inspectorFor('acs712', snap(), null).wires.map((w) => w.id)).toEqual(['W02', 'W03', 'W11', 'W12', 'W25']);
+    expect(inspectorFor('acs712', snap(), null).wires.map((w) => w.id)).toEqual(['W03', 'W04', 'W11', 'W12', 'W25']);
   });
 
   it('pins carry live values, e.g. "ACS712 OUT 2.533 V → GPIO34 1965 counts"', () => {

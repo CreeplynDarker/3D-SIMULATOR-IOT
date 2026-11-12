@@ -156,6 +156,8 @@ Seven changes from the team's wiring document, one commit each.
   2026-11-12 · sensors.divider.rBottom_ohm 20000 → 10000 (hardware fact, not §5.2 tuning); reference-cpp R_BOTTOM and nominal counts0; r_div_bot 10 kΩ in 3D and M9; ADC 1583 counts at 0 A, 1606 at 0.18 A (8.05 mA/count); model retrained (holdout max 0.203) · no tuning
 - [x] B3 Relay jumper fitted, module on 5 V
   2026-11-12 · relay VCC on 5 V (W15, orange), W13 (JD-VCC) and W14 (header-A GND) removed, jumper cap drawn across JD-VCC–VCC; IN2 ← D26, IN1 and NC2 free; the row-25 5 V node arrives with B5 · no tuning
+- [x] B4 12 V path order, ACS712 orientation, no common ground
+  2026-11-12 · W02 jack + → COM2, W03 NO2 → ACS712 IP+ (top screw), W04 IP− (bottom screw) → fan red, W05 fan black → jack − on the new GND12 net; W06 (jack − → breadboard GND) removed; ACS712 screws left, pins right · no tuning
 
 ## Waiting for human review
 

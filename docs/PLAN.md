@@ -41,12 +41,12 @@ Demo story the app must support end to end:
 | --- | --- |
 | Fan | Delta AFB0712HB-F00. 70 × 70 × 15 mm, 47 g, 12 VDC, 4.0–13.8 V, 3,800 RPM, 0.18 A typical (0.33 A on label = max), 3 wires: red +12 V, black GND, blue tach — **left free on the bench: no speed sensing** (D-078). Datasheet: https://www.mouser.com/datasheet/2/632/AFB70x70x15mm-515820.pdf |
 | Relay | 2-channel optocoupler module, coils TONGLING JQC-3FF-S-Z **5 VDC**, low-level trigger (IN LOW = coil on). CH1 is dead (marked with an X); **only CH2 is used**. |
-| Relay wiring | +12 V → COM2; NO2 → fan red (fail-safe: no coil current = fan off). JD-VCC jumper **fitted** (2026-11-12, D-080): the whole module runs on 5 V, VCC from the breadboard's 5 V node; no separate JD-VCC or header-A GND wire. IN2 ← GPIO26; IN1 and NC2 free. |
+| Relay wiring | Jack +12 V → COM2; NO2 → ACS712 IP+ (top screw); IP− (bottom screw) → fan red (fail-safe: no coil current = fan off; D-081). JD-VCC jumper **fitted** (2026-11-12, D-080): the whole module runs on 5 V, VCC from the breadboard's 5 V node; no separate JD-VCC or header-A GND wire. IN2 ← GPIO26; IN1 and NC2 free. |
 | Controller | ESP32 DevKit V1, 30 pins, USB-C, ESP32-WROOM-32, powered by the laptop over USB. |
-| Current sensor | ACS712 module (5 A variant assumed, see OPEN-2), 5 V supply, header Vcc/Out/Gnd, 2-screw terminal IP+/IP−. |
+| Current sensor | ACS712 module (5 A variant assumed, see OPEN-2), 5 V supply, header Vcc/Out/Gnd, 2-screw terminal IP+/IP−, in the switched 12 V line between NO2 and the fan; screws on the left, pins on the right. |
 | Temperature | DS18B20 waterproof probe, steel tip, wires red (VCC) / yellow (DATA) / black (GND). |
 | Vibration | MPU6050 GY-521 module (see OPEN-4). |
-| Power | JSY-1220 wall adapter, 12 V 1 A, barrel plug (see OPEN-6). |
+| Power | JSY-1220 wall adapter, 12 V 1 A, barrel plug (see OPEN-6). Its − goes only to the fan's black wire: **no common ground** with the ESP32 side (D-081). |
 | Breadboard | 830-point, two power rails per side. |
 | Laptop | Runs RCF and the dashboard; same Wi-Fi network as the ESP32. |
 
@@ -899,7 +899,7 @@ arrangement.
 | esp32 | DevKit V1 30-pin | 52 × 13 × 28 | (0.02, 0.017, 0.08) | Straddles the centre channel; USB-C toward −x |
 | r_pu_ds | 4.7 kΩ | 6 × 2.3 × 2.3 | on breadboard | DS18B20 pull-up |
 | r_div_top / r_div_bot | 10 kΩ / 10 kΩ | 6 × 2.3 × 2.3 | on breadboard | ACS712 divider (× 0.5, D-079) |
-| acs712 | Current module | 31 × 12 × 13 | (0.00, 0.006, −0.10) | Terminals toward −x |
+| acs712 | Current module | 31 × 12 × 13 | (0.00, 0.006, −0.10) | Screw terminals on the left (−x), header pins on the right (+x); IP+ is the top (−z) screw |
 | relay | 2-ch module | 50 × 19 × 38 | (0.14, 0.0095, −0.08) | Terminals toward −z; CH1 marked unused |
 | dcjack | Female barrel jack, screw terminals | 25 × 12 × 15 | (−0.12, 0.006, −0.15) | OPEN-6 |
 | adapter | JSY-1220 12 V 1 A | 75 × 30 × 45 | (−0.30, 0.0225, −0.17) | Barrel cable to `dcjack` |
@@ -919,11 +919,10 @@ it attaches at the pin.
 | ID | From | To | Net | Colour |
 | --- | --- | --- | --- | --- |
 | W01 | adapter.plug | dcjack.barrel | V12 | grey |
-| W02 | dcjack.plus | acs712.ipPlus | V12 | red |
-| W03 | acs712.ipMinus | relay.com2 | V12 | red |
-| W04 | relay.no2 | fan.red | V12_SW | red |
-| W05 | fan.black | dcjack.minus | GND | black |
-| W06 | dcjack.minus | bb.railR.n | GND | black |
+| W02 | dcjack.plus | relay.com2 | V12 | red |
+| W03 | relay.no2 | acs712.ipPlus | V12_SW | red |
+| W04 | acs712.ipMinus | fan.red | V12_SW | red |
+| W05 | fan.black | dcjack.minus | GND12 | black |
 | W07 | esp32.VIN | bb.railR.p | V5 | orange |
 | W08 | esp32.3V3 | bb.railL.p | V3V3 | pink |
 | W09 | esp32.GND | bb.railL.n | GND | black |
@@ -948,7 +947,8 @@ Resistors (placed in breadboard holes, not wires): `r_pu_ds` between `bb.node.dq
 between `bb.node.divMid` and `bb.railL.n`. USB: a grey cable `esp32.usb → laptop.usb` (not in the wire list,
 always energised). Wi-Fi: `WifiArc` between `esp32.antenna` and `laptop.screenTop`.
 
-Energised rules: V12, GND: always · V12_SW: iff `contact === 'NO'` · V5, V3V3: always (USB powered) · data nets:
+Energised rules: V12, GND12, GND: always (GND12 is the 12 V supply's return; it never meets GND, D-081) · V12_SW: iff
+`contact === 'NO'` · V5, V3V3: always (USB powered) · data nets:
 pulses per §11 P6.2 · RELAY_IN: lit while GPIO26 is LOW.
 
 ---

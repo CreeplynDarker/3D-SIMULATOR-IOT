@@ -1,6 +1,10 @@
 // Bench wiring from spec §13.3 as data.
 
-export type Net = 'V12' | 'V12_SW' | 'GND' | 'V5' | 'V3V3' | 'SDA' | 'SCL' | 'ONEWIRE' | 'ANALOG' | 'RELAY_IN';
+/**
+ * Electrical nets. `GND12` is the 12 V supply's return (jack −, fan black): the bench has no common ground, so it never
+ * meets the logic `GND` of the ESP32 side (D-081).
+ */
+export type Net = 'V12' | 'V12_SW' | 'GND12' | 'GND' | 'V5' | 'V3V3' | 'SDA' | 'SCL' | 'ONEWIRE' | 'ANALOG' | 'RELAY_IN';
 
 /** Wire colour key (§13.3). */
 export const WIRE_COLORS = {
@@ -30,11 +34,10 @@ const w = (id: string, from: string, to: string, net: Net, color: WireColor): Wi
 
 export const WIRES: readonly Wire[] = [
   w('W01', 'adapter.plug', 'dcjack.barrel', 'V12', 'grey'),
-  w('W02', 'dcjack.plus', 'acs712.ipPlus', 'V12', 'red'),
-  w('W03', 'acs712.ipMinus', 'relay.com2', 'V12', 'red'),
-  w('W04', 'relay.no2', 'fan.red', 'V12_SW', 'red'),
-  w('W05', 'fan.black', 'dcjack.minus', 'GND', 'black'),
-  w('W06', 'dcjack.minus', 'bb.railR.n', 'GND', 'black'),
+  w('W02', 'dcjack.plus', 'relay.com2', 'V12', 'red'),
+  w('W03', 'relay.no2', 'acs712.ipPlus', 'V12_SW', 'red'),
+  w('W04', 'acs712.ipMinus', 'fan.red', 'V12_SW', 'red'),
+  w('W05', 'fan.black', 'dcjack.minus', 'GND12', 'black'),
   w('W07', 'esp32.VIN', 'bb.railR.p', 'V5', 'orange'),
   w('W08', 'esp32.3V3', 'bb.railL.p', 'V3V3', 'pink'),
   w('W09', 'esp32.GND', 'bb.railL.n', 'GND', 'black'),

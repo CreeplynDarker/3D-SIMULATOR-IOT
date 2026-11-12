@@ -4,11 +4,10 @@ import { RESISTOR_LINKS, USB_CABLE, WIFI_LINK, WIRE_COLORS, WIRES } from '../../
 // §13.3, row by row: ID, from, to, net, colour.
 const SPEC = [
   ['W01', 'adapter.plug', 'dcjack.barrel', 'V12', '#9e9e9e'],
-  ['W02', 'dcjack.plus', 'acs712.ipPlus', 'V12', '#d32f2f'],
-  ['W03', 'acs712.ipMinus', 'relay.com2', 'V12', '#d32f2f'],
-  ['W04', 'relay.no2', 'fan.red', 'V12_SW', '#d32f2f'],
-  ['W05', 'fan.black', 'dcjack.minus', 'GND', '#212121'],
-  ['W06', 'dcjack.minus', 'bb.railR.n', 'GND', '#212121'],
+  ['W02', 'dcjack.plus', 'relay.com2', 'V12', '#d32f2f'],
+  ['W03', 'relay.no2', 'acs712.ipPlus', 'V12_SW', '#d32f2f'],
+  ['W04', 'acs712.ipMinus', 'fan.red', 'V12_SW', '#d32f2f'],
+  ['W05', 'fan.black', 'dcjack.minus', 'GND12', '#212121'],
   ['W07', 'esp32.VIN', 'bb.railR.p', 'V5', '#f57c00'],
   ['W08', 'esp32.3V3', 'bb.railL.p', 'V3V3', '#ec407a'],
   ['W09', 'esp32.GND', 'bb.railL.n', 'GND', '#212121'],

@@ -61,7 +61,7 @@ describe('P6.2 signal-flow math', () => {
     expect(wireEnergised('V12_SW', 'NC', 0)).toBe(false);
     expect(wireEnergised('RELAY_IN', 'NC', 0)).toBe(true);
     expect(wireEnergised('RELAY_IN', 'NO', 1)).toBe(false);
-    for (const net of ['V12', 'GND', 'V5', 'V3V3', 'SDA', 'SCL', 'ONEWIRE', 'ANALOG'] as const) {
+    for (const net of ['V12', 'GND12', 'GND', 'V5', 'V3V3', 'SDA', 'SCL', 'ONEWIRE', 'ANALOG'] as const) {
       expect(wireEnergised(net, 'NC', 1)).toBe(true);
     }
   });

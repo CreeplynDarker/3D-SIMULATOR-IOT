@@ -769,3 +769,15 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   with IN2 HIGH, switch GPIO26 to open-drain (or to an input) for OFF, so IN2 floats up to 5 V through the module's
   own pull-up. Affects `src/shared/wiring.ts`, `src/scene/models/geometry.ts`, `src/ui/inspectorData.ts`, §1.2, §1.5,
   §13.3, `tests/unit/shared/wiring.test.ts`, `tests/unit/scene/models.test.ts`.
+
+- **D-081 · 2026-11-12 · 12 V path order and no common ground.** The wiring document runs the 12 V line as jack + →
+  relay COM2 (W02, V12) → NO2 → ACS712 top screw IP+ (W03) → bottom screw IP− → fan red (W04) → fan black → jack −
+  (W05). The ACS712 now sits in the switched part of the line (after NO2), so W03 and W04 are both `V12_SW`: lit only
+  while CH2 is closed. W04 is still the wire to the fan, so the guided text and the P6.3 checks about W04 dimming
+  hold. The ACS712 keeps its screw terminals on the left (−x) and its pins on the right (+x), as §13.2 already had;
+  IP+ is the top (−z) screw, so current flows IP+ → IP− and reads positive. The jack's − goes only to the fan:
+  **there is no wire from the 12 V supply's − to the breadboard GND**, so W06 is removed. To keep that visible in the
+  data, the 12 V return gets its own net, `GND12` (black, always energised), distinct from the ESP32 side's `GND`.
+  The plant needs no change: the current through the sensor is the fan current either way, and it is zero with the
+  relay open, as the CALIBRATING zero assumes. Affects `src/shared/wiring.ts` (Net, W02–W06),
+  `src/ui/inspectorData.ts`, §1.2, §13.2, §13.3, `tests/unit/{shared/wiring,ui/inspectorData,scene/anim}.test.ts`.
