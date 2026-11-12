@@ -809,3 +809,27 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   Affects `src/shared/{wiring,components}.ts`, `src/scene/{anchors,cameras}.ts`, `src/scene/wires/route.ts`,
   `src/scene/models/{Resistor.tsx,geometry.ts}`, `src/scene/Bench.tsx`, `src/ui/inspectorData.ts`, §1.2, §1.3, §13.2,
   §13.3, `tests/unit/{shared/wiring,shared/components,scene/anchors,ui/inspectorData}.test.ts`.
+
+- **D-083 · 2026-11-12 · Retraining and re-validation after the real-bench changes.** On the code after D-078 to
+  D-082, `pnpm gen:model`, `pnpm gen:fixtures`, `scripts/features_reference.py` and `scripts/rrcf_reference.py`
+  (Python rrcf 0.4.4) reproduce the committed `public/models/default-model.json` and `tests/fixtures/*` byte for byte.
+  They were regenerated in D-078 (five features) and D-079 (divider), since `pnpm verify` checks they match the code,
+  and the wiring changes (D-080 to D-082) touch no simulated signal. The default model (five features, 10 kΩ / 10 kΩ
+  divider) has holdout max **0.203** (accept < 0.8 × 0.50 = 0.40; 0.171 with six features before). P3.2: the TS
+  features match the NumPy reference within 1e-6 on all five fixtures. P4.6: the TS RRCF ranks the 60 test windows
+  like Python rrcf with Spearman **0.917** (accept ≥ 0.90; 0.944 before), and re-running the Python script reproduces
+  the stored scores. §12, before (`main`, six features, 10 k / 20 k) → after:
+
+  | | first alert (s) | dominant | CRITICAL (s) | reason | max score | final | other |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | S1 | — → — | — | — → — | — | 0.285 → 0.323 | NORMAL | 0 alerts → 0 |
+  | S2 | 61.03 → 61.03 | a_rms_g | 65.01 → 65.01 | RCF | 0.993 → 0.988 | CRITICAL | relay +5 ms; plant rpm < 100 at +10 s |
+  | S3 | 61.03 → 61.03 | a_rms_g | 65.01 → 65.01 | RCF | 0.938 → 0.905 | CRITICAL | |
+  | S4 | 64.02 → 64.02 | i_rms_A | 68.01 → 68.01 | RCF | 0.812 → 0.792 | CRITICAL | dominant now must be i_rms_A |
+  | S5 | 72.02 → 72.02 | t_C | 76.01 → 76.01 | RCF | 0.710 → 0.728 | CRITICAL | |
+  | S6 | — | — | 313 → 313 | T_MAX | 0.061 → 0.085 | NORMAL | link lost 35 s |
+  | S7 | — | — | — → — | — | 0.085 → 0.128 | WARNING | −127 at 61 s, SENSOR at 70 s |
+  | S8 | 61.03 → 61.03 | a_rms_g | 65.01 → 65.01 | RCF | 0.993 → 0.988 | NORMAL | START refused +1, RESET +20 accepted (≥ 15 s), NORMAL +31.5 |
+
+  Every §12 target holds with margin, so no §5.2 key was tuned. Affects nothing but the docs; the files it checks
+  were committed in D-078 and D-079.

@@ -160,6 +160,8 @@ Seven changes from the team's wiring document, one commit each.
   2026-11-12 · W02 jack + → COM2, W03 NO2 → ACS712 IP+ (top screw), W04 IP− (bottom screw) → fan red, W05 fan black → jack − on the new GND12 net; W06 (jack − → breadboard GND) removed; ACS712 screws left, pins right · no tuning
 - [x] B5 Breadboard topology from the wiring document
   2026-11-12 · 26 wires W01–W26 as in the document; holes named as the document (`bb.A25`), A–E of a row one node; 5 V node row 25 (VIN A25, ACS712 VCC B25, relay VCC C25); 3V3 and every GND on the left rails, right rails unused; DS18B20 D18/B18 with 2 × 10 kΩ (A18, A19) + C18–C19 jumper; MPU A45/B45, A46/B46; ACS712 OUT A30, 10 kΩ B30–B35 and C35–GND, D35 → D34; ESP32 off the breadboard (turned 180°, USB-C to the laptop); route tests pass · no tuning
+- [x] B6 Retrain, fixtures, Python cross-checks, S1–S8
+  2026-11-12 · on the final code (B1–B5): gen:model, gen:fixtures and both Python references reproduce the committed files byte for byte; default model holdout max 0.203 (limit 0.40); features vs NumPy within 1e-6; TS RRCF vs Python rrcf 0.4.4 Spearman 0.917 (≥ 0.90; 0.944 before); S1–S8 meet every §12 target, timings unchanged (table in D-083) · no tuning
 
 ## Waiting for human review
 
