@@ -1,6 +1,6 @@
 # Verificaciones humanas pendientes
 
-Estas son las 17 verificaciones `[human]` que las pruebas automáticas no pueden firmar. Vienen de la sección
+Estas son las 21 verificaciones `[human]` que las pruebas automáticas no pueden firmar. Vienen de la sección
 "Waiting for human review" de `docs/PROGRESS.md`. Cuando una persona complete una, debe marcar su casilla aquí, anotar
 su nombre, la fecha y el resultado, y mover la línea correspondiente de `docs/PROGRESS.md` a una nota de cierre.
 
@@ -13,14 +13,23 @@ Las verificaciones están ordenadas por prioridad, de 1 (más importante) a 4:
 | **3 · Media**   | Mejora la calidad o la fidelidad. Hacerla si hay tiempo antes de la entrega.                                          |
 | **4 · Baja**    | Detalle cosmético u opcional, o ya cubierto en parte por pruebas automáticas.                                         |
 
+Las verificaciones con ID **B1–B7** son nuevas: vienen de los cambios para igualar el simulador al cableado real del
+banco (decisiones D-078 a D-084 en `docs/DECISIONS.md`).
+
 Qué se puede hacer ya y qué no:
 
-- **Necesitan la placa real con el firmware:** verificaciones 1, 3 y 14.
-- **Se puede hacer ya con el ESP32 emulado:** verificación 4.
-- **El resto:** se puede hacer ya, solo con el navegador o el portátil.
+- **Necesitan la placa real con el firmware del equipo:** verificaciones 2, 3, 5 y 18.
+- **Necesitan la placa real, pero no el firmware completo** (basta un sketch de prueba): verificaciones 1 y 10.
+- **Se puede hacer ya con el ESP32 emulado:** verificación 6.
+- **El resto:** se puede hacer ya, solo con el navegador, el portátil o el documento de cableado.
 
-Orden de trabajo sugerido: mientras no haya placa, empezar por las verificaciones de prioridad 1 que no la necesitan
-(2, 4 y 5) y por la 9, que es la base del firmware. Cuando el firmware esté listo, hacer la 3 y luego la 1.
+Orden de trabajo sugerido:
+
+1. Ya, sin placa: las verificaciones 4, 6, 7, 8, 9, 11 (prioridad 1 y 2 que no la necesitan) y la 13, que es la base del
+   firmware.
+2. Con la placa montada y antes de escribir el firmware: la 1 (que el relé se suelte) y la 10 (montaje del
+   GY-521).
+3. Con el firmware listo: la 3, luego la 5 y por último la 2 (E-STOP).
 
 ## Preparación común
 
@@ -69,9 +78,50 @@ Si se añade `?debug=1` a la URL, la consola del navegador expone `window.__sim`
 
 ## Prioridad 1 · Crítica
 
-### 1. P8 · `btn-estop` en modo Live abre el relé real
+### 1. B3 · El relé CH2 se suelta con IN2 en ALTO (3,3 V) con el módulo a 5 V
 
-**Prioridad 1 (crítica).** Seguridad: es la única parada que se lanza desde la app sobre el banco real. Depende de las verificaciones 3 y 4.
+**Prioridad 1 (crítica).** Seguridad: si el relé no se suelta, el ventilador no se para ni con un disparo ni con
+E-STOP. Es requisito de la verificación 2. No necesita el firmware completo, solo un sketch de prueba.
+
+- [ ] Hecho · Responsable: ____ · Fecha: ____ · Resultado: ____
+
+**Qué se comprueba:** con el jumper JD-VCC–VCC puesto y el módulo entero a 5 V (D-080), un ALTO del ESP32 deja unos
+1,7 V sobre el LED del optoacoplador de IN2 y su resistencia. En algunos módulos circula todavía algo de corriente y
+el relé **no se suelta**.
+
+**Cómo hacerlo:**
+
+1. Cablear el relé como en el documento: VCC en C25 (fila de 5 V, alimentada por VIN), GND al riel azul izquierdo,
+   IN2 a D26 y el jumper puesto. Al principio, sin los 12 V conectados; después repetir con el ventilador conectado y
+   el interruptor de 12 V a mano.
+2. Cargar en el ESP32 este sketch, que alterna GPIO26 cada 2 s:
+
+   ```cpp
+   void setup() { pinMode(26, OUTPUT); }
+   void loop() { digitalWrite(26, LOW); delay(2000); digitalWrite(26, HIGH); delay(2000); }
+   ```
+
+3. Con LOW, el relé debe hacer clic y encender su LED CH2. Con HIGH, debe hacer clic al soltarse y apagar el LED.
+   Con un multímetro en continuidad, COM2–NO2 debe estar cerrado en LOW y abierto en HIGH.
+4. Dejarlo 10 ciclos seguidos.
+5. **Si no se suelta:** para apagar, dejar IN2 flotante en vez de en ALTO, para que suba a 5 V por el pull-up del
+   módulo. Probar con este sketch (el pin vuelve a ser salida antes de cada LOW):
+
+   ```cpp
+   void loop() {
+     pinMode(26, OUTPUT); digitalWrite(26, LOW); delay(2000);  // relé activado
+     pinMode(26, INPUT); delay(2000);                           // IN2 flotante: relé suelto
+   }
+   ```
+
+   Si así funciona, hay que cambiar `relayOff()` e `relayInit()` en `src/firmware/reference-cpp/relay.cpp` y en el
+   firmware real (o usar `OUTPUT_OPEN_DRAIN`), y registrar la decisión en `docs/DECISIONS.md`.
+
+**Aprobado si** el relé se suelta en los 10 ciclos con IN2 en ALTO (o con la alternativa del paso 5, ya registrada).
+
+### 2. P8 · `btn-estop` en modo Live abre el relé real
+
+**Prioridad 1 (crítica).** Seguridad: es la única parada que se lanza desde la app sobre el banco real. Depende de las verificaciones 1, 3, 5 y 6.
 
 - [ ] Hecho · Responsable: ____ · Fecha: ____ · Resultado: ____
 
@@ -80,7 +130,7 @@ alguien debe tener a mano el interruptor o el enchufe de la fuente de 12 V.
 
 **Cómo hacerlo:**
 
-1. Con la placa en Live (verificación 3), pulsar START y esperar a NORMAL con el ventilador girando.
+1. Con la placa en Live (verificación 5), pulsar START y esperar a NORMAL con el ventilador girando.
 2. Pulsar **E-STOP** (`btn-estop`, o la tecla E).
 3. Comprobar en el banco que el relé CH2 hace clic, su LED se apaga y el ventilador se frena hasta pararse.
 4. En la app: el estado pasa a CRITICAL con motivo ESTOP y el relé aparece abierto.
@@ -90,7 +140,43 @@ alguien debe tener a mano el interruptor o el enchufe de la fuente de 12 V.
 
 **Aprobado si** el relé real se abre las 3 veces, en menos de 1 s aproximadamente.
 
-### 2. P7.4 · La demo Línea base → Desequilibrio → Disparo → Reset cabe en 3 minutos
+### 3. B1 · El firmware real no lee el tacómetro y acepta RESET solo 15 s después del disparo
+
+**Prioridad 1 (crítica).** El simulador y el puente ya siguen estas reglas (D-078). Si el firmware real no las
+sigue, el puente descarta sus paquetes y el RESET se comporta distinto. Es requisito de las verificaciones 2 y 5.
+
+- [ ] Hecho · Responsable: ____ · Fecha: ____ · Resultado: ____
+
+**Qué se comprueba:** que el firmware del equipo coincide con el del simulador:
+
+- no hay entrada de tacómetro (el cable azul del ventilador queda libre) ni límite STALL;
+- el paquete es del protocolo v2: `"v": 2` y **sin** campo `rpm` (el puente descarta los paquetes v1 o con `rpm`);
+- el RESET se acepta solo **15 s o más** después del disparo; antes se rechaza con el log
+  `WARN fsm: reset refused: wait 15 s after the trip`.
+
+**Archivos de referencia:**
+
+| Archivo                                        | Qué mirar                                                                                   |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `src/firmware/reference-cpp/state_machine.cpp` | `trip()` guarda `firmwareMs()`; `smCommandReset()` compara con `RESET_MIN_DELAY_MS` (15000) |
+| `src/firmware/reference-cpp/main.cpp`          | `sendPacket()` (campos del paquete v2), `firmwareMs()`                                      |
+| `public/schema/packet.schema.json`             | El formato exacto que valida el puente                                                      |
+| `docs/PLAN.md` §7.4 y §10.1                    | Tabla de estados y protocolo                                                                |
+
+**Cómo hacerlo:**
+
+1. Revisar el código del firmware real contra los archivos anteriores. Lo esencial: guardar `millis()` en el
+   disparo y comprobar `millis() - trippedAtMs >= 15000` al recibir RESET.
+2. Con el puente en marcha (verificación 6), comprobar en http://localhost:8765/status que `invalid_up` sigue en 0
+   mientras llegan paquetes.
+3. En el banco: START, esperar a NORMAL y pulsar E-STOP. Pulsar RESET a los ~5 s: debe rechazarse (sigue en
+   CRITICAL y el monitor serie muestra el WARN). Pulsar RESET otra vez pasados 15 s: debe pasar a OFF.
+4. Comprobar a ojo que a los 15 s el ventilador está parado. Si sigue girando, hay que subir
+   `firmware.resetMinDelay_s` en `src/shared/config.ts` y la constante del firmware a la vez, y registrarlo.
+
+**Aprobado si** los paquetes no se descartan, el RESET temprano se rechaza y el de los 15 s se acepta.
+
+### 4. P7.4 · La demo Línea base → Desequilibrio → Disparo → Reset cabe en 3 minutos
 
 **Prioridad 1 (crítica).** La presentación depende de esta demo y tiene tiempo limitado.
 
@@ -112,13 +198,14 @@ alguien debe tener a mano el interruptor o el enchufe de la fuente de 12 V.
 **Aprobado si** la secuencia completa, con la explicación oral, dura 3 minutos o menos. Ensayarla al menos una vez
 con la persona que presentará.
 
-### 3. P8 · Los paquetes reales de la placa se muestran sin cambios fuera de `src/bridge/`
+### 5. P8 · Los paquetes reales de la placa se muestran sin cambios fuera de `src/bridge/`
 
-**Prioridad 1 (crítica).** Es la integración principal con el hardware (fase P8). Depende de las verificaciones 4 y 9.
+**Prioridad 1 (crítica).** Es la integración principal con el hardware (fase P8). Depende de las verificaciones 6 y 13.
 
 - [ ] Hecho · Responsable: ____ · Fecha: ____ · Resultado: ____
 
-**Requisito:** firmware real cargado en el ESP32, basado en `src/firmware/reference-cpp/`. Debe enviar paquetes
+**Requisito:** firmware real cargado en el ESP32, basado en `src/firmware/reference-cpp/` y con las reglas de la
+verificación 3 (protocolo v2, RESET a los 15 s). Debe enviar paquetes
 JSON por UDP al puerto 4211 del portátil y escuchar en el 4210.
 
 **Cómo hacerlo:**
@@ -132,7 +219,7 @@ JSON por UDP al puerto 4211 del portátil y escuchar en el 4210.
 
    Si la placa no se detecta sola, añadir `--esp32-host <IP de la placa>`.
 
-3. Comprobar en http://localhost:8765/status que el contador `packet` sube cada segundo y que `invalid_up` sigue en 0. Si sube `invalid_up`, el archivo de sesión `bridge-py/sessions/session-*.jsonl` indica qué campo falla.
+3. Comprobar en http://localhost:8765/status que el contador `packet` sube cada segundo y que `invalid_up` sigue en 0. Si sube `invalid_up`, el archivo de sesión `bridge-py/sessions/session-*.jsonl` indica qué campo falla. El protocolo es v2: `"v": 2` y sin campo `rpm` (verificación 3).
 4. Abrir http://localhost:8765, elegir **Mode → Live** y comprobar que:
    - la vibración, la corriente, la temperatura y el estado coinciden con el banco real (la velocidad no se mide:
      las aspas siguen una estimación a partir del relé CH2 y el Inspector la marca como "estimated");
@@ -147,9 +234,9 @@ JSON por UDP al puerto 4211 del portátil y escuchar en el 4210.
 **Aprobado si** todo se muestra correctamente y los únicos cambios necesarios (si los hubo) están en `src/bridge/`.
 Si el formato del paquete del firmware difiere del protocolo, se corrige el firmware, no la app.
 
-### 4. P8.1 · El entorno de Python del puente se instala y funciona en el portátil del equipo
+### 6. P8.1 · El entorno de Python del puente se instala y funciona en el portátil del equipo
 
-**Prioridad 1 (crítica).** Es requisito de las verificaciones 1 y 3, y se puede hacer ya con el ESP32 emulado.
+**Prioridad 1 (crítica).** Es requisito de las verificaciones 2 y 5, y se puede hacer ya con el ESP32 emulado.
 
 - [ ] Hecho · Responsable: ____ · Sistema operativo: ____ · Python: ____ · Resultado: ____
 
@@ -215,10 +302,10 @@ Después:
 
 En Windows, aceptar el aviso del firewall para el puerto UDP 4211 la primera vez.
 
-**Aprobado si** `pytest` muestra `10 passed`, la secuencia START → NORMAL → CRITICAL → RESET → OFF funciona, y
+**Aprobado si** `pytest` muestra `12 passed`, la secuencia START → NORMAL → CRITICAL → RESET → OFF funciona, y
 http://localhost:8765/status muestra los contadores con `invalid_up` y `invalid_down` en 0.
 
-### 5. P1.6 · Al menos 50 fps a 1920 × 1080 en un portátil con gráficos integrados
+### 7. P1.6 · Al menos 50 fps a 1920 × 1080 en un portátil con gráficos integrados
 
 **Prioridad 1 (crítica).** Si la escena no va fluida en el portátil de la presentación, la demo se ve mal.
 
@@ -248,7 +335,7 @@ confirmarlo en una ventana normal.
 
 ## Prioridad 2 · Alta
 
-### 6. P7.3 · Los textos de ayuda coinciden con el informe del proyecto
+### 8. P7.3 · Los textos de ayuda coinciden con el informe del proyecto
 
 **Prioridad 2 (alta).** El informe se evalúa junto con la app: una terminología contradictoria resta puntos.
 
@@ -277,7 +364,7 @@ confirmarlo en una ventana normal.
 **Aprobado si** no hay contradicciones con el informe. Las diferencias de redacción se corrigen en los archivos
 indicados. Los valores numéricos solo se cambian en `src/shared/config.ts`.
 
-### 7. P6 · Las animaciones muestran causa y efecto a quien no leyó el informe
+### 9. P6 · Las animaciones muestran causa y efecto a quien no leyó el informe
 
 **Prioridad 2 (alta).** Es el objetivo didáctico del simulador: explicar el mantenimiento predictivo con la imagen.
 
@@ -299,7 +386,82 @@ indicados. Los valores numéricos solo se cambian en `src/shared/config.ts`.
 **Aprobado si** identifica la cadena completa: desequilibrio → más vibración → puntaje alto del RCF → CRITICAL →
 relé abierto → el ventilador se detiene.
 
-### 8. P5.G · Un compañero provoca una falla y hace un reset sin instrucciones
+### 10. B7 · El GY-521 está montado como en el 3D: fijo a la carcasa, de pie en el plano del ventilador
+
+**Prioridad 2 (alta).** El modelo de vibración supone esa orientación (X e Y en el plano del ventilador, Y hacia
+arriba, Z a lo largo del eje). Si el montaje real es otro, hay que cambiar el modelo, no solo el dibujo (D-084).
+
+- [ ] Hecho · Responsable: ____ · Fecha: ____ · Resultado: ____
+
+**Qué se comprueba:** que la placa está rígidamente fijada a la carcasa (pegada o atornillada, sin cinta que vibre),
+con la orientación del 3D, y que su conexión es la del documento: VCC al riel de 3V3, SDA y SCL por A45/B45 y
+A46/B46, y XDA, XCL, AD0 e INT libres (dirección 0x68).
+
+**Cómo hacerlo:**
+
+1. En la app, cámara **Fan** (tecla 2): la placa azul está de pie sobre el borde superior del marco, con el conector
+   de 8 pines arriba y las flechas X (derecha) e Y (arriba) impresas. Comparar con el banco real.
+2. Con el ventilador parado, leer el acelerómetro con este sketch (o con el firmware real por el monitor serie):
+
+   ```cpp
+   #include <Wire.h>
+   void setup() {
+     Serial.begin(115200); Wire.begin(21, 22);
+     Wire.beginTransmission(0x68); Wire.write(0x6B); Wire.write(0); Wire.endTransmission();
+   }
+   void loop() {
+     Wire.beginTransmission(0x68); Wire.write(0x3B); Wire.endTransmission(false);
+     Wire.requestFrom(0x68, 6);
+     int16_t x = (Wire.read() << 8) | Wire.read(), y = (Wire.read() << 8) | Wire.read(), z = (Wire.read() << 8) | Wire.read();
+     Serial.printf("x=%.2f y=%.2f z=%.2f g\n", x / 16384.0, y / 16384.0, z / 16384.0);
+     delay(500);
+   }
+   ```
+
+3. Lo esperado: x ≈ 0, **y ≈ +1 g**, z ≈ 0 (± 0,1 g).
+4. Si la gravedad cae en Z (placa tumbada) o Y sale negativa (placa al revés), anotar cómo está montada y avisar:
+   habrá que cambiar el mapeo de ejes en `src/sim/vibration.ts` y el modelo 3D.
+
+**Aprobado si** la placa está fija, con y ≈ +1 g en reposo, y conectada como en el documento.
+
+### 11. B5 · La protoboard 3D coincide agujero por agujero con el documento de cableado
+
+**Prioridad 2 (alta).** Es el objetivo de los últimos cambios: que el simulador sea el banco real. Incluye una
+suposición que solo el equipo puede confirmar: dónde está el ESP32.
+
+- [ ] Hecho · Responsable: ____ · Fecha: ____ · Resultado: ____
+
+**Qué se comprueba:** los 26 cables (W01–W26), las 4 resistencias de 10 kΩ y la posición del ESP32 (D-082).
+
+**Archivos:** la tabla de `docs/PLAN.md` §13.3 (mismo orden y notación que el documento: `bb.A25` = columna A,
+fila 25), `src/shared/wiring.ts` y el documento de cableado del equipo.
+
+**Cómo hacerlo:**
+
+1. Imprimir la tabla de §13.3 y repasarla línea a línea contra el documento del equipo: origen, destino y agujero.
+2. En la app, cámara **Breadboard** (tecla 5), con **Labels** activado. Hacer clic en la protoboard y en cada
+   resistencia: el Inspector (M9) muestra sus cables. Comprobar las filas 18, 19, 25, 30, 35, 45 y 46:
+   - fila 25 (5 V): VIN en A25, VCC del ACS712 en B25, VCC del relé en C25;
+   - DS18B20: amarillo en D18, B18 → D4, 10 kΩ de A18 y de A19 al riel de 3V3, puente C18–C19;
+   - ACS712: OUT en A30, 10 kΩ B30–B35, 10 kΩ C35 → riel GND, D35 → D34;
+   - MPU6050: SDA en A45 y B45 → D21; SCL en A46 y B46 → D22.
+3. Rieles: el rojo izquierdo es 3V3 y el azul izquierdo GND (todas las masas); los rieles derechos no se usan; no
+   hay cable del − de 12 V a la protoboard (sin masa común).
+4. Libres: el cable azul del ventilador, IN1 y NC2 del relé, el jumper JD-VCC puesto, y XDA, XCL, AD0 e INT del
+   GY-521.
+5. **ESP32:** en el 3D está fuera de la protoboard, en la mesa detrás de las columnas A–E, con el USB-C hacia el
+   portátil (no cabe en la protoboard sin tapar esas filas). Si en el banco real está en otro sitio (otra
+   protoboard, otra orientación), anotar dónde.
+6. La prueba automática de la lista:
+
+   ```bash
+   pnpm vitest run tests/unit/shared/wiring.test.ts
+   ```
+
+**Aprobado si** todas las líneas coinciden con el documento y el ESP32 está donde el 3D lo pone. Cada diferencia
+se anota con el ID del cable (por ejemplo `W14`).
+
+### 12. P5.G · Un compañero provoca una falla y hace un reset sin instrucciones
 
 **Prioridad 2 (alta).** Mide si la app se entiende sin explicaciones, como la verá el jurado.
 
@@ -318,9 +480,9 @@ relé abierto → el ventilador se detiene.
 **Aprobado si** completa START → falla → CRITICAL → RESET → OFF sin ayuda. Cada duda anotada es una mejora posible
 de la interfaz, aunque la verificación se apruebe.
 
-### 9. P3.7 · El C++ de referencia parece código Arduino plausible para ESP32
+### 13. P3.7 · El C++ de referencia parece código Arduino plausible para ESP32
 
-**Prioridad 2 (alta).** Es la base del firmware real: sus errores retrasan las verificaciones 1 y 3.
+**Prioridad 2 (alta).** Es la base del firmware real: sus errores retrasan las verificaciones 2 y 5.
 
 - [ ] Hecho · Responsable: ____ · Fecha: ____ · Resultado: ____
 
@@ -346,11 +508,13 @@ de la interfaz, aunque la verificación se apruebe.
 3. Intentar compilarlo en el Arduino IDE (o con `arduino-cli`) para la placa "ESP32 Dev Module", con las bibliotecas
    anteriores instaladas. Hay que definir antes `WIFI_SSID`, `WIFI_PASSWORD` y `LAPTOP_IP`.
 4. Comprobar que los comentarios `// @map ...` aparecen en las mismas transiciones que en `src/firmware/*.ts`.
+5. Las reglas nuevas del banco real (sin tacómetro, protocolo v2, RESET a los 15 s) se comprueban en la
+   verificación 3.
 
 **Aprobado si** un miembro del equipo con experiencia en ESP32 lo considera razonable. Lo ideal es que compile; los
 errores de compilación se anotan como issues.
 
-### 10. P6 · Al menos 50 fps a 1920 × 1080 con todos los conmutadores de vista activos
+### 14. P6 · Al menos 50 fps a 1920 × 1080 con todos los conmutadores de vista activos
 
 **Prioridad 2 (alta).** Es el caso más exigente; importa si en la demo se mostrarán todas las capas a la vez.
 
@@ -361,7 +525,7 @@ medirlo en el portátil del equipo.
 
 **Cómo hacerlo:**
 
-1. Usar la misma preparación que en la verificación 5.
+1. Usar la misma preparación que en la verificación 7.
 2. Activar **Flow**, **Labels**, **Airflow**, **Heat** y **Sound**, y subir el deslizador de exageración de
    vibración (`sld-vib-exaggeration`).
 3. Pulsar START, esperar a NORMAL e inyectar desequilibrio 0.3 en M4 para que haya vibración, pulsos de datos y
@@ -374,7 +538,7 @@ medirlo en el portátil del equipo.
 
 ## Prioridad 3 · Media
 
-### 11. P5.1 · La interfaz se lee bien a 1280 × 720 y a 1920 × 1080
+### 15. P5.1 · La interfaz se lee bien a 1280 × 720 y a 1920 × 1080
 
 **Prioridad 3 (media).** Las capturas ya muestran una interfaz razonable; falta confirmarlo en los monitores reales.
 
@@ -398,7 +562,7 @@ ambas resoluciones (`off-1280x720.jpg`, `normal-1920x1080.jpg`, etc.).
 
 **Aprobado si** todo es legible sin hacer zoom a ambas resoluciones y la columna izquierda se desplaza a 720 px.
 
-### 12. P1.2 · Cada pieza se reconoce junto a su foto
+### 16. P1.2 · Cada pieza se reconoce junto a su foto
 
 **Prioridad 3 (media).** Da credibilidad al modelo, pero no afecta al funcionamiento.
 
@@ -407,7 +571,8 @@ ambas resoluciones (`off-1280x720.jpg`, `normal-1920x1080.jpg`, etc.).
 **Qué se comprueba:** que cada componente 3D se parece a la pieza real del banco.
 
 **Archivos:** `assets/photos/` contiene `fan.jpg`, `fan-closeup.png`, `esp32.jpg`, `relay.jpg`, `relay-closeup.png`,
-`acs712.jpg`, `ds18b20.jpg`, `breadboard.jpg` y `adapter.jpg`. La geometría de cada pieza está descrita en
+`acs712.jpg`, `ds18b20.jpg`, `breadboard.jpg` y `adapter.jpg`. No hay foto del GY-521: su modelo se construyó a partir
+de la descripción del equipo (placa azul de 21 × 16 mm, 8 pines, flechas X/Y); compararlo con la placa real. La geometría de cada pieza está descrita en
 `docs/PLAN.md` §13.2 y se construye en `src/scene/models/`.
 
 **Cómo hacerlo:**
@@ -423,7 +588,7 @@ ambas resoluciones (`off-1280x720.jpg`, `normal-1920x1080.jpg`, etc.).
 (color del PCB, posición del conector, número de pines) contradice la foto. Anotar cualquier diferencia como issue
 con el nombre de la pieza.
 
-### 13. P7.4 · Primera carga en menos de 4 s con una conexión normal
+### 17. P7.4 · Primera carga en menos de 4 s con una conexión normal
 
 **Prioridad 3 (media).** Afecta a la primera impresión del sitio publicado; para la demo se puede abrir con antelación.
 
@@ -445,7 +610,7 @@ con el nombre de la pieza.
 **Aprobado si** la mediana es menor de 4 s y la app queda usable (escena visible y modelo READY) dentro de ese
 tiempo.
 
-### 14. P8.4 · `pnpm calibrate` da valores plausibles con una grabación real
+### 18. P8.4 · `pnpm calibrate` da valores plausibles con una grabación real
 
 **Prioridad 3 (media).** Mejora la fidelidad del simulador; es opcional y requiere la placa y 11 minutos de grabación.
 
@@ -516,7 +681,7 @@ acepta el cambio en `docs/DECISIONS.md`.
 
 ## Prioridad 4 · Baja
 
-### 15. P1.3 · La disposición parece un banco de laboratorio ordenado
+### 19. P1.3 · La disposición parece un banco de laboratorio ordenado
 
 **Prioridad 4 (baja).** Es una impresión general de aspecto: cosmética.
 
@@ -529,13 +694,13 @@ acepta el cambio en `docs/DECISIONS.md`.
 1. Abrir la app con la cámara `cam-overview` (tecla 1).
 2. Girar la cámara alrededor de la mesa con el ratón y comparar con el banco real del grupo (o con su foto, si
    existe).
-3. Comprobar que las piezas están alineadas, separadas de forma razonable y apoyadas sobre la mesa (nada flotando ni
+3. Recordar que el ESP32 está fuera de la protoboard, detrás de ella (verificación 11). Comprobar que las piezas están alineadas, separadas de forma razonable y apoyadas sobre la mesa (nada flotando ni
    hundido), que los cables siguen recorridos plausibles y que la escala de cada pieza es coherente con las demás.
 
 **Aprobado si** la escena se reconoce como el banco del grupo y no hay piezas mal escaladas, flotando o
 superpuestas.
 
-### 16. P1.4 · Ningún cable atraviesa un componente
+### 20. P1.4 · Ningún cable atraviesa un componente
 
 **Prioridad 4 (baja).** Ya está cubierta en parte por una prueba automática.
 
@@ -561,7 +726,7 @@ pnpm vitest run tests/unit/scene/route.test.ts
 **Aprobado si** ningún cable entra en el volumen de una pieza (salvo en su pin de destino). Anotar el ID del cable
 (por ejemplo `W04`) si alguno lo hace.
 
-### 17. P6.3/P6.4 · El clic del relé y el zumbido del ventilador suenan bien
+### 21. P6.3/P6.4 · El clic del relé y el zumbido del ventilador suenan bien
 
 **Prioridad 4 (baja).** El sonido está silenciado por defecto y es opcional.
 
@@ -583,24 +748,55 @@ pnpm vitest run tests/unit/scene/route.test.ts
 
 ---
 
-## Resumen
+## Otros pendientes (no son verificaciones humanas)
+
+Trabajo que falta para cerrar el proyecto y que no es una casilla de las verificaciones anteriores.
+
+### Del equipo
+
+| #   | Pendiente                                            | Detalle                                                                                                                                                                                                        | Bloquea                     |
+| --- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| A1  | Escribir y cargar el firmware real del ESP32         | Partir de `src/firmware/reference-cpp/` (no se compila en CI). Debe seguir el protocolo v2 y la regla de RESET a los 15 s (verificación 3). Definir `WIFI_SSID`, `WIFI_PASSWORD` y `LAPTOP_IP`.                | Verificaciones 2, 3, 5 y 18 |
+| A2  | Confirmar OPEN-2: variante del ACS712                | Se supone la de 5 A (0,185 V/A). Leer el chip: `ACS712ELCTR-05B` = 5 A, `-20A` = 20 A (0,100 V/A), `-30A` = 30 A (0,066 V/A). Si no es 5 A, cambiar `sensors.acs712.sens_VperA` y regenerar modelo y fixtures. | Lectura de corriente real   |
+| A3  | Confirmar OPEN-6: conexión del adaptador de 12 V     | Se supone un jack hembra de 5,5 × 2,1 mm con bornes de tornillo. Si es otra cosa, solo cambia el 3D.                                                                                                           | Fidelidad del 3D            |
+| A4  | Confirmar OPEN-7: número de aspas                    | Se suponen 7 (contarlas en el ventilador real). Cambia la frecuencia de paso de aspas en la vibración y el 3D.                                                                                                 | Fidelidad de la vibración   |
+| A5  | Foto del GY-521 (opcional)                           | No hay foto: el modelo es procedural. Con una foto en `assets/photos/` se puede texturizar como las demás piezas.                                                                                              | Nada                        |
+| A6  | Revisar el riesgo del relé a 5 V con lógica de 3,3 V | Si la verificación 1 falla, cambiar el apagado de IN2 a entrada o drenador abierto en `relay.cpp` y en el firmware real.                                                                                       | Verificación 2              |
+| A7  | Calibrar con una grabación real                      | Tras A1: grabar la sesión de calibración y aplicar el diff si es razonable (verificación 18).                                                                                                                  | Fidelidad del modelo        |
+| A8  | Tareas `[human]` de `docs/PROGRESS.md`               | Al firmar cada verificación de este documento, cerrar también su línea en "Waiting for human review" de `docs/PROGRESS.md`.                                                                                    | Seguimiento                 |
+
+### Del repositorio
+
+| #   | Pendiente                                                 | Detalle                                                                                                                                                                                        |
+| --- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | Revisar y fusionar la rama `claude/real-bench-wiring`     | Contiene los cambios B1–B7 (un commit por punto, más un ajuste de la leyenda). No está fusionada en `main`: abrir el pull request, esperar a que pasen `CI / verify` y `CI / e2e`, y fusionar. |
+| R2  | Una pasada completa de `pnpm test:e2e` sin interrupciones | Cada prueba pasó al menos una vez sobre el código final, pero la pasada completa se cortó por un reinicio del contenedor. El CI del pull request la hará entera.                               |
+| R3  | Publicar la versión nueva                                 | Al fusionar en `main`, GitHub Pages se actualiza solo (`.github/workflows/deploy.yml`). Comprobar después el sitio (verificación 17).                                                          |
+
+---
+
+## Resumen de verificaciones
 
 | #   | Prioridad   | ID        | Verificación                                | Requiere                    | Estado |
 | --- | ----------- | --------- | ------------------------------------------- | --------------------------- | ------ |
-| 1   | 1 · Crítica | P8        | E-STOP abre el relé real                    | Placa + firmware            | ☐      |
-| 2   | 1 · Crítica | P7.4      | Demo en ≤ 3 minutos                         | Cronómetro                  | ☐      |
-| 3   | 1 · Crítica | P8        | Paquetes reales se muestran                 | Placa + firmware            | ☐      |
-| 4   | 1 · Crítica | P8.1      | Puente instalado y funcionando              | Portátil + Python           | ☐      |
-| 5   | 1 · Crítica | P1.6      | ≥ 50 fps con gráficos integrados            | Portátil del equipo         | ☐      |
-| 6   | 2 · Alta    | P7.3      | Textos coherentes con el informe            | Informe final               | ☐      |
-| 7   | 2 · Alta    | P6        | Las animaciones muestran causa y efecto     | Una persona ajena           | ☐      |
-| 8   | 2 · Alta    | P5.G      | Falla y reset sin instrucciones             | Un compañero                | ☐      |
-| 9   | 2 · Alta    | P3.7      | C++ plausible para ESP32                    | Arduino IDE (opcional)      | ☐      |
-| 10  | 2 · Alta    | P6        | ≥ 50 fps con todos los conmutadores         | Portátil del equipo         | ☐      |
-| 11  | 3 · Media   | P5.1      | Interfaz legible a 1280 × 720 y 1920 × 1080 | Navegador                   | ☐      |
-| 12  | 3 · Media   | P1.2      | Piezas reconocibles junto a su foto         | Navegador                   | ☐      |
-| 13  | 3 · Media   | P7.4      | Primera carga < 4 s                         | Navegador + red             | ☐      |
-| 14  | 3 · Media   | P8.4      | Calibración plausible                       | Placa + 11 min de grabación | ☐      |
-| 15  | 4 · Baja    | P1.3      | Banco de laboratorio ordenado               | Navegador                   | ☐      |
-| 16  | 4 · Baja    | P1.4      | Ningún cable atraviesa una pieza            | Navegador                   | ☐      |
-| 17  | 4 · Baja    | P6.3/P6.4 | Sonidos del relé y del ventilador           | Auriculares                 | ☐      |
+| 1   | 1 · Crítica | B3        | El relé se suelta con IN2 en 3,3 V          | Placa + relé + sketch       | ☐      |
+| 2   | 1 · Crítica | P8        | E-STOP abre el relé real                    | Placa + firmware            | ☐      |
+| 3   | 1 · Crítica | B1        | Firmware: sin tacómetro, v2, RESET 15 s     | Placa + firmware            | ☐      |
+| 4   | 1 · Crítica | P7.4      | Demo en ≤ 3 minutos                         | Cronómetro                  | ☐      |
+| 5   | 1 · Crítica | P8        | Paquetes reales se muestran                 | Placa + firmware            | ☐      |
+| 6   | 1 · Crítica | P8.1      | Puente instalado y funcionando              | Portátil + Python           | ☐      |
+| 7   | 1 · Crítica | P1.6      | ≥ 50 fps con gráficos integrados            | Portátil del equipo         | ☐      |
+| 8   | 2 · Alta    | P7.3      | Textos coherentes con el informe            | Informe final               | ☐      |
+| 9   | 2 · Alta    | P6        | Las animaciones muestran causa y efecto     | Una persona ajena           | ☐      |
+| 10  | 2 · Alta    | B7        | GY-521 fijo y de pie, y ≈ +1 g              | Placa + sketch              | ☐      |
+| 11  | 2 · Alta    | B5        | Protoboard 3D = documento de cableado       | Documento de cableado       | ☐      |
+| 12  | 2 · Alta    | P5.G      | Falla y reset sin instrucciones             | Un compañero                | ☐      |
+| 13  | 2 · Alta    | P3.7      | C++ plausible para ESP32                    | Arduino IDE (opcional)      | ☐      |
+| 14  | 2 · Alta    | P6        | ≥ 50 fps con todos los conmutadores         | Portátil del equipo         | ☐      |
+| 15  | 3 · Media   | P5.1      | Interfaz legible a 1280 × 720 y 1920 × 1080 | Navegador                   | ☐      |
+| 16  | 3 · Media   | P1.2      | Piezas reconocibles junto a su foto         | Navegador                   | ☐      |
+| 17  | 3 · Media   | P7.4      | Primera carga < 4 s                         | Navegador + red             | ☐      |
+| 18  | 3 · Media   | P8.4      | Calibración plausible                       | Placa + 11 min de grabación | ☐      |
+| 19  | 4 · Baja    | P1.3      | Banco de laboratorio ordenado               | Navegador                   | ☐      |
+| 20  | 4 · Baja    | P1.4      | Ningún cable atraviesa una pieza            | Navegador                   | ☐      |
+| 21  | 4 · Baja    | P6.3/P6.4 | Sonidos del relé y del ventilador           | Auriculares                 | ☐      |
