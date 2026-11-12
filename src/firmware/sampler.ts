@@ -14,8 +14,6 @@ export interface WindowData {
   az_g: Float64Array;
   /** Raw GPIO34 ADC counts. */
   counts: Float64Array;
-  /** PCNT rising edges counted during the window. */
-  edges: number;
 }
 
 /** A DS18B20 register read (°C) at sim time `t_s`. */
@@ -32,8 +30,6 @@ export interface SamplerState {
   window: WindowData;
   /** The other buffer set, filled while the last closed window is being read. */
   spare: WindowData;
-  /** PCNT total when the window opened. */
-  edgesAtOpen: number;
   /** A conversion is in flight (requested, not yet read). */
   dsPending: boolean;
 }
@@ -51,7 +47,6 @@ export function createSampler(cfg: SimConfig): SamplerState {
     ay_g: new Float64Array(n),
     az_g: new Float64Array(n),
     counts: new Float64Array(n),
-    edges: 0,
   });
   return {
     samplesPerWindow: n,
@@ -60,7 +55,6 @@ export function createSampler(cfg: SimConfig): SamplerState {
     sampleRate_Hz: fw.sampleRate_Hz,
     window: buffers(),
     spare: buffers(),
-    edgesAtOpen: 0,
     dsPending: false,
   };
 }
@@ -74,15 +68,12 @@ export function samplerTick(s: SamplerState, view: SensorsView): { window: Windo
   let closed: WindowData | null = null;
   if (tick > 0 && tick % s.samplesPerWindow === 0) {
     closed = s.window;
-    closed.edges = view.tachEdges - s.edgesAtOpen;
     const next = s.spare;
     next.index = tick / s.samplesPerWindow;
     next.tEnd_s = (next.index + 1) * (s.samplesPerWindow / s.sampleRate_Hz);
     next.n = 0;
-    next.edges = 0;
     s.window = next;
     s.spare = closed;
-    s.edgesAtOpen = view.tachEdges;
   }
   const w = s.window;
   if (w.n < s.samplesPerWindow) {

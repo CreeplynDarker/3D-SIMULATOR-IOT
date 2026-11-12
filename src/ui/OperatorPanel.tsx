@@ -162,8 +162,8 @@ export function ResetDialog() {
           Reset the latched trip?
         </h2>
         <p className="mb-3 text-xs text-slate-600 dark:text-slate-300">
-          The ESP32 accepts RESET only once the fan has stopped (below {CONFIG.firmware.resetMaxRpm} rpm). The state
-          goes to OFF; press START to run again.
+          The ESP32 accepts RESET only {CONFIG.firmware.resetMinDelay_s} s or more after the trip, so the fan has
+          coasted to a stop (the bench has no speed sensor). The state goes to OFF; press START to run again.
         </p>
         <div className="flex justify-end gap-2">
           <Button testId="btn-reset-cancel" onClick={() => appStore.getState().ui.setResetDialogOpen(false)}>

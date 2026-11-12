@@ -11,7 +11,7 @@ import { CONFIG } from '../../../src/shared/config.ts';
 import type { State } from '../../../src/shared/protocol.ts';
 
 const FW = CONFIG.firmware;
-const HEALTHY = { i_rms_A: 0.18, rpm: 3800, t_C: 34, lastValidTemp_s: 0 };
+const HEALTHY = { i_rms_A: 0.18, t_C: 34, lastValidTemp_s: 0 };
 
 /** Evaluates consecutive windows ending at t = 1, 2, …; returns the result of each. */
 function windows(ls: LimitState, state: State, inputs: Partial<LimitInput>[], t0_s = 1): LimitResult[] {
@@ -64,18 +64,6 @@ describe('limits (§7.3), one truth table per row', () => {
     });
   });
 
-  describe('STALL', () => {
-    const slow = { rpm: FW.stallFraction * CONFIG.fan.rpmRated - 1 };
-    it('trips after nStall consecutive slow windows in NORMAL or WARNING', () => {
-      const r = windows(createLimits(0), 'WARNING', repeat(slow, FW.nStall));
-      expect(r.map((x) => x.trip)).toEqual([...repeat(null, FW.nStall - 1), 'STALL']);
-    });
-    it('does not trip while STARTING (the fan is still spinning up) or after a normal window', () => {
-      expect(windows(createLimits(0), 'STARTING', repeat(slow, 5)).every((x) => x.trip === null)).toBe(true);
-      expect(windows(createLimits(0), 'NORMAL', [slow, slow, {}]).every((x) => x.trip === null)).toBe(true);
-    });
-  });
-
   describe('I_SOFT', () => {
     it('flags i_rms over iWarnFraction · iMax', () => {
       const edge = FW.iWarnFraction * FW.iMax_A;
@@ -125,8 +113,8 @@ describe('limits (§7.3), one truth table per row', () => {
   });
 
   it('reports the first trip in table order when several hold', () => {
-    const r = windows(createLimits(0), 'NORMAL', repeat({ i_rms_A: 1, t_C: 99, rpm: 0 }, FW.nILimit));
+    const r = windows(createLimits(0), 'NORMAL', repeat({ i_rms_A: 1, t_C: 99 }, FW.nILimit));
     expect(r.at(-1)?.trip).toBe('I_MAX');
-    expect(windows(createLimits(0), 'NORMAL', [{ t_C: 99, rpm: 0 }])[0]?.trip).toBe('T_MAX');
+    expect(windows(createLimits(0), 'NORMAL', [{ t_C: 99 }])[0]?.trip).toBe('T_MAX');
   });
 });

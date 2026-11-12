@@ -1,7 +1,5 @@
 // Pin anchors (spec §1.5, §13.3): local positions in mm per component, world positions from the layout.
 import {
-  BB_NODE_COLUMNS,
-  type BbNode,
   type BbRail,
   type BbRow,
   bbHole_m,
@@ -10,6 +8,7 @@ import {
   BREADBOARD,
   type ComponentId,
   componentById,
+  parseBbHole,
   rotateY,
   type Vec3,
 } from '../shared/components.ts';
@@ -57,11 +56,20 @@ function esp32Anchors(): AnchorTable {
   return t;
 }
 
-/** GY-521 header holes along the +z edge, from −x to +x. */
+/** GY-521 header pins along the board's top edge, from −x to +x (D-084). */
 export const MPU_PINS = ['vcc', 'gnd', 'scl', 'sda', 'xda', 'xcl', 'ad0', 'int'] as const;
-export const MPU_DIMS = { pitch: 2.54, rowZ: 6.7, topY: 0.2 } as const;
+/**
+ * GY-521 local geometry (mm, around its bounding-box centre): the 21 × 16 × 1 PCB stands in the x–y plane with its
+ * back on −z; the right-angle header sits on the front face along the top edge and its pins rise to `pinTopY`.
+ */
+export const MPU_DIMS = {
+  pcb: { w: 21, h: 16, thick: 1, y: -3, z: -1.25 },
+  pitch: 2.54,
+  pinTopY: 11,
+  pinZ: 0.5,
+} as const;
 
-/** MPU wires run along the top of the fan frame, one layer per pin, and leave past its +x side (x > 35 mm). */
+/** MPU wires rise from the pin tips, one layer per pin, and leave past the fan frame's +x side (x > 35 mm). */
 export const MPU_EXIT = { layer0_mm: 2.5, layerStep_mm: 1.8, clearX_mm: 36 } as const;
 
 function mpuAnchors(): AnchorTable {
@@ -69,10 +77,10 @@ function mpuAnchors(): AnchorTable {
   const { layer0_mm, layerStep_mm, clearX_mm } = MPU_EXIT;
   MPU_PINS.forEach((name, i) => {
     const x = (i - (MPU_PINS.length - 1) / 2) * MPU_DIMS.pitch;
-    const y = layer0_mm + i * layerStep_mm;
-    const z = MPU_DIMS.rowZ;
+    const y = MPU_DIMS.pinTopY + layer0_mm + i * layerStep_mm;
+    const z = MPU_DIMS.pinZ;
     t[name] = {
-      pos_mm: [x, MPU_DIMS.topY, z],
+      pos_mm: [x, MPU_DIMS.pinTopY, z],
       out: PX,
       exit_mm: [
         [x, y, z],
@@ -121,7 +129,10 @@ function acsAnchors(): AnchorTable {
   };
 }
 
-/** Breadboard anchors: the reference hole of each rail and node (wires pick a free hole nearby). */
+/**
+ * Breadboard anchors: the reference hole of each rail (a wire picks a free rail hole nearby), and every terminal
+ * hole by the wiring document's name, `A1`…`J63` (column letter, row number; D-082), which a wire uses exactly.
+ */
 function bbAnchors(): AnchorTable {
   const c = BREADBOARD.center_m;
   const local = (p: Vec3): Vec3 => [(p[0] - c[0]) * 1000, (p[1] - c[1]) * 1000, (p[2] - c[2]) * 1000];
@@ -129,8 +140,10 @@ function bbAnchors(): AnchorTable {
   for (const rail of Object.keys(BREADBOARD.railOffset_mm) as BbRail[]) {
     t[`rail${rail}`] = { pos_mm: local(bbRailHole_m(rail, BREADBOARD.centerColumn)), out: UP };
   }
-  for (const [node, col] of Object.entries(BB_NODE_COLUMNS)) {
-    t[`node.${node}`] = { pos_mm: local(bbHole_m(col, 'c')), out: UP };
+  for (const row of Object.keys(BREADBOARD.rowOffset_mm) as BbRow[]) {
+    for (let column = 1; column <= BREADBOARD.columns; column++) {
+      t[`${row.toUpperCase()}${column}`] = { pos_mm: local(bbHole_m(column, row)), out: UP };
+    }
   }
   return t;
 }
@@ -220,14 +233,7 @@ export function worldAnchorOut(id: string): Vec3 {
   return rotateY(a.out, componentById(a.component).rotY_deg);
 }
 
-const NODE_FREE_ROWS: Record<BbNode, readonly BbRow[]> = {
-  dq: ['b', 'c', 'd', 'e'], // row a holds r_pu_ds
-  tach: ['b', 'c', 'd', 'e'], // row a holds r_pu_tach
-  divTop: ['a', 'b', 'c', 'd'], // row e holds r_div_top
-  divMid: ['c', 'd'], // rows b and e hold r_div_bot and r_div_top; r_div_bot's body covers row a
-};
-
-/** Free holes (world, m) a wire may use for a `bb.*` anchor; empty for other anchors. */
+/** Holes (world, m) a wire may use for a `bb.*` anchor: any hole of a rail, or exactly the named hole. */
 export function bbAnchorHoles_m(id: string): Vec3[] {
   const [prefix, pin] = split(id);
   if (prefix !== 'bb') return [];
@@ -235,6 +241,6 @@ export function bbAnchorHoles_m(id: string): Vec3[] {
     const rail = pin.slice('rail'.length) as BbRail;
     return bbRailColumns().map((col) => bbRailHole_m(rail, col));
   }
-  const node = pin.slice('node.'.length) as BbNode;
-  return NODE_FREE_ROWS[node].map((row) => bbHole_m(BB_NODE_COLUMNS[node], row));
+  const hole = parseBbHole(pin);
+  return hole ? [bbHole_m(hole.column, hole.row)] : [];
 }

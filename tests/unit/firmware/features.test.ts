@@ -17,9 +17,9 @@ interface Fixture {
   name: string;
   counts0: number;
   now_s: number;
-  window: { ax_lsb: number[]; ay_lsb: number[]; az_lsb: number[]; counts: number[]; edges: number };
+  window: { ax_lsb: number[]; ay_lsb: number[]; az_lsb: number[]; counts: number[] };
   temps: [number, number][];
-  reference: Record<'a_rms_g' | 'cf' | 'i_rms_A' | 'rpm' | 't_C' | 'dtdt_C_per_min', number | null>;
+  reference: Record<'a_rms_g' | 'cf' | 'i_rms_A' | 't_C' | 'dtdt_C_per_min', number | null>;
 }
 
 const fixtureDir = resolve(import.meta.dirname, '../../fixtures');
@@ -38,7 +38,6 @@ function toWindow(f: Fixture): WindowData {
     ay_g: g(f.window.ay_lsb),
     az_g: g(f.window.az_lsb),
     counts: Float64Array.from(f.window.counts),
-    edges: f.window.edges,
   };
 }
 
@@ -71,7 +70,7 @@ describe('features vs the NumPy reference (§7.2)', () => {
 });
 
 describe('features: unit cases', () => {
-  const window = (ax: number[], counts: number[] = ax.map(() => 1500), edges = 0): WindowData => ({
+  const window = (ax: number[], counts: number[] = ax.map(() => 1500)): WindowData => ({
     index: 0,
     tEnd_s: 1,
     n: ax.length,
@@ -79,7 +78,6 @@ describe('features: unit cases', () => {
     ay_g: new Float64Array(ax.length).fill(1),
     az_g: new Float64Array(ax.length),
     counts: Float64Array.from(counts),
-    edges,
   });
 
   it('a pure sine axis gives CF = √2 ± 0.01', () => {
@@ -101,8 +99,8 @@ describe('features: unit cases', () => {
     expect(f.i_rms_A).toBeCloseTo(10 * perCount_A, 12);
   });
 
-  it('converts PCNT edges to rpm', () => {
-    expect(computeFeatures(window([0, 0], [1500, 1500], 126), 1500, CONFIG).rpm).toBe(3780);
+  it('reports no speed: the bench has no tach input (D-078)', () => {
+    expect(Object.keys(computeFeatures(window([0, 0]), 1500, CONFIG)).sort()).toEqual(['a_rms_g', 'cf', 'i_rms_A']);
   });
 });
 

@@ -21,7 +21,9 @@ describe('M9 inspector data (§8.2)', () => {
       for (const w of info.wires)
         expect(w.from.startsWith(prefix) || w.to.startsWith(prefix), `${c.id} ${w.id}`).toBe(true);
     }
-    expect(inspectorFor('acs712', snap(), null).wires.map((w) => w.id)).toEqual(['W02', 'W03', 'W11', 'W12', 'W25']);
+    expect(inspectorFor('acs712', snap(), null).wires.map((w) => w.id)).toEqual(['W03', 'W04', 'W07', 'W11', 'W14']);
+    // a resistor lists the wires on its strips: r_div_top sits in B30 and B35, with ACS712 OUT in A30 and GPIO34 from D35
+    expect(inspectorFor('r_div_top', snap(), null).wires.map((w) => w.id)).toEqual(['W14', 'W15']);
   });
 
   it('pins carry live values, e.g. "ACS712 OUT 2.533 V → GPIO34 1965 counts"', () => {
@@ -38,10 +40,10 @@ describe('M9 inspector data (§8.2)', () => {
 describe('M9 in Live mode (P8.2)', () => {
   it('shows "—" for every field the board does not send', async () => {
     const { liveSnapshot } = await import('../../../src/bridge/liveSnapshot.ts');
-    const p = { v: 1, kind: 'packet', seq: 3, ts_ms: 4000, win_ms: 1000, a_rms_g: 0.12, cf: 2.5, i_rms_A: 0.18, t_C: 34.06, dtdt_C_per_min: 0, rpm: 3810, state: 'NORMAL', relay_ch2: 'ON', link_lost: false, sensor_fault: false, warn_reason: null, trip_reason: null } as const; // prettier-ignore
+    const p = { v: 2, kind: 'packet', seq: 3, ts_ms: 4000, win_ms: 1000, a_rms_g: 0.12, cf: 2.5, i_rms_A: 0.18, t_C: 34.06, dtdt_C_per_min: 0, state: 'NORMAL', relay_ch2: 'ON', link_lost: false, sensor_fault: false, warn_reason: null, trip_reason: null } as const; // prettier-ignore
     const live = liveSnapshot(p, null, { nCritical: 5 });
     const text = (id: Parameters<typeof inspectorFor>[0]) => inspectorFor(id, live, null).pins.map((x) => x.text);
-    expect(text('fan')).toEqual(['red +— V, — A', 'blue tach — → GPIO27, 3810 rpm', 'motor — °C']);
+    expect(text('fan')).toEqual(['red +— V, — A', 'speed ≈ 3800 rpm (estimated from relay CH2)', 'motor — °C']);
     expect(text('acs712')[0]).toBe('ACS712 OUT — V → GPIO34 — counts');
     expect(text('relay')).toEqual(['IN2 ← GPIO26 LOW (coil on)', 'COM2 → NO2 closed']);
     expect(text('ds18b20')).toEqual(['DATA → GPIO4 34.0600 °C', 'probe tip 34.06 °C']);

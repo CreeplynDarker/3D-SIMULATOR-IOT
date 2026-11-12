@@ -1,10 +1,9 @@
 // P6.2 signal flow (spec §11 P6.2, §13.3): power nets glow while energised and a switched net dims when it isn't;
-// data nets carry pulses paced by real traffic: I²C and ADC continuous, tach with the fan speed, 1-Wire once per
+// data nets carry pulses paced by real traffic: I²C and ADC continuous, 1-Wire once per
 // DS18B20 read. Everything follows the snapshot's sim time, so a paused sim freezes it (D-058).
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import { AdditiveBlending, CatmullRomCurve3, Color, type Points, PointsMaterial, Vector3 } from 'three';
-import { CONFIG } from '../../shared/config.ts';
 import type { Net } from '../../shared/wiring.ts';
 import { WIRE_COLORS } from '../../shared/wiring.ts';
 import { appStore } from '../../store/index.ts';
@@ -19,12 +18,11 @@ import { wireMaterials } from './Wires.tsx';
 const GLOW_NETS: readonly Net[] = ['V12', 'V12_SW', 'V5', 'V3V3', 'RELAY_IN'];
 const GLOW_INTENSITY = 0.6;
 const DIM = { toward: new Color('#2a2a2a'), amount: 0.7 };
-/** Pulse trains: laps per sim second at rated speed (tach) or always (I²C, ADC). */
-const TRAINS: Partial<Record<Net, { rate: number; n: number; follows: 'always' | 'rpm' }>> = {
-  SDA: { rate: 1.5, n: 3, follows: 'always' },
-  SCL: { rate: 1.5, n: 3, follows: 'always' },
-  ANALOG: { rate: 1, n: 3, follows: 'always' },
-  TACH: { rate: 1.5, n: 3, follows: 'rpm' },
+/** Pulse trains on the continuously sampled nets (I²C, ADC): laps per sim second. */
+const TRAINS: Partial<Record<Net, { rate: number; n: number }>> = {
+  SDA: { rate: 1.5, n: 3 },
+  SCL: { rate: 1.5, n: 3 },
+  ANALOG: { rate: 1, n: 3 },
 };
 /** A 1-Wire read crosses both 1-Wire wires in this much wall time (scaled by the sim speed, capped). */
 const ONEWIRE = { wall_s: 0.35, cap_s: 0.6 };
@@ -118,8 +116,7 @@ export function SignalFlow() {
       for (let k = 0; k < lane.n; k++) {
         let u: number | null = null;
         if (flow && snap && train) {
-          const speed = train.follows === 'rpm' ? (train.rate * snap.rpm) / CONFIG.fan.rpmRated : train.rate;
-          u = train.follows === 'rpm' && snap.rpm < 1 ? null : continuousU(t_s, speed, k, train.n);
+          u = continuousU(t_s, train.rate, k, train.n);
         } else if (flow && snap && lane.net === 'ONEWIRE') {
           // probe → breadboard node over the first half, node → ESP32 over the second
           const whole = pulseU(t_s, snap.traffic.lastDsRead_s, read_s);

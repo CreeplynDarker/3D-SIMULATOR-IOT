@@ -3,14 +3,12 @@
 import type { State } from '../shared/protocol.ts';
 import type { SimConfig } from '../sim/types.ts';
 
-export type TripLimit = 'I_MAX' | 'T_MAX' | 'STALL';
+export type TripLimit = 'I_MAX' | 'T_MAX';
 export type SoftLimit = 'I_SOFT' | 'T_SOFT' | 'SENSOR';
 
 export interface LimitState {
   /** Consecutive windows over iMax (NORMAL/WARNING). */
   iOverRun: number;
-  /** Consecutive windows under the stall speed (NORMAL/WARNING). */
-  stallRun: number;
   sensorFault: boolean;
   linkLost: boolean;
   /** Sim time of the last verdict received, or of the START that began the run (s). */
@@ -22,7 +20,6 @@ export interface LimitInput {
   state: State;
   tEnd_s: number;
   i_rms_A: number;
-  rpm: number;
   /** Last valid DS18B20 reading (°C), or null if none since boot. */
   t_C: number | null;
   /** Sim time of the last valid reading, or boot time (s). */
@@ -43,7 +40,7 @@ const SUPERVISED: readonly State[] = ['NORMAL', 'WARNING'];
 
 /** Limits at boot (sim time `t0_s`). */
 export function createLimits(t0_s: number): LimitState {
-  return { iOverRun: 0, stallRun: 0, sensorFault: false, linkLost: false, lastVerdict_s: t0_s };
+  return { iOverRun: 0, sensorFault: false, linkLost: false, lastVerdict_s: t0_s };
 }
 
 /** Records a received verdict at `t_s`; returns true if it restores a lost link. */
@@ -64,10 +61,8 @@ function tripOf(ls: LimitState, x: LimitInput, cfg: SimConfig): TripLimit | null
   const fw = cfg.firmware;
   const supervised = SUPERVISED.includes(x.state);
   ls.iOverRun = supervised && x.i_rms_A > fw.iMax_A ? ls.iOverRun + 1 : 0;
-  ls.stallRun = supervised && x.rpm < fw.stallFraction * cfg.fan.rpmRated ? ls.stallRun + 1 : 0;
   if (ls.iOverRun >= fw.nILimit || (x.state === 'STARTING' && x.i_rms_A > fw.iMaxStart_A)) return 'I_MAX';
   if (RUNNING.includes(x.state) && x.t_C !== null && x.t_C > fw.tMax_C) return 'T_MAX';
-  if (ls.stallRun >= fw.nStall) return 'STALL';
   return null;
 }
 

@@ -29,14 +29,13 @@ def features(fx):
     divider = (c["rTop_ohm"] + c["rBottom_ohm"]) / c["rBottom_ohm"]
     i = (counts - fx["counts0"]) * (c["vSpan_V"] / c["maxCount"]) * divider / c["sens_VperA"]
     i_rms = float(np.sqrt(np.mean(i**2)))
-    rpm = w["edges"] * 60.0 / (c["tachPulsesPerRev"] * c["window_s"])
 
     temps = np.array(fx["temps"], dtype=float).reshape(-1, 2)
     t_c = float(temps[-1, 1]) if len(temps) else None
     recent = temps[temps[:, 0] >= fx["now_s"] - c["dtdtSpan_s"]] if len(temps) else temps
     dtdt = float(60.0 * np.polyfit(recent[:, 0], recent[:, 1], 1)[0]) if len(recent) >= c["dtdtMinSamples"] else None
 
-    return {"a_rms_g": a_rms, "cf": cf, "i_rms_A": i_rms, "rpm": rpm, "t_C": t_c, "dtdt_C_per_min": dtdt}
+    return {"a_rms_g": a_rms, "cf": cf, "i_rms_A": i_rms, "t_C": t_c, "dtdt_C_per_min": dtdt}
 
 
 def main():
@@ -53,7 +52,7 @@ def main():
             f.write(json.dumps(fx, separators=(",", ":")) + "\n")
         r = fx["reference"]
         print(f"{fx['name']:12s} a_rms={r['a_rms_g']:.4f} g cf={r['cf']:.3f} i_rms={r['i_rms_A']:.4f} A "
-              f"rpm={r['rpm']:.0f} t={r['t_C']} dtdt={r['dtdt_C_per_min']}")
+              f"t={r['t_C']} dtdt={r['dtdt_C_per_min']}")
 
 
 if __name__ == "__main__":

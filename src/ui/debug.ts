@@ -1,4 +1,5 @@
 // JSON-safe view of the store for the e2e tests (`window.__pdm.inspect()`, only with `?debug=1`).
+import { CONFIG } from '../shared/config.ts';
 import type { SimEvent } from '../shared/messages.ts';
 import type { AppState } from '../store/index.ts';
 
@@ -51,8 +52,8 @@ export interface SimDebug {
   readonly t_s: number;
   readonly scenarioDone: boolean;
   readonly lastEvent: SimEvent | null;
-  /** Tach rpm of the newest packet: what the firmware's RESET guard (rpm < resetMaxRpm) checks. */
-  readonly packetRpm: number | null;
+  /** True once the firmware would accept RESET: tripped at least `resetMinDelay_s` ago (D-078). */
+  readonly resetReady: boolean;
 }
 
 /** Builds `window.__sim` over the store; every read is live. */
@@ -73,8 +74,10 @@ export function simDebug(get: () => AppState): SimDebug {
     get lastEvent() {
       return get().series.events.last() ?? null;
     },
-    get packetRpm() {
-      return get().series.windows.last()?.rpm ?? null;
+    get resetReady() {
+      const snap = get().sim.snapshot;
+      if (snap?.trippedAt_s === null || snap?.trippedAt_s === undefined) return false;
+      return snap.t_s - snap.trippedAt_s >= CONFIG.firmware.resetMinDelay_s;
     },
   };
 }

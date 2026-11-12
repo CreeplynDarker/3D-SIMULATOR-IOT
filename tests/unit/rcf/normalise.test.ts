@@ -24,7 +24,7 @@ describe('normalise (§9.2)', () => {
 
   it('floors apply: z divides by max(σ, stdFloor)', () => {
     const floors = floorsFor(fixture.features, CONFIG);
-    expect(floors).toEqual([0.005, 0.05, 0.002, 0.1, 0.05, 15]);
+    expect(floors).toEqual([0.005, 0.05, 0.002, 0.1, 0.05]);
     const norm = fitNormaliser(fixture.rows, floors);
     const x = norm.mean.map((m) => m + 1);
     const z = normalise(x, norm);
@@ -34,7 +34,6 @@ describe('normalise (§9.2)', () => {
     expect(z[4]).toBeCloseTo(1 / 0.05, 9);
     expect(z[1]).toBeCloseTo(1 / (norm.std[1] as number), 9);
     expect(z[2]).toBeCloseTo(1 / (norm.std[2] as number), 9);
-    expect(z[5]).toBeCloseTo(1 / (norm.std[5] as number), 9);
   });
 
   it('a training row at the mean gives z = 0, and floors follow the feature list', () => {
@@ -42,7 +41,7 @@ describe('normalise (§9.2)', () => {
     expect(norm.mean).toEqual([2, 3]);
     expect(norm.std).toEqual([1, 1]);
     expect(normalise([2, 3], norm)).toEqual([0, 0]);
-    expect(floorsFor(['rpm', 'cf'], CONFIG)).toEqual([15, 0.05]);
+    expect(floorsFor(['t_C', 'cf'], CONFIG)).toEqual([0.1, 0.05]);
   });
 
   it('rejects an empty training set and rows of the wrong width', () => {

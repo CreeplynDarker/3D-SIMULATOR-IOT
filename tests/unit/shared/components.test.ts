@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   BREADBOARD,
   bbColumnX_m,
+  bbNamedHole_m,
+  bbNodeOf,
+  parseBbHole,
   bbRailColumns,
   COMPONENTS,
   componentById,
@@ -23,8 +26,8 @@ describe('component catalogue (§13.2)', () => {
       'ds18b20',
       'breadboard',
       'esp32',
-      'r_pu_ds',
-      'r_pu_tach',
+      'r_pu_ds1',
+      'r_pu_ds2',
       'r_div_top',
       'r_div_bot',
       'acs712',
@@ -49,7 +52,7 @@ describe('component catalogue (§13.2)', () => {
       mpu6050: [-0.2, 0.091, -0.05],
       ds18b20: [-0.2, 0.055, -0.06],
       breadboard: [0.05, 0.005, 0.08],
-      esp32: [0.02, 0.017, 0.08],
+      esp32: [0.05, 0.0065, 0.02], // off the breadboard (D-082)
       acs712: [0, 0.006, -0.1],
       relay: [0.14, 0.0095, -0.08],
       dcjack: [-0.12, 0.006, -0.15],
@@ -61,8 +64,9 @@ describe('component catalogue (§13.2)', () => {
     }
   });
 
-  it('rotates only the laptop (−20° about y)', () => {
-    expect(COMPONENTS.filter((c) => c.rotY_deg !== 0 && !c.id.startsWith('r_')).map((c) => c.id)).toEqual(['laptop']);
+  it('rotates only the ESP32 (180°, USB-C toward the laptop) and the laptop (−20° about y)', () => {
+    expect(COMPONENTS.filter((c) => c.rotY_deg !== 0 && !c.id.startsWith('r_')).map((c) => c.id)).toEqual(['esp32', 'laptop']); // prettier-ignore
+    expect(componentById('esp32').rotY_deg).toBe(180);
     expect(componentById('laptop').rotY_deg).toBe(-20);
   });
 
@@ -90,5 +94,18 @@ describe('breadboard grid', () => {
   it('has 10 groups of 5 rail holes (50 per rail, 830 points in all)', () => {
     expect(bbRailColumns()).toHaveLength(50);
     expect(63 * 10 + 4 * bbRailColumns().length).toBe(830);
+  });
+});
+
+describe('breadboard nodes (D-082)', () => {
+  it('joins the five holes of a strip, keeps the two sides of the channel apart, and leaves rails whole', () => {
+    expect(bbNodeOf('bb.A30')).toBe(bbNodeOf('bb.E30'));
+    expect(bbNodeOf('bb.A30')).not.toBe(bbNodeOf('bb.F30'));
+    expect(bbNodeOf('bb.A30')).not.toBe(bbNodeOf('bb.A31'));
+    expect(bbNodeOf('bb.railL.n')).toBe('bb.railL.n');
+    expect(bbNodeOf('esp32.D4')).toBe('esp32.D4');
+    expect(parseBbHole('J63')).toEqual({ row: 'j', column: 63 });
+    expect(parseBbHole('A64') ?? parseBbHole('K1') ?? parseBbHole('a1')).toBeNull();
+    expect(() => bbNamedHole_m('Z9')).toThrow(/no breadboard hole/);
   });
 });

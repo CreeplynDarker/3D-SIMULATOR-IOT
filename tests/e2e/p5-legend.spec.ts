@@ -14,7 +14,7 @@ test('M12: btn-help opens the legend with wire colours, state colours, shortcuts
   await page.getByTestId('btn-help').click();
   const modal = page.getByTestId('legend-modal');
   await expect(modal).toBeVisible();
-  await expect(modal.getByTestId('legend-wire')).toHaveCount(11);
+  await expect(modal.getByTestId('legend-wire')).toHaveCount(10); // no violet tach wire since D-078
   await expect(modal.getByTestId('legend-state')).toHaveCount(6);
   await expect(modal).toContainText('Space');
   await expect(modal).toContainText('CoDisp');

@@ -4,7 +4,7 @@
   "properties": {
     "v": {
       "type": "number",
-      "const": 1
+      "const": 2
     },
     "kind": {
       "type": "string",
@@ -32,5 +32,5 @@
   ],
   "additionalProperties": false,
   "title": "command",
-  "description": "PROTOCOL_VERSION 1"
+  "description": "PROTOCOL_VERSION 2"
 }

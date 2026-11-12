@@ -108,10 +108,10 @@ describe('state machine (§7.4): one test per transition row', () => {
     expect(f.clearRun).toBe(0);
   });
 
-  it('NORMAL, WARNING + I_MAX / T_MAX / STALL → CRITICAL with that reason', () => {
-    const maps = { I_MAX: 'sm.limit.imax', T_MAX: 'sm.limit.tmax', STALL: 'sm.limit.stall' } as const;
+  it('NORMAL, WARNING + I_MAX / T_MAX → CRITICAL with that reason', () => {
+    const maps = { I_MAX: 'sm.limit.imax', T_MAX: 'sm.limit.tmax' } as const;
     for (const state of ['NORMAL', 'WARNING'] as const) {
-      for (const reason of ['I_MAX', 'T_MAX', 'STALL'] as const) {
+      for (const reason of ['I_MAX', 'T_MAX'] as const) {
         const f = inState(state);
         expect(transition(f, { kind: 'trip', reason }, CONFIG)).toMatchObject({ map: maps[reason], to: 'CRITICAL' });
         expect(f.tripReason).toBe(reason);
@@ -130,11 +130,18 @@ describe('state machine (§7.4): one test per transition row', () => {
     expect(off.state).toBe('OFF');
   });
 
-  it('CRITICAL + RESET with rpm < resetMaxRpm → OFF, trip, flags and counters cleared (sm.reset.ok)', () => {
+  it('a trip records when it happened on the firmware clock', () => {
+    const f = inState('NORMAL');
+    f.now_s = 42.5;
+    transition(f, ESTOP, CONFIG);
+    expect(f.trippedAt_s).toBe(42.5);
+  });
+
+  it('CRITICAL + RESET resetMinDelay_s or more after the trip → OFF, trip, flags and counters cleared (sm.reset.ok)', () => {
     const f = inState('CRITICAL');
-    Object.assign(f, { rpm: FW.resetMaxRpm - 1, alertRun: 4, clearRun: 1, warnReason: 'RCF', linkLost: true });
+    Object.assign(f, { trippedAt_s: 100, now_s: 100 + FW.resetMinDelay_s, alertRun: 4, clearRun: 1, warnReason: 'RCF', linkLost: true }); // prettier-ignore
     expect(transition(f, RESET, CONFIG)).toMatchObject({ map: 'sm.reset.ok', to: 'OFF', events: ['RESET'] });
-    expect(f).toMatchObject({ tripReason: null, warnReason: null, alertRun: 0, clearRun: 0, linkLost: false });
+    expect(f).toMatchObject({ tripReason: null, trippedAt_s: null, warnReason: null, alertRun: 0, clearRun: 0, linkLost: false }); // prettier-ignore
   });
 
   it('CRITICAL + START → refused, logged "ERR start refused: latched" (sm.start.refused)', () => {
@@ -145,12 +152,13 @@ describe('state machine (§7.4): one test per transition row', () => {
     expect(f.state).toBe('CRITICAL');
   });
 
-  it('CRITICAL + RESET with rpm ≥ resetMaxRpm → refused, "WARN reset refused: fan still turning" (sm.reset.refused)', () => {
+  it('CRITICAL + RESET sooner than resetMinDelay_s after the trip → refused, "WARN reset refused: wait 15 s after the trip" (sm.reset.refused)', () => {
     const f = inState('CRITICAL');
-    f.rpm = FW.resetMaxRpm;
+    Object.assign(f, { trippedAt_s: 100, now_s: 100 + FW.resetMinDelay_s - 0.001 });
     const out = transition(f, RESET, CONFIG);
     expect(out).toMatchObject({ map: 'sm.reset.refused', to: null, events: ['REFUSED'] });
-    expect(out.log).toEqual([{ level: 'WARN', text: 'reset refused: fan still turning' }]);
+    expect(out.log).toEqual([{ level: 'WARN', text: 'reset refused: wait 15 s after the trip' }]);
+    expect(f.state).toBe('CRITICAL');
   });
 });
 
@@ -198,7 +206,6 @@ describe('state machine: behaviour checks (P3.4)', () => {
     expect(transition(f, RESET, CONFIG).map).toBeNull();
     const off = createFsm();
     expect(transition(off, { kind: 'trip', reason: 'T_MAX' }, CONFIG).map).toBeNull();
-    expect(transition(inState('STARTING'), { kind: 'trip', reason: 'STALL' }, CONFIG).map).toBeNull();
   });
 
   it('records the last executed row as activeMap', () => {

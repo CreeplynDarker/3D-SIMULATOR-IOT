@@ -17,7 +17,6 @@ export interface WindowRow {
   i_rms_A: number;
   t_C: number | null;
   dtdt_C_per_min: number | null;
-  rpm: number;
   state: State;
   score: number | null;
   threshold: number | null;
@@ -37,7 +36,7 @@ export interface SeriesSlice {
   };
 }
 
-/** Ring buffers that feed the M6 charts (spec §10.3): six strips, state bands and event markers. */
+/** Ring buffers that feed the M6 charts (spec §10.3): five strips, state bands and event markers. */
 export const createSeriesSlice: StateCreator<AppState, [], [], SeriesSlice> = (set) => {
   const windows = createRing<WindowRow>(SERIES_CAPACITY);
   const events = createRing<SimEvent>(SERIES_CAPACITY);
@@ -48,9 +47,9 @@ export const createSeriesSlice: StateCreator<AppState, [], [], SeriesSlice> = (s
       events,
       rev: 0,
       pushPacket: (p) => {
-        const { seq, a_rms_g, cf, i_rms_A, t_C, dtdt_C_per_min, rpm, state } = p;
+        const { seq, a_rms_g, cf, i_rms_A, t_C, dtdt_C_per_min, state } = p;
         const t_s = p.ts_ms / 1000;
-        windows.push({ seq, t_s, a_rms_g, cf, i_rms_A, t_C, dtdt_C_per_min, rpm, state, ...unscored });
+        windows.push({ seq, t_s, a_rms_g, cf, i_rms_A, t_C, dtdt_C_per_min, state, ...unscored });
         bump();
       },
       pushVerdict: (v) => {

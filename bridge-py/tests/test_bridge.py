@@ -12,15 +12,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import create_app  # noqa: E402
 
 PACKET = {
-    "v": 1, "kind": "packet", "seq": 7, "ts_ms": 8000, "win_ms": 1000, "a_rms_g": 0.12, "cf": 2.5, "i_rms_A": 0.18,
-    "t_C": 34.06, "dtdt_C_per_min": 0.0, "rpm": 3810, "state": "NORMAL", "relay_ch2": "ON", "link_lost": False,
+    "v": 2, "kind": "packet", "seq": 7, "ts_ms": 8000, "win_ms": 1000, "a_rms_g": 0.12, "cf": 2.5, "i_rms_A": 0.18,
+    "t_C": 34.06, "dtdt_C_per_min": 0.0, "state": "NORMAL", "relay_ch2": "ON", "link_lost": False,
     "sensor_fault": False, "warn_reason": None, "trip_reason": None,
 }
 VERDICT = {
-    "v": 1, "kind": "verdict", "seq_ref": 7, "score": 0.21, "threshold": 0.5, "alert": False, "clear": True,
+    "v": 2, "kind": "verdict", "seq_ref": 7, "score": 0.21, "threshold": 0.5, "alert": False, "clear": True,
     "dominant": "cf", "z": {"cf": 1.2}, "model": "READY",
 }
-COMMAND = {"v": 1, "kind": "command", "seq": 0, "cmd": "START"}
+COMMAND = {"v": 2, "kind": "command", "seq": 0, "cmd": "START"}
 
 
 @pytest.fixture
@@ -73,7 +73,9 @@ def test_packets_from_the_board_reach_every_browser(bridge):
 @pytest.mark.parametrize("bad", [
     b"not json",
     json.dumps({**PACKET, "state": "BROKEN"}).encode(),
-    json.dumps({k: v for k, v in PACKET.items() if k != "rpm"}).encode(),
+    json.dumps({k: v for k, v in PACKET.items() if k != "i_rms_A"}).encode(),
+    json.dumps({**PACKET, "v": 1}).encode(),  # protocol v1 (with rpm) is no longer accepted
+    json.dumps({**PACKET, "rpm": 3810}).encode(),  # v2 has no rpm field
     json.dumps({**PACKET, "seq": -1}).encode(),
     json.dumps(VERDICT).encode(),  # the board sends packets only
 ])

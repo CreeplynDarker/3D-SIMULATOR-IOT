@@ -97,7 +97,8 @@ describe.skipIf(PY === null)('live bridge with the emulated ESP32 (P8.1)', () =>
     await until(() => last()?.state === 'NORMAL', 15_000, 'NORMAL');
     await until(() => last()?.state === 'CRITICAL', 20_000, 'CRITICAL');
     const crit = last() as Packet;
-    await until(() => (last()?.rpm ?? 1e9) < 100, 15_000, 'the fan to stop');
+    // RESET is accepted resetMinDelay_s after the trip (D-078); the CRITICAL packet's window end is after the trip
+    await until(() => (last()?.ts_ms ?? 0) >= crit.ts_ms + CONFIG.firmware.resetMinDelay_s * 1000, 15_000, 'the RESET delay'); // prettier-ignore
     command('RESET');
     await until(() => last()?.state === 'OFF', 10_000, 'OFF after RESET');
     ws.send('{"type":"verdict","verdict":{"kind":"verdict"}}'); // invalid: dropped and counted

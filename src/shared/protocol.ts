@@ -3,10 +3,10 @@ import { z } from 'zod';
 // The wire contract (spec §10.1). Change it only with a PROTOCOL_VERSION bump, regenerated schema and fixtures, and
 // a docs/DECISIONS.md entry (AGENTS.md rule 5).
 
-export const PROTOCOL_VERSION = 1;
-export const FeatureKey = z.enum(['a_rms_g', 'cf', 'i_rms_A', 't_C', 'dtdt_C_per_min', 'rpm']);
+export const PROTOCOL_VERSION = 2;
+export const FeatureKey = z.enum(['a_rms_g', 'cf', 'i_rms_A', 't_C', 'dtdt_C_per_min']);
 export const State = z.enum(['OFF', 'CALIBRATING', 'STARTING', 'NORMAL', 'WARNING', 'CRITICAL']);
-export const TripReason = z.enum(['RCF', 'I_MAX', 'T_MAX', 'STALL', 'ESTOP']);
+export const TripReason = z.enum(['RCF', 'I_MAX', 'T_MAX', 'ESTOP']);
 export const WarnReason = z.enum(['RCF', 'I_SOFT', 'T_SOFT', 'SENSOR']);
 
 export const Packet = z.object({            // ESP32 → laptop, one per window
@@ -14,7 +14,7 @@ export const Packet = z.object({            // ESP32 → laptop, one per window
   seq: z.number().int().nonnegative(), ts_ms: z.number().int().nonnegative(), win_ms: z.number().int().positive(),
   a_rms_g: z.number().finite().nonnegative(), cf: z.number().finite().nonnegative(),
   i_rms_A: z.number().finite().nonnegative(), t_C: z.number().finite().nullable(),
-  dtdt_C_per_min: z.number().finite().nullable(), rpm: z.number().finite().nonnegative(),
+  dtdt_C_per_min: z.number().finite().nullable(),
   state: State, relay_ch2: z.enum(['ON', 'OFF']),
   link_lost: z.boolean(), sensor_fault: z.boolean(),
   warn_reason: WarnReason.nullable(), trip_reason: TripReason.nullable(),

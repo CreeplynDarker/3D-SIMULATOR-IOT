@@ -32,18 +32,59 @@ export function fanParts(): Part[] {
   return parts;
 }
 
-/** GY-521: blue board, the MPU6050 chip, 8 gold header holes on the +z edge, power LED. */
+const WHITE_PRINT = { color: '#f2f2f2' };
+
+/** A printed arrow on the GY-521's front face: a shaft from `from` (mm) along `dir` (unit, in x–y), and a head. */
+function printedArrow(from: [number, number], dir: [number, number], len: number, z: number): Part[] {
+  const a = Math.atan2(dir[1], dir[0]);
+  const tip: [number, number] = [from[0] + dir[0] * len, from[1] + dir[1] * len];
+  const mid: [number, number] = [from[0] + (dir[0] * len) / 2, from[1] + (dir[1] * len) / 2];
+  const barb = (turn: number): Part => {
+    const b = a + Math.PI + turn;
+    return box([1.6, 0.3, 0.1], [tip[0] + Math.cos(b) * 0.7, tip[1] + Math.sin(b) * 0.7, z], 'paint', { ...WHITE_PRINT, rot: [0, 0, b] }); // prettier-ignore
+  };
+  return [
+    box([len, 0.3, 0.1], [mid[0], mid[1], z], 'paint', { ...WHITE_PRINT, rot: [0, 0, a] }),
+    barb(0.6),
+    barb(-0.6),
+  ];
+}
+
+/** Printed letters X and Y (strokes of thin white boxes), centred at (x, y) on the front face. */
+function printedLetter(letter: 'X' | 'Y', x: number, y: number, z: number): Part[] {
+  const stroke = (dx: number, dy: number, len: number, ang: number): Part =>
+    box([len, 0.25, 0.1], [x + dx, y + dy, z], 'paint', { ...WHITE_PRINT, rot: [0, 0, ang] });
+  if (letter === 'X') return [stroke(0, 0, 1.8, Math.PI / 4), stroke(0, 0, 1.8, -Math.PI / 4)];
+  return [stroke(-0.3, 0.35, 1, -Math.PI / 3), stroke(0.3, 0.35, 1, Math.PI / 3), stroke(0, -0.45, 0.9, Math.PI / 2)];
+}
+
+/**
+ * GY-521 (OPEN-4 closed, D-084), built from its description since there is no photo: a blue 21 × 16 mm PCB standing
+ * in the fan plane on the frame's top edge (x right, y up, z = fan axis, like the plant's axes, §6.3), the MPU6050
+ * chip, the 3.3 V regulator, the two 2.2 kΩ I²C pull-ups and the power LED on the front (+z) face with the X and Y
+ * axis arrows printed beside them, and the 8-pin right-angle header along the top edge, pins pointing up.
+ */
 export function mpuParts(): Part[] {
+  const { pcb, pitch, pinTopY, pinZ } = MPU_DIMS;
+  const face = pcb.z + pcb.thick / 2; // front surface of the PCB
   const parts: Part[] = [
-    box([21, 1, 16], [0, -0.3, 0], 'pcbBlue'),
-    box([4, 0.6, 4], [0, 0.5, -1.5], 'chip'),
-    box([1.6, 0.5, 0.8], [-6, 0.45, -4], 'paint', { color: '#8a6a4a' }),
-    box([1.6, 0.5, 0.8], [6, 0.45, -4], 'paint', { color: '#8a6a4a' }),
-    box([1, 0.4, 0.6], [7.5, 0.4, -6], 'led', { color: '#39ff6a', group: 'leds' }),
+    box([pcb.w, pcb.h, pcb.thick], [0, pcb.y, pcb.z], 'pcbBlue'),
+    box([4, 4, 0.9], [0, -3.5, face + 0.45], 'chip', { name: 'mpu:chip' }),
+    box([2.9, 1.6, 1.1], [6.2, -7.2, face + 0.55], 'chip', { name: 'mpu:regulator' }),
+    box([1.6, 0.8, 0.45], [-6.6, -0.8, face + 0.23], 'paint', { color: '#1a1a1a', name: 'mpu:pullup:scl' }),
+    box([1.6, 0.8, 0.45], [-4.4, -0.8, face + 0.23], 'paint', { color: '#1a1a1a', name: 'mpu:pullup:sda' }),
+    box([1.6, 0.8, 0.5], [6.2, -3, face + 0.25], 'paint', { color: '#8a6a4a' }),
+    box([1, 0.6, 0.4], [8, -9.4, face + 0.2], 'led', { color: '#39ff6a', group: 'leds' }),
+    box([pitch * MPU_PINS.length, 2.5, 2.5], [0, 3.75, pinZ], 'plasticBlack', { name: 'mpu:header' }),
+    ...printedArrow([-8.6, -9.4], [1, 0], 5, face + 0.05),
+    ...printedLetter('X', -2.6, -9.4, face + 0.05),
+    ...printedArrow([-8.6, -9.4], [0, 1], 5, face + 0.05),
+    ...printedLetter('Y', -8.6, -3.2, face + 0.05),
   ];
   MPU_PINS.forEach((name, i) => {
-    const x = (i - (MPU_PINS.length - 1) / 2) * MPU_DIMS.pitch;
-    parts.push(cyl(0.75, 1.02, 'y', [x, -0.29, MPU_DIMS.rowZ], 'gold', { name: `hole:${name}` }));
+    const x = (i - (MPU_PINS.length - 1) / 2) * pitch;
+    const len = pinTopY - 2.5;
+    parts.push(box([0.64, len, 0.64], [x, pinTopY - len / 2, pinZ], 'gold', { name: `pin:${name}` }));
   });
   return parts;
 }
@@ -88,10 +129,10 @@ export function breadboardParts(): Part[] {
 
 /** Resistor colour bands (4-band code). */
 export const RESISTOR_BANDS = {
-  r_pu_ds: ['#f5d000', '#7b2fbe', '#c62828', '#c9a227'], // 4.7 kΩ: yellow violet red gold
-  r_pu_tach: ['#6d4c41', '#151515', '#ef6c00', '#c9a227'], // 10 kΩ: brown black orange gold
-  r_div_top: ['#6d4c41', '#151515', '#ef6c00', '#c9a227'], // 10 kΩ
-  r_div_bot: ['#c62828', '#151515', '#ef6c00', '#c9a227'], // 20 kΩ: red black orange gold
+  r_pu_ds1: ['#6d4c41', '#151515', '#ef6c00', '#c9a227'], // 10 kΩ: brown black orange gold
+  r_pu_ds2: ['#6d4c41', '#151515', '#ef6c00', '#c9a227'], // 10 kΩ: brown black orange gold
+  r_div_top: ['#6d4c41', '#151515', '#ef6c00', '#c9a227'], // 10 kΩ: brown black orange gold
+  r_div_bot: ['#6d4c41', '#151515', '#ef6c00', '#c9a227'], // 10 kΩ: brown black orange gold
 } as const;
 
 /** Axial resistor body along x with four colour bands. */
@@ -124,7 +165,10 @@ export function acs712Parts(): Part[] {
   return parts;
 }
 
-/** Relay module: black PCB (photo), two blue relays (CH1 X-marked), two 3-way terminal blocks, opto, LEDs, headers. */
+/**
+ * Relay module: black PCB (photo), two blue relays (CH1 X-marked), two 3-way terminal blocks, opto, LEDs, headers,
+ * and the JD-VCC–VCC jumper fitted on header A (the whole module runs on 5 V, D-080).
+ */
 export function relayParts(): Part[] {
   const { terminalX, terminalY, headerA, headerB, headerPinY, halfDepth } = RELAY_DIMS;
   const parts: Part[] = [
@@ -148,6 +192,9 @@ export function relayParts(): Part[] {
   for (const x of Object.values({ ...headerA, ...headerB })) {
     parts.push(box([0.64, 0.64, 3], [x, headerPinY, halfDepth - 1.5], 'metal'));
   }
+  // jumper cap over the JD-VCC and VCC pins of header A
+  const jumperX = (headerA.jdvcc + headerA.vcc_a) / 2;
+  parts.push(box([5, 2.5, 4], [jumperX, headerPinY, halfDepth - 2], 'plasticBlack', { name: 'relay:jumper' }));
   return parts;
 }
 
@@ -204,8 +251,8 @@ export const MODEL_PARTS: Record<ComponentId, () => Part[]> = {
   ds18b20: ds18b20Parts,
   breadboard: breadboardParts,
   esp32: esp32Parts,
-  r_pu_ds: () => resistorParts(RESISTOR_BANDS.r_pu_ds),
-  r_pu_tach: () => resistorParts(RESISTOR_BANDS.r_pu_tach),
+  r_pu_ds1: () => resistorParts(RESISTOR_BANDS.r_pu_ds1),
+  r_pu_ds2: () => resistorParts(RESISTOR_BANDS.r_pu_ds2),
   r_div_top: () => resistorParts(RESISTOR_BANDS.r_div_top),
   r_div_bot: () => resistorParts(RESISTOR_BANDS.r_div_bot),
   acs712: acs712Parts,

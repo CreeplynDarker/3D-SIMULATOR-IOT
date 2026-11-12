@@ -39,15 +39,15 @@ Demo story the app must support end to end:
 
 | Item | Fact |
 | --- | --- |
-| Fan | Delta AFB0712HB-F00. 70 × 70 × 15 mm, 47 g, 12 VDC, 4.0–13.8 V, 3,800 RPM, 0.18 A typical (0.33 A on label = max), 3 wires: red +12 V, black GND, blue tach. Datasheet: https://www.mouser.com/datasheet/2/632/AFB70x70x15mm-515820.pdf |
+| Fan | Delta AFB0712HB-F00. 70 × 70 × 15 mm, 47 g, 12 VDC, 4.0–13.8 V, 3,800 RPM, 0.18 A typical (0.33 A on label = max), 3 wires: red +12 V, black GND, blue tach — **left free on the bench: no speed sensing** (D-078). Datasheet: https://www.mouser.com/datasheet/2/632/AFB70x70x15mm-515820.pdf |
 | Relay | 2-channel optocoupler module, coils TONGLING JQC-3FF-S-Z **5 VDC**, low-level trigger (IN LOW = coil on). CH1 is dead (marked with an X); **only CH2 is used**. |
-| Relay wiring | +12 V → COM2; NO2 → fan red (fail-safe: no coil current = fan off). JD-VCC jumper **removed**: JD-VCC = 5 V (ESP32 VIN), VCC = 3V3. |
-| Controller | ESP32 DevKit V1, 30 pins, USB-C, ESP32-WROOM-32, powered by the laptop over USB. |
-| Current sensor | ACS712 module (5 A variant assumed, see OPEN-2), 5 V supply, header Vcc/Out/Gnd, 2-screw terminal IP+/IP−. |
+| Relay wiring | Jack +12 V → COM2; NO2 → ACS712 IP+ (top screw); IP− (bottom screw) → fan red (fail-safe: no coil current = fan off; D-081). JD-VCC jumper **fitted** (2026-11-12, D-080): the whole module runs on 5 V, VCC from the breadboard's 5 V node; no separate JD-VCC or header-A GND wire. IN2 ← GPIO26; IN1 and NC2 free. |
+| Controller | ESP32 DevKit V1, 30 pins, USB-C, ESP32-WROOM-32, powered by the laptop over USB; off the breadboard, wired to its pins with jumpers. Its VIN feeds the 5 V node, its 3V3 the left rail. |
+| Current sensor | ACS712 module (5 A variant assumed, see OPEN-2), 5 V supply, header Vcc/Out/Gnd, 2-screw terminal IP+/IP−, in the switched 12 V line between NO2 and the fan; screws on the left, pins on the right. |
 | Temperature | DS18B20 waterproof probe, steel tip, wires red (VCC) / yellow (DATA) / black (GND). |
-| Vibration | MPU6050 GY-521 module (see OPEN-4). |
-| Power | JSY-1220 wall adapter, 12 V 1 A, barrel plug (see OPEN-6). |
-| Breadboard | 830-point, two power rails per side. |
+| Vibration | MPU6050 on a GY-521 board (OPEN-4, closed): 8 pins VCC, GND, SCL, SDA, XDA, XCL, AD0, INT; on-board 3.3 V regulator and 2.2 kΩ I²C pull-ups; rigidly fixed to the fan housing. VCC from the 3V3 rail; XDA, XCL, AD0 and INT free (AD0 low: address 0x68). |
+| Power | JSY-1220 wall adapter, 12 V 1 A, barrel plug (see OPEN-6). Its − goes only to the fan's black wire: **no common ground** with the ESP32 side (D-081). |
+| Breadboard | 830-point, two power rails per side. Wired as in the team's wiring document (§13.3, D-082): 3V3 and GND on the left rails, a 5 V node on row 25, the ESP32 off the board. |
 | Laptop | Runs RCF and the dashboard; same Wi-Fi network as the ESP32. |
 
 ### 1.3 Pin map (ESP32)
@@ -55,9 +55,9 @@ Demo story the app must support end to end:
 | Signal | Pin | Notes |
 | --- | --- | --- |
 | MPU6050 SDA / SCL | GPIO21 / GPIO22 | I²C, 3V3, address 0x68 (AD0 left unconnected; GY-521 pulls it low) |
-| DS18B20 DATA | GPIO4 | 4.7 kΩ pull-up to 3V3 |
-| ACS712 OUT via divider | GPIO34 | ADC1_CH6, input-only, 11 dB attenuation; works with Wi-Fi on |
-| Fan tach (blue) | GPIO27 | Open collector; 10 kΩ pull-up to 3V3; counted by PCNT on rising edges |
+| DS18B20 DATA | GPIO4 | Pull-up to 3V3: two 10 kΩ in parallel (5 kΩ), rows 18 and 19 joined by a jumper |
+| ACS712 OUT via divider | GPIO34 | 10 kΩ / 10 kΩ divider (× 0.5: 2.5 V at 0 A → 1.25 V); ADC1_CH6, input-only, 11 dB attenuation; works with Wi-Fi on |
+| Fan tach (blue) | — | Not connected: the blue wire is left free and the ESP32 measures no speed (D-078) |
 | Relay IN2 | GPIO26 | LOW = coil on = NO2 closed = fan powered; HIGH or floating at boot = fan off |
 | Relay IN1 | — | Not connected |
 
@@ -72,11 +72,11 @@ USB-C at the bottom, module antenna at the top, viewed from the component side:
 
 | Module | Pins (anchor names) |
 | --- | --- |
-| Relay | Input header A: `jdvcc, vcc_a, gnd_a` (jumper removed). Input header B: `gnd, in1, in2, vcc`. Terminals: `nc1, com1, no1, nc2, com2, no2`, in that order from left to right with the terminals facing away (CH1 on the left; COM is the middle screw of each block; OPEN-5). |
+| Relay | Input header A: `jdvcc, vcc_a, gnd_a` (jumper fitted across `jdvcc`–`vcc_a`; no wire on header A). Input header B: `gnd, in1, in2, vcc`. Terminals: `nc1, com1, no1, nc2, com2, no2`, in that order from left to right with the terminals facing away (CH1 on the left; COM is the middle screw of each block; OPEN-5). |
 | ACS712 | `vcc, out, gnd`; terminals `ipPlus, ipMinus` |
 | MPU6050 GY-521 | `vcc, gnd, scl, sda, xda, xcl, ad0, int` |
 | DS18B20 | `red, yellow, black` (cable ends) |
-| Fan | `red, black, blue` (cable ends) |
+| Fan | `red, black, blue` (cable ends; `blue` is drawn loose, not connected) |
 | DC jack adapter | `plus, minus` (screw terminals) |
 | ESP32 | `EN, VP, VN, D34, …, VIN, D23, …, 3V3` per §1.4, plus `usb`, `antenna` |
 
@@ -86,10 +86,10 @@ USB-C at the bottom, module antenna at the top, viewed from the component side:
 
 | ID | Question | Default used | Where it matters |
 | --- | --- | --- | --- |
-| OPEN-1 | Is RPM a 6th RCF feature? (The report lists 5.) | **Closed 2026-10-30 (team): yes.** `rcf.features` includes `rpm`; it stays switchable in config. | §5.1, §9 |
+| OPEN-1 | Is RPM a 6th RCF feature? (The report lists 5.) | **Closed 2026-11-12 (team, real bench wiring): no.** The tach wire is left free, so nothing measures speed: `rcf.features` holds the report's 5 features, the packet has no `rpm` (protocol v2), and there is no STALL limit (D-078; it reverses the 2026-10-30 "yes"). | §5.1, §7, §9, §10.1 |
 | OPEN-2 | ACS712 variant (5/20/30 A) | 5 A, 0.185 V/A | §6.5 |
-| OPEN-3 | Tach pulses per revolution | 2 | §6.7 |
-| OPEN-4 | MPU6050 module on hand and its mounting | GY-521 taped flat on the frame's top edge | §13 |
+| OPEN-3 | Tach pulses per revolution | **Moot (2026-11-12):** the tach is not wired (D-078). | — |
+| OPEN-4 | MPU6050 module on hand and its mounting | **Closed 2026-11-12 (team): GY-521, rigidly fixed to the fan housing.** No team photo: the 3D board is procedural (blue 21 × 16 mm PCB, 8-pin header along one edge, X/Y marks printed), standing on the frame's top edge in the fan plane so its axes are §6.3's (D-084). | §6.3, §13 |
 | OPEN-5 | NO/NC terminal order on each relay block | **Closed 2026-10-30 (team, continuity test): `NC – COM – NO`** from left to right, terminals facing away, as on the board silkscreen. | §1.5, §13 |
 | OPEN-6 | How the barrel plug reaches the breadboard | Female 5.5 × 2.1 mm DC jack with screw terminals | §13 |
 | OPEN-7 | Blade count | 7 | §6.3 |
@@ -140,7 +140,7 @@ src/
   main.tsx  App.tsx  index.css
   shared/   config.ts  units.ts  rng.ts  protocol.ts  messages.ts  components.ts  wiring.ts  scenarios.ts
   sim/      plant.ts  fan.ts  thermal.ts  vibration.ts  faults.ts  relay.ts  supply.ts
-            sensors/  mpu6050.ts  acs712.ts  adc.ts  ds18b20.ts  tach.ts
+            sensors/  mpu6050.ts  acs712.ts  adc.ts  ds18b20.ts
             worker.ts
   firmware/ firmware.ts  sampler.ts  features.ts  limits.ts  stateMachine.ts  link.ts  logger.ts
             reference-cpp/  main.cpp  features.cpp  state_machine.cpp  relay.cpp
@@ -178,7 +178,7 @@ export const CONFIG = {
     iInrushGain_A: 0.15, iInrushMax_A: 0.33,
     iRipple_A: 0.01, rippleHarmonic: 4,
     frictionSpeedLoss: 0.25, frictionCoastFactor: 0.6,
-    blades: 7, tachPulsesPerRev: 2,
+    blades: 7,
     residualUnbalance_gmm: 2.0, unbalanceRadius_mm: 28, mountMass_kg: 0.25,
     bladePass_g: 0.02,
     looseGain: 1.5, looseH2: 0.5, looseH3: 0.25, looseNoise_g: 0.04,
@@ -191,7 +191,7 @@ export const CONFIG = {
   sensors: {
     mpu: { range_g: 2, lsbPerG: 16384, noise_g: 0.007, dlpfCutoff_Hz: 184 },
     acs712: { vZero_V: 2.5, sens_VperA: 0.185, noise_V: 0.005 },
-    divider: { rTop_ohm: 10000, rBottom_ohm: 20000 },
+    divider: { rTop_ohm: 10000, rBottom_ohm: 10000 },
     adc: { maxCount: 4095, vMin_V: 0.075, vSpan_V: 3.05, noise_counts: 2, inl_counts: 6 },
     ds18b20: { probeTau_s: 8, resolution_C: 0.0625, conversion_s: 0.75, period_s: 1,
                disconnected_C: -127, powerOn_C: 85 },
@@ -204,16 +204,16 @@ export const CONFIG = {
     dtdtSpan_s: 60, dtdtMinSamples: 10, tJumpReject_C: 10,
     iMax_A: 0.30, iMaxStart_A: 0.40, nILimit: 3,
     tMax_C: 60, tWarnMargin_C: 5, iWarnFraction: 0.9,
-    stallFraction: 0.5, nStall: 3, sensorFaultTimeout_s: 10,
-    nCritical: 5, nClear: 3, clearHysteresis: 0.8, resetMaxRpm: 100,
+    sensorFaultTimeout_s: 10,
+    nCritical: 5, nClear: 3, clearHysteresis: 0.8, resetMinDelay_s: 15,
   },
   rcf: {
-    features: ['a_rms_g', 'cf', 'i_rms_A', 't_C', 'dtdt_C_per_min', 'rpm'] as const,   // OPEN-1
+    features: ['a_rms_g', 'cf', 'i_rms_A', 't_C', 'dtdt_C_per_min'] as const,   // OPEN-1: no rpm
     numTrees: 40, treeSize: 256, nTrain: 120, nHoldout: 60,
     threshold: 0.5,                    // on the normalised score (mean CoDisp / nTrain)
     holdoutMaxRatio: 0.8,              // baseline rejected if holdout max ≥ 0.8 × threshold
     warmDtdtMax_C_per_min: 0.2,
-    stdFloor: { a_rms_g: 0.005, cf: 0.05, i_rms_A: 0.002, t_C: 0.1, dtdt_C_per_min: 0.05, rpm: 15 },
+    stdFloor: { a_rms_g: 0.005, cf: 0.05, i_rms_A: 0.002, t_C: 0.1, dtdt_C_per_min: 0.05 },
   },
   faults: {                            // slider ranges
     imbalance_g: { min: 0, max: 0.5, step: 0.05 },
@@ -303,7 +303,8 @@ Warm start (`thermal.warmStart`): `T(0) = ambient_C + heatFraction · vRated · 
 
 ### 6.3 Vibration, true acceleration in g (`vibration.ts`)
 
-MPU axes: x and y lie in the fan plane (y vertical, so +1 g of gravity), z is the fan axis.
+MPU axes: x and y lie in the fan plane (y vertical, so +1 g of gravity), z is the fan axis. The GY-521 is mounted so
+that this holds: rigidly fixed to the housing, standing in the fan plane on the frame's top edge (OPEN-4, D-084).
 
 ```
 u      = residualUnbalance_gmm + imbalance_g · unbalanceRadius_mm         (g·mm)
@@ -330,7 +331,7 @@ clip to `±range_g`.
 
 ```
 V_out  = vZero + sens · I_inst + N(0, noise_V²)          (ACS712, volts)
-V_pin  = V_out · rBottom / (rTop + rBottom)               (= × 0.6667)
+V_pin  = V_out · rBottom / (rTop + rBottom)               (= × 0.5 with 10 kΩ / 10 kΩ, D-079)
 counts = clamp(round( maxCount · (V_pin − vMin)/vSpan + inl · sin(π · V_pin / 3.1) + N(0, noise_counts²) ), 0, maxCount)
 ```
 
@@ -344,10 +345,11 @@ Expose `V_out`, `V_pin`, `counts` in the snapshot for the Inspector.
 - The first conversion after sim start returns `powerOn_C` (85.0), as real parts do.
 - While the disconnect fault is on, every reading is `disconnected_C` (−127).
 
-### 6.7 Tach (`sensors/tach.ts`)
+### 6.7 Tach (not modelled)
 
-`pulsesTotal = floor(θ / 2π · tachPulsesPerRev)`. A rising edge occurs whenever `pulsesTotal` increments. The
-firmware's PCNT counts edges per window. The pin level for the 3D LED is `(pulsesTotal % 2 === 0) ? HIGH : LOW`.
+The fan's blue tach wire is left free on the real bench, so nothing reads it and the plant does not model it
+(D-078). The fan speed (ω, θ, rpm) still exists in the plant (§6.1): it drives the blades, the vibration and the
+current, but it never reaches the firmware.
 
 ### 6.8 Relay and supply (`relay.ts`, `supply.ts`)
 
@@ -367,7 +369,7 @@ over `ramp_s` of sim time. `clearAll()` sets every key to 0/false immediately. E
 1. Apply scheduled actions (scenario script, UI commands queued for this step) and fault ramps.
 2. If this step is on a 1 ms boundary: call `firmware.tick(sensorsView)`. The firmware reads sensor outputs as they
    stood at the end of the previous step and sets `gpio26`.
-3. Relay physics → supply → fan (ω, θ, I) → thermal and probe → vibration and DLPF → tach.
+3. Relay physics → supply → fan (ω, θ, I) → thermal and probe → vibration and DLPF.
 4. Deliver any due link messages (§7.5).
 
 Determinism: one RNG stream per subsystem (`plant`, `mpu`, `acs`, `adc`, `link`, `rcf-tree-<i>`) derived from
@@ -377,14 +379,14 @@ Determinism: one RNG stream per subsystem (`plant`, `mpu`, `acs`, `adc`, `link`,
 
 ## 7. Firmware mirror (`src/firmware/`)
 
-Runs at 1 kHz inside the plant step. It only sees what the real ESP32 would see: sampled sensor values, PCNT
-counts, DS18B20 readings, received verdicts and commands, and its own clock.
+Runs at 1 kHz inside the plant step. It only sees what the real ESP32 would see: sampled sensor values, DS18B20
+readings, received verdicts and commands, and its own clock. It never sees the fan speed: there is no tach input
+(D-078).
 
 ### 7.1 Sampling (`sampler.ts`)
 
 - 1 kHz: append accel (x, y, z in g) and ADC counts to the window buffers.
 - DS18B20: request a conversion every `period_s`, read it `conversion_s` later.
-- PCNT: count tach rising edges per window.
 - At `window_s` boundaries (window k covers `[k, k+1)` s): hand the buffers to `features.ts`, then clear them.
 
 ### 7.2 Features (`features.ts`), N = sampleRate · window_s = 1000
@@ -398,7 +400,6 @@ cf                = max_k ( max_n |Δa_k,n| / max(1e-6, sqrt((1/N) Σ_n Δa_k,n�
 i_rms_A           = sqrt( (1/N) Σ_n i_n² )
 t_C               = last valid DS18B20 reading, else null
 dtdt_C_per_min    = 60 · OLS slope of (t_s, T) over valid readings in the last dtdtSpan_s, null if fewer than dtdtMinSamples
-rpm               = edges · 60 / (tachPulsesPerRev · window_s)
 ```
 
 A reading is valid unless it equals `disconnected_C`, or equals `powerOn_C` as the first reading after boot, or
@@ -413,7 +414,6 @@ magnitude, so a crest factor of the magnitude would always be about 1.
 | --- | --- | --- |
 | I_MAX | `i_rms_A > iMax_A` for `nILimit` consecutive windows in NORMAL/WARNING; `> iMaxStart_A` in STARTING | → CRITICAL (`I_MAX`) |
 | T_MAX | valid `t_C > tMax_C` in STARTING/NORMAL/WARNING | → CRITICAL (`T_MAX`) |
-| STALL | `rpm < stallFraction · rpmRated` for `nStall` consecutive windows in NORMAL/WARNING | → CRITICAL (`STALL`) |
 | I_SOFT | `i_rms_A > iWarnFraction · iMax_A` | NORMAL → WARNING (`I_SOFT`) |
 | T_SOFT | valid `t_C > tMax_C − tWarnMargin_C` | NORMAL → WARNING (`T_SOFT`) |
 | SENSOR | no valid reading for `sensorFaultTimeout_s` | `sensor_fault = true`; NORMAL → WARNING (`SENSOR`) |
@@ -438,14 +438,19 @@ while no soft or sensor condition holds.
 | NORMAL | I_SOFT / T_SOFT / SENSOR | — | WARNING | warn_reason set |
 | WARNING | verdict alert | `alertRun ≥ nCritical` after increment | CRITICAL | trip (`RCF`) |
 | WARNING | verdict clear | `clearRun ≥ nClear` after increment | NORMAL | warn_reason null |
-| NORMAL, WARNING | I_MAX / T_MAX / STALL | — | CRITICAL | trip (reason) |
+| NORMAL, WARNING | I_MAX / T_MAX | — | CRITICAL | trip (reason) |
 | any except OFF | cmd ESTOP | — | CRITICAL | trip (`ESTOP`) |
-| CRITICAL | cmd RESET | `rpm < resetMaxRpm` | OFF | clear trip_reason, flags, counters |
+| CRITICAL | cmd RESET | `now − trippedAt ≥ resetMinDelay_s` | OFF | clear trip_reason, trip time, flags, counters |
 | CRITICAL | cmd START | — | CRITICAL | refuse; log `ERR start refused: latched` |
-| CRITICAL | cmd RESET | `rpm ≥ resetMaxRpm` | CRITICAL | refuse; log `WARN reset refused: fan still turning` |
+| CRITICAL | cmd RESET | `now − trippedAt < resetMinDelay_s` | CRITICAL | refuse; log `WARN reset refused: wait 15 s after the trip` |
 
-Trip = set GPIO26 HIGH in the same tick, set `trip_reason`, emit a `CRITICAL` event, and log ERR. While in
-STARTING, RCF verdicts are ignored.
+Trip = set GPIO26 HIGH in the same tick, set `trip_reason`, record the trip time on the firmware's clock
+(`trippedAt`), emit a `CRITICAL` event, and log ERR. While in STARTING, RCF verdicts are ignored.
+
+RESET guard (D-078): with no speed sensor, the firmware cannot see the fan stop, so it waits `resetMinDelay_s`
+(15 s) after the trip; the fan coasts from 3,800 rpm to under 100 rpm in about 9 s (§6.1, `tauDown_s` 2.5 s), so
+15 s leaves margin. The real firmware must implement the same rule: store `millis()` at the trip and accept RESET
+only when `millis() − trippedAt ≥ 15000`.
 
 Verdicts drive the RCF rows when they arrive (event-driven); limits are evaluated at each window end.
 
@@ -463,9 +468,9 @@ Verdicts drive the RCF rows when they arrive (event-driven); limits are evaluate
 `src/firmware/reference-cpp/` holds Arduino-style C++ (ESP32 core 3.x) written for reading, not compiling in CI.
 Each decision point in the TS firmware carries a comment `// @map <id>` and the same marker sits on the equivalent
 C++ line. IDs: `sm.off.start, sm.calib.done, sm.start.done, sm.normal.alert, sm.normal.soft, sm.warn.alert,
-sm.warn.trip, sm.warn.clear, sm.limit.imax, sm.limit.tmax, sm.limit.stall, sm.estop, sm.reset.ok,
-sm.reset.refused, sm.start.refused, feat.arms, feat.cf, feat.irms, feat.temp, feat.dtdt, feat.rpm, relay.on,
-relay.off, link.lost`. The firmware sets `activeMap` in the snapshot to the last marker it executed; M8 highlights
+sm.warn.trip, sm.warn.clear, sm.limit.imax, sm.limit.tmax, sm.estop, sm.reset.ok,
+sm.reset.refused, sm.start.refused, feat.arms, feat.cf, feat.irms, feat.temp, feat.dtdt, relay.on,
+relay.off, link.lost` (22 ids; the stall-limit and rpm-feature markers went with the tach, D-078). The firmware sets `activeMap` in the snapshot to the last marker it executed; M8 highlights
 that C++ line.
 
 ### 7.7 Logs (`logger.ts`)
@@ -493,13 +498,13 @@ State colours: OFF grey, CALIBRATING and STARTING blue, NORMAL green, WARNING am
 | --- | --- | --- | --- |
 | M1 | 3D viewport | §13 scene; hover tooltip with the live value; selection outline | `viewport`; camera presets `cam-overview`, `cam-fan`, `cam-esp32`, `cam-relay`, `cam-breadboard`; toggles `tgl-flow`, `tgl-labels`, `tgl-airflow`, `tgl-heat`; `sld-vib-exaggeration` (1–50) |
 | M2 | Top bar | `sim-clock` (mm:ss.s), `fps`, mode label | `btn-play`, `sel-speed`, `btn-sim-reset`, `sel-scenario`, `sel-mode` (disabled until P8), `btn-theme`, `btn-help` |
-| M3 | Status panel | `status-badge` (state text), `rcf-gauge` (score / threshold), `dominant-var`, `persistence` ("k/N"), `relay-state` ("CH2 NO closed" / "CH2 open"), `rpm-readout`, `link-indicator`, `sensor-indicator`, `trip-reason` | — |
+| M3 | Status panel | `status-badge` (state text), `rcf-gauge` (score / threshold), `dominant-var`, `persistence` ("k/N"), `relay-state` ("CH2 NO closed" / "CH2 open"), `link-indicator`, `sensor-indicator`, `trip-reason` | — |
 | M4 | Fault injection | Current value of each fault | `sld-imbalance`, `sld-looseness`, `sld-friction`, `sld-overheat`, `sld-sag`, `sld-loss`, `tgl-ds-disconnect`, `tgl-ramp`, `inp-ramp-s`, `btn-clear-faults` |
 | M5 | Operator | `model-status` (UNTRAINED / TRAINING n/180 / READY), latched indicator | `btn-start`, `btn-estop`, `btn-reset` (opens `dlg-reset-confirm` with `btn-reset-confirm`), `btn-train`, `tgl-warm-start`, `inp-threshold`, `inp-n-critical`, `inp-i-max`, `inp-t-max` |
-| M6 | Live charts | Six strips: a_RMS, CF, I_RMS, T (+ dT/dt on a second axis), RPM, score with threshold line; state bands; event markers | `chart-arms`, `chart-cf`, `chart-irms`, `chart-temp`, `chart-rpm`, `chart-score`, `sel-chart-window`, `btn-chart-freeze` |
-| M7 | Data console | Uplink packets (`↑ #1042 NORMAL a=0.121g cf=2.50 I=0.181A T=34.06°C dT=0.00/min rpm=3810`), verdicts (`↓ #1042 score=0.21/0.50 clear dom=cf`), commands, log lines; click a line to expand its JSON | `console`, `flt-packets`, `flt-verdicts`, `flt-commands`, `flt-logs`, `btn-console-pause`, `btn-console-copy`, `btn-export-csv`, `btn-export-json`, `tgl-raw-mpu` |
+| M6 | Live charts | Five strips: a_RMS, CF, I_RMS, T (+ dT/dt on a second axis), score with threshold line; state bands; event markers (no RPM strip: no speed sensing, D-078) | `chart-arms`, `chart-cf`, `chart-irms`, `chart-temp`, `chart-score`, `sel-chart-window`, `btn-chart-freeze` |
+| M7 | Data console | Uplink packets (`↑ #1042 NORMAL a=0.121g cf=2.50 I=0.181A T=34.06°C dT=0.00/min`), verdicts (`↓ #1042 score=0.21/0.50 clear dom=cf`), commands, log lines; click a line to expand its JSON | `console`, `flt-packets`, `flt-verdicts`, `flt-commands`, `flt-logs`, `btn-console-pause`, `btn-console-copy`, `btn-export-csv`, `btn-export-json`, `tgl-raw-mpu` |
 | M8 | Code panel | Read-only C++ from `reference-cpp/`, syntax-highlighted; the active line carries `data-active="true"` | `code-panel`, `tab-code-firmware`, `tab-code-schema`, `tab-code-rcf`, `tgl-follow` |
-| M9 | Inspector | Selected component: name, photo crop, key specs, pins with live values (e.g. `ACS712 OUT 2.533 V → GPIO34 1965 counts`), its wires | `inspector` |
+| M9 | Inspector | Selected component: name, photo crop, key specs, pins with live values (e.g. `ACS712 OUT 2.533 V → GPIO34 1965 counts`), its wires. The fan shows its speed as "simulated, not measured on the bench" (in Live: "estimated from relay CH2"), since nothing measures it (D-078) | `inspector` |
 | M10 | Test log | One row per run: scenario/condition, start, duration, alerted (y/n), time to first alert (s), time from CRITICAL to relay open (ms), reset by operator (y/n), notes | `testlog-table`, `btn-run-start`, `btn-run-stop`, `inp-run-notes`, `btn-testlog-export` |
 | M11 | Guided scenarios | Card with step text, step k/n | `scenario-card`, `btn-scn-next`, `btn-scn-back`, `btn-scn-exit` |
 | M12 | Legend and help | Wire colour key, state colours, shortcuts, glossary (§14) | `legend-modal` |
@@ -509,7 +514,8 @@ Rules:
   with no active fault and `|dtdt| ≤ warmDtdtMax`.
 - Keyboard: Space play/pause, S start, E e-stop, R reset (opens the confirm dialog), 1–5 camera presets, ? help.
 - CSV export columns: every packet field, then `score, threshold, alert, clear, dominant` joined by `seq`.
-- Debug hook: with `?debug=1`, expose `window.__sim = { fps, state, t_s, scenarioDone, lastEvent }` for Playwright.
+- Debug hook: with `?debug=1`, expose `window.__sim = { fps, state, t_s, scenarioDone, lastEvent, resetReady }` for
+  Playwright (`resetReady`: the firmware would accept RESET now, D-077/D-078).
 
 ---
 
@@ -567,10 +573,10 @@ collected, so a restart's thermal transient is part of the baseline (D-041). The
 ### 10.1 Protocol (`shared/protocol.ts`, zod)
 
 ```ts
-export const PROTOCOL_VERSION = 1;
-export const FeatureKey = z.enum(['a_rms_g', 'cf', 'i_rms_A', 't_C', 'dtdt_C_per_min', 'rpm']);
+export const PROTOCOL_VERSION = 2;           // v2 (D-078): no rpm, no STALL
+export const FeatureKey = z.enum(['a_rms_g', 'cf', 'i_rms_A', 't_C', 'dtdt_C_per_min']);
 export const State = z.enum(['OFF', 'CALIBRATING', 'STARTING', 'NORMAL', 'WARNING', 'CRITICAL']);
-export const TripReason = z.enum(['RCF', 'I_MAX', 'T_MAX', 'STALL', 'ESTOP']);
+export const TripReason = z.enum(['RCF', 'I_MAX', 'T_MAX', 'ESTOP']);
 export const WarnReason = z.enum(['RCF', 'I_SOFT', 'T_SOFT', 'SENSOR']);
 
 export const Packet = z.object({            // ESP32 → laptop, one per window
@@ -578,7 +584,7 @@ export const Packet = z.object({            // ESP32 → laptop, one per window
   seq: z.number().int().nonnegative(), ts_ms: z.number().int().nonnegative(), win_ms: z.number().int().positive(),
   a_rms_g: z.number().finite().nonnegative(), cf: z.number().finite().nonnegative(),
   i_rms_A: z.number().finite().nonnegative(), t_C: z.number().finite().nullable(),
-  dtdt_C_per_min: z.number().finite().nullable(), rpm: z.number().finite().nonnegative(),
+  dtdt_C_per_min: z.number().finite().nullable(),
   state: State, relay_ch2: z.enum(['ON', 'OFF']),
   link_lost: z.boolean(), sensor_fault: z.boolean(),
   warn_reason: WarnReason.nullable(), trip_reason: TripReason.nullable(),
@@ -609,8 +615,9 @@ the ESP32 owns persistence, limits and the relay (slides p. 13: "the ESP32 keeps
 - Main → RCF: `loadModel{json}`, `train`, `setThreshold{x}`. RCF → main: `modelStatus{status, progress, reason?}`,
   `verdict{Verdict}` (copy for the UI).
 - `Snapshot`: `t_s, rpm, omega_radps, theta_rad, fanV_V, current_A, tMotor_C, tProbe_C, coilOn, contact ('NC'|'NO'),
-  gpio26, state, faults, accel_g [x, y, z], acsOut_V, adcPin_V, adcCounts, dsReading_C, tachHigh, alertRun,
-  nCritical, linkLost, sensorFault, tripReason, activeMap`.
+  gpio26, state, faults, accel_g [x, y, z], acsOut_V, adcPin_V, adcCounts, dsReading_C, alertRun,
+  nCritical, linkLost, sensorFault, tripReason, trippedAt_s, activeMap`. `rpm` is the plant's speed (for the scene and
+  M9), never a measurement.
 - Pacing in `sim/worker.ts`: each 4 ms wall tick, run `round(elapsedWall · speed / dt)` steps, capped at 0.2 s of
   sim time per tick (if it falls behind, slow down and set `lagging = true`).
 
@@ -693,7 +700,7 @@ Accept: [e2e] the scene renders with no console errors · [human] the layout rea
 **P1.4 Wires.** Files: `shared/wiring.ts` (§13.3 as data), `scene/wires/Wire.tsx`, `Wires.tsx`, `WifiArc.tsx`.
 Each wire is a tube (radius 0.8 mm) along a Catmull–Rom curve from anchor to anchor through via points that lift
 it 10–30 mm above the bench.
-Accept: [auto] `wiring.test.ts` asserts the exact W01–W29 list (endpoints, net, colour) from §13.3 ·
+Accept: [auto] `wiring.test.ts` asserts the exact §13.3 list (W01–W26 since D-082; endpoints, net, colour) ·
 [human] no wire passes through a component.
 
 **P1.5 Cameras and selection.** Files: `scene/cameras.ts`, selection in `Bench.tsx`. Five presets with a 600 ms
@@ -721,7 +728,8 @@ overheat 1.0 drives the steady state to 69.1 ± 0.5 °C · the 63% rise time aft
 **P2.4 Sensors** (§6.4–§6.7). Accept [auto]: ACS712 noiseless output = 2.500 V at 0 A and 2.5 + 0.185·I ·
 ADC counts stay in [0, 4095] and include the INL term · MPU output is quantised to 1/16384 g and clips at ±2 g ·
 DS18B20 first reading is 85.0, later ones are multiples of 0.0625, the disconnect gives −127, and readings appear
-every 1 s, 0.75 s after the request · tach gives 2 edges per revolution (± 1 per window).
+every 1 s, 0.75 s after the request · ~~tach gives 2 edges per revolution (± 1 per window)~~ (superseded by D-078: no
+tach on the bench).
 
 **P2.5 Relay and supply** (§6.8). Accept [auto]: NO closes 10 ms after GPIO26 goes LOW and opens 5 ms after it goes
 HIGH · the fan voltage is 0 while the contact is NC · sag 2 V lowers the fan voltage to 10 V.
@@ -736,7 +744,7 @@ on the CI machine, or reports `lagging` · pause stops the clock.
 ### P3 — Firmware mirror (`src/firmware/`)
 
 **P3.1 Sampler** (§7.1). Accept [auto]: 1,000 accel and ADC samples per window · DS18B20 request/read timing ·
-PCNT edge count matches the plant's revolutions × 2 ± 1.
+~~PCNT edge count matches the plant's revolutions × 2 ± 1~~ (superseded by D-078: no tach on the bench).
 
 **P3.2 Features** (§7.2) + `scripts/features_reference.py` + `tests/fixtures/features_*.json` (5 fixed windows:
 healthy, imbalance, looseness, friction, sensor-null). Accept [auto]: TS features match the NumPy reference
@@ -839,7 +847,7 @@ JSON-lines session file that P8.3 can replay. The bridge only relays and validat
 browser's RCF worker (same TS model and threshold as the simulation). It serves the built `dist/` at
 http://localhost:8765, so live mode runs same-origin.
 **P8.2** `src/bridge/wsClient.ts` and `sel-mode` = Live: the sim worker pauses and the store is fed from bridge
-packets. The scene runs from packet fields (rpm drives the blade angle, `relay_ch2` the relay arm, `state` the badge,
+packets. The scene runs from packet fields (`relay_ch2` the relay arm and an estimated blade speed — D-078, `state` the badge,
 `t_C` the heat tint, `a_rms_g` the jitter), and every snapshot field the board doesn't send shows "—" in M3 and M9.
 M4 is disabled; M5 commands go to the bridge, with a visible note that E-STOP over Wi-Fi is not a safety stop. On
 the published Pages site, Live shows a message to run the bridge and open http://localhost:8765.
@@ -860,9 +868,9 @@ ones · [human] real packets render with no change outside `src/bridge/` · [hum
 | ID | Guided | Script (sim time) | Must hold [auto] |
 | --- | --- | --- | --- |
 | S1 baseline | yes | run 600 s | never CRITICAL · ≤ 2 alert verdicts · max score < threshold · final state NORMAL |
-| S2 imbalance | yes | t=60 imbalance_g 0.3 step; end 120 | first alert ≤ 63 s · CRITICAL (RCF) ≤ 70 s · dominant at first alert = a_rms_g · RELAY_OPEN ≤ CRITICAL + 20 ms · rpm < 100 by CRITICAL + 15 s |
+| S2 imbalance | yes | t=60 imbalance_g 0.3 step; end 120 | first alert ≤ 63 s · CRITICAL (RCF) ≤ 70 s · dominant at first alert = a_rms_g · RELAY_OPEN ≤ CRITICAL + 20 ms · plant rpm < 100 by CRITICAL + 15 s |
 | S3 looseness | no | t=60 looseness 0.6 step; end 120 | CRITICAL ≤ 70 s · dominant ∈ {a_rms_g, cf} |
-| S4 friction | yes | t=60 friction → 0.5, ramp 30 s; end 140 | CRITICAL ≤ 75 s · reason ∈ {RCF, I_MAX} · dominant ∈ {i_rms_A, rpm} |
+| S4 friction | yes | t=60 friction → 0.5, ramp 30 s; end 140 | CRITICAL ≤ 75 s · reason ∈ {RCF, I_MAX} · dominant = i_rms_A (rpm is not a feature, D-078) |
 | S5 overheat | yes | t=60 overheat 1.0 step; end 140 | CRITICAL ≤ 80 s · dominant ∈ {t_C, dtdt_C_per_min} |
 | S6 wifi-loss | yes | t=30 packetLoss 1.0; t=60 overheat 1.0; end 420 | link_lost by 36 s · no verdict delivered after 30.1 s · CRITICAL with reason T_MAX at 280–340 s |
 | S7 sensor | no | t=60 ds18b20Disconnect on; end 300 | first −127 reading by 61 s · sensor_fault and WARNING (SENSOR) by 72 s · never CRITICAL |
@@ -886,14 +894,13 @@ arrangement.
 | id | Part | Size (x × y × z, mm) | Position (m) | Notes |
 | --- | --- | --- | --- | --- |
 | fan | Delta AFB0712HB on a stand | 70 × 70 × 15 | (−0.20, 0.055, −0.05) | Face in the x–y plane, airflow +z; 7 blades; stand 20 mm |
-| mpu6050 | GY-521 | 21 × 1.6 × 16 | (−0.20, 0.091, −0.05) | Flat on the frame's top edge |
+| mpu6050 | GY-521 | 21 × 22 × 3.5 | (−0.20, 0.1011, −0.05) | Blue 21 × 16 × 1 mm PCB standing on the frame's top edge in the fan plane (X right, Y up, Z along the fan axis); 8-pin right-angle header along its top edge, pins up (22 mm with the pins); procedural, no texture (D-084) |
 | ds18b20 | Probe tip | Ø6 × 50 | (−0.20, 0.055, −0.06) | Taped to the hub, cable 1 m coiled |
-| breadboard | 830-point | 165 × 9.5 × 55 | (0.05, 0.005, 0.08) | Long axis along x; left rail +=3V3, right rail +=5 V, both − = GND |
-| esp32 | DevKit V1 30-pin | 52 × 13 × 28 | (0.02, 0.017, 0.08) | Straddles the centre channel; USB-C toward −x |
-| r_pu_ds | 4.7 kΩ | 6 × 2.3 × 2.3 | on breadboard | DS18B20 pull-up |
-| r_pu_tach | 10 kΩ | 6 × 2.3 × 2.3 | on breadboard | Tach pull-up |
-| r_div_top / r_div_bot | 10 kΩ / 20 kΩ | 6 × 2.3 × 2.3 | on breadboard | ACS712 divider |
-| acs712 | Current module | 31 × 12 × 13 | (0.00, 0.006, −0.10) | Terminals toward −x |
+| breadboard | 830-point | 165 × 9.5 × 55 | (0.05, 0.005, 0.08) | Long axis along x; left rail + = 3V3, − = GND; right rails unused; 5 V node on row 25 (D-082) |
+| esp32 | DevKit V1 30-pin | 52 × 13 × 28 | (0.05, 0.0065, 0.02) | Off the breadboard: pins down on the bench behind its A–E side, wired to its pins; turned 180°, USB-C toward +x (the laptop) (D-082) |
+| r_pu_ds1 / r_pu_ds2 | 10 kΩ / 10 kΩ | 6 × 2.3 × 2.3 | on breadboard | DS18B20 pull-up: A18 and A19 to the 3V3 rail, in parallel through the C18–C19 jumper (5 kΩ) |
+| r_div_top / r_div_bot | 10 kΩ / 10 kΩ | 6 × 2.3 × 2.3 | on breadboard | ACS712 divider (× 0.5, D-079) |
+| acs712 | Current module | 31 × 12 × 13 | (0.00, 0.006, −0.10) | Screw terminals on the left (−x), header pins on the right (+x); IP+ is the top (−z) screw |
 | relay | 2-ch module | 50 × 19 × 38 | (0.14, 0.0095, −0.08) | Terminals toward −z; CH1 marked unused |
 | dcjack | Female barrel jack, screw terminals | 25 × 12 × 15 | (−0.12, 0.006, −0.15) | OPEN-6 |
 | adapter | JSY-1220 12 V 1 A | 75 × 30 × 45 | (−0.30, 0.0225, −0.17) | Barrel cable to `dcjack` |
@@ -902,52 +909,56 @@ arrangement.
 ### 13.3 Wires (`shared/wiring.ts`)
 
 Colour key: red `#d32f2f` (12 V), black `#212121` (GND), orange `#f57c00` (5 V), pink `#ec407a` (3V3), blue `#1e88e5`
-(SDA), light blue `#4fc3f7` (SCL), yellow `#fdd835` (1-Wire), green `#43a047` (analog), violet `#8e24aa` (tach),
+(SDA), light blue `#4fc3f7` (SCL), yellow `#fdd835` (1-Wire), green `#43a047` (analog),
 white `#eeeeee` (relay control), grey `#9e9e9e` (USB, barrel cable).
 
-`bb.*` anchors: `bb.railL.p` (3V3), `bb.railL.n` (GND), `bb.railR.p` (5 V), `bb.railR.n` (GND), and nodes
-`bb.node.dq`, `bb.node.tach`, `bb.node.divTop`, `bb.node.divMid` (breadboard rows chosen by the agent).
-A wire to an ESP32 pin lands in the breadboard hole in the same row, outside the module; where no free hole exists,
-it attaches at the pin.
+`bb.*` anchors (D-082): `bb.railL.p` (left red rail, 3V3) and `bb.railL.n` (left blue rail, GND; every GND lands
+here); a wire to a rail takes a free rail hole nearby. The right rails are unused. Terminal holes are named as in the
+team's wiring document: rows 1–63 with row 1 at the top (the +x end), columns A–E left of the channel (A outermost),
+F–J right of it, so `bb.A25` is column A of row 25 and a wire to it lands in exactly that hole. A–E of one row are
+one node, F–J another. The ESP32 is not on the breadboard: it sits on the bench behind the A–E side, and wires to
+its pins attach at the pin.
 
 | ID | From | To | Net | Colour |
 | --- | --- | --- | --- | --- |
 | W01 | adapter.plug | dcjack.barrel | V12 | grey |
-| W02 | dcjack.plus | acs712.ipPlus | V12 | red |
-| W03 | acs712.ipMinus | relay.com2 | V12 | red |
-| W04 | relay.no2 | fan.red | V12_SW | red |
-| W05 | fan.black | dcjack.minus | GND | black |
-| W06 | dcjack.minus | bb.railR.n | GND | black |
-| W07 | esp32.VIN | bb.railR.p | V5 | orange |
-| W08 | esp32.3V3 | bb.railL.p | V3V3 | pink |
-| W09 | esp32.GND | bb.railL.n | GND | black |
-| W10 | bb.railL.n | bb.railR.n | GND | black |
-| W11 | bb.railR.p | acs712.vcc | V5 | orange |
-| W12 | bb.railR.n | acs712.gnd | GND | black |
-| W13 | bb.railR.p | relay.jdvcc | V5 | orange |
-| W14 | bb.railR.n | relay.gnd_a | GND | black |
-| W15 | bb.railL.p | relay.vcc | V3V3 | pink |
-| W16 | bb.railL.n | relay.gnd | GND | black |
-| W17 | bb.railL.p | mpu6050.vcc | V3V3 | pink |
-| W18 | bb.railL.n | mpu6050.gnd | GND | black |
-| W19 | mpu6050.sda | esp32.D21 | SDA | blue |
-| W20 | mpu6050.scl | esp32.D22 | SCL | light blue |
-| W21 | ds18b20.red | bb.railL.p | V3V3 | pink |
-| W22 | ds18b20.black | bb.railL.n | GND | black |
-| W23 | ds18b20.yellow | bb.node.dq | ONEWIRE | yellow |
-| W24 | bb.node.dq | esp32.D4 | ONEWIRE | yellow |
-| W25 | acs712.out | bb.node.divTop | ANALOG | green |
-| W26 | bb.node.divMid | esp32.D34 | ANALOG | green |
-| W27 | fan.blue | bb.node.tach | TACH | violet |
-| W28 | bb.node.tach | esp32.D27 | TACH | violet |
-| W29 | esp32.D26 | relay.in2 | RELAY_IN | white |
+| W02 | dcjack.plus | relay.com2 | V12 | red |
+| W03 | relay.no2 | acs712.ipPlus | V12_SW | red |
+| W04 | acs712.ipMinus | fan.red | V12_SW | red |
+| W05 | fan.black | dcjack.minus | GND12 | black |
+| W06 | esp32.VIN | bb.A25 | V5 | orange |
+| W07 | acs712.vcc | bb.B25 | V5 | orange |
+| W08 | relay.vcc | bb.C25 | V5 | orange |
+| W09 | esp32.3V3 | bb.railL.p | V3V3 | pink |
+| W10 | esp32.GND | bb.railL.n | GND | black |
+| W11 | acs712.gnd | bb.railL.n | GND | black |
+| W12 | relay.gnd | bb.railL.n | GND | black |
+| W13 | esp32.D26 | relay.in2 | RELAY_IN | white |
+| W14 | acs712.out | bb.A30 | ANALOG | green |
+| W15 | bb.D35 | esp32.D34 | ANALOG | green |
+| W16 | ds18b20.red | bb.railL.p | V3V3 | pink |
+| W17 | ds18b20.black | bb.railL.n | GND | black |
+| W18 | ds18b20.yellow | bb.D18 | ONEWIRE | yellow |
+| W19 | bb.B18 | esp32.D4 | ONEWIRE | yellow |
+| W20 | bb.C18 | bb.C19 | ONEWIRE | yellow |
+| W21 | mpu6050.vcc | bb.railL.p | V3V3 | pink |
+| W22 | mpu6050.gnd | bb.railL.n | GND | black |
+| W23 | mpu6050.sda | bb.A45 | SDA | blue |
+| W24 | bb.B45 | esp32.D21 | SDA | blue |
+| W25 | mpu6050.scl | bb.A46 | SCL | light blue |
+| W26 | bb.B46 | esp32.D22 | SCL | light blue |
 
-Resistors (placed in breadboard holes, not wires): `r_pu_ds` between `bb.node.dq` and `bb.railL.p`; `r_pu_tach`
-between `bb.node.tach` and `bb.railL.p`; `r_div_top` between `bb.node.divTop` and `bb.node.divMid`; `r_div_bot`
-between `bb.node.divMid` and `bb.railL.n`. USB: a grey cable `esp32.usb → laptop.usb` (not in the wire list,
+Not connected: the fan's blue tach lead (drawn loose, D-078), relay IN1, NC2 and header A (jumper fitted, D-080),
+GY-521 XDA, XCL, AD0 and INT. There is no wire from the 12 V supply's − to the breadboard (no common ground, D-081).
+
+Resistors (placed in breadboard holes, not wires; all 10 kΩ): `r_pu_ds1` between `bb.A18` and `bb.railL.p`;
+`r_pu_ds2` between `bb.A19` and `bb.railL.p` (with the C18–C19 jumper W20 they are two 10 kΩ in parallel: a 5 kΩ
+DS18B20 pull-up); `r_div_top` between `bb.B30` and `bb.B35`; `r_div_bot` between `bb.C35` and `bb.railL.n` (the
+ACS712 OUT divider, × 0.5, read at D35). USB: a grey cable `esp32.usb → laptop.usb` (not in the wire list,
 always energised). Wi-Fi: `WifiArc` between `esp32.antenna` and `laptop.screenTop`.
 
-Energised rules: V12, GND: always · V12_SW: iff `contact === 'NO'` · V5, V3V3: always (USB powered) · data nets:
+Energised rules: V12, GND12, GND: always (GND12 is the 12 V supply's return; it never meets GND, D-081) · V12_SW: iff
+`contact === 'NO'` · V5, V3V3: always (USB powered) · data nets:
 pulses per §11 P6.2 · RELAY_IN: lit while GPIO26 is LOW.
 
 ---

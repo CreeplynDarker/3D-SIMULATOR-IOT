@@ -1,11 +1,11 @@
 // Guided scenarios for M11 (spec §8.2, §12): the text of each step, as data the team can edit without touching a
 // component. A step shows once its trigger fires: a sim time, the first event of a type (plus an offset), or the end
 // of the run. Each step names the camera preset to switch to and the M6 chart to watch.
-import type { CONFIG } from './config.ts';
+import { CONFIG } from './config.ts';
 import type { SimEvent, SimEventType } from './messages.ts';
 
 export type GuidedCamera = 'overview' | 'fan' | 'esp32' | 'relay' | 'breadboard';
-export type GuidedChart = 'chart-arms' | 'chart-cf' | 'chart-irms' | 'chart-temp' | 'chart-rpm' | 'chart-score';
+export type GuidedChart = 'chart-arms' | 'chart-cf' | 'chart-irms' | 'chart-temp' | 'chart-score';
 export type GuidedTrigger = { t_s: number } | { event: SimEventType; after_s?: number } | { done: true };
 
 export interface GuidedStep {
@@ -32,8 +32,8 @@ const START_STEP: GuidedStep = {
   when: { t_s: 0 },
   title: 'START',
   camera: 'overview',
-  chart: 'chart-rpm',
-  watch: 'The relay CH2 LED lights and the fan spins up on the RPM chart.',
+  chart: 'chart-irms',
+  watch: 'The relay CH2 LED lights, the fan spins up and the current settles near 0.18 A on the I_RMS strip.',
   injected: 'Nothing: a healthy fan.',
   meaning: 'CALIBRATING measures the current sensor at zero (relay open), then STARTING closes CH2 and gives the fan 10 s to reach speed. RCF verdicts are ignored meanwhile.', // prettier-ignore
 };
@@ -62,7 +62,7 @@ const criticalStep = (watch: string, injected: string, meaning: string): GuidedS
   when: { event: 'CRITICAL' },
   title: 'CRITICAL: the ESP32 opens relay CH2',
   camera: 'relay',
-  chart: 'chart-rpm',
+  chart: 'chart-irms',
   watch,
   injected,
   meaning,
@@ -81,7 +81,7 @@ const doneStep = (watch: string, injected: string, meaning: string): GuidedStep 
   meaning,
 });
 
-const LATCHED = 'The fan stays off until the operator presses RESET (accepted below 100 rpm) and then START.';
+const LATCHED = `The fan stays off until the operator presses RESET (accepted ${CONFIG.firmware.resetMinDelay_s} s after the trip, once the fan has coasted down) and then START.`;
 
 export const GUIDED: readonly GuidedScenario[] = [
   {
@@ -95,7 +95,7 @@ export const GUIDED: readonly GuidedScenario[] = [
         title: 'Every feature holds still',
         camera: 'breadboard',
         chart: 'chart-arms',
-        watch: 'a_RMS, crest factor, current, temperature and RPM all wobble only by sensor noise.',
+        watch: 'a_RMS, crest factor, current and temperature all wobble only by sensor noise.',
         injected: 'Nothing.',
         meaning: 'NORMAL: each verdict is "clear", so the persistence counter stays at 0/5.',
       },
@@ -118,7 +118,11 @@ export const GUIDED: readonly GuidedScenario[] = [
         meaning: 'Still NORMAL: the ESP32 waits for the next 1 s window and the RCF verdict.',
       },
       warningStep('chart-score', 'The score leaps over the threshold; the dominant variable reads a_rms_g.', 'Imbalance 0.3 g.'), // prettier-ignore
-      criticalStep('The relay arm moves, W04 dims and the RPM falls toward zero.', 'Imbalance 0.3 g.', RCF_TRIP),
+      criticalStep(
+        'The relay arm moves, W04 dims, the current drops to zero and the fan coasts down.',
+        'Imbalance 0.3 g.',
+        RCF_TRIP,
+      ),
       doneStep('The fan has coasted to a stop.', 'Imbalance 0.3 g (still set).', LATCHED),
     ],
   },
@@ -132,12 +136,12 @@ export const GUIDED: readonly GuidedScenario[] = [
         when: { t_s: 60 },
         title: 'Friction ramps up',
         camera: 'fan',
-        chart: 'chart-rpm',
-        watch: 'RPM sags while the current climbs on the I_RMS strip.',
+        chart: 'chart-irms',
+        watch: 'The current climbs on the I_RMS strip as the bearing drags the fan.',
         injected: 'Bearing friction rising from 0 to 0.5 over 30 s.',
         meaning: 'NORMAL until the deviation is large enough for the RCF to isolate it.',
       },
-      warningStep('chart-irms', 'The dominant variable is i_rms_A or rpm.', 'Friction ramping to 0.5.'),
+      warningStep('chart-irms', 'The dominant variable reads i_rms_A.', 'Friction ramping to 0.5.'),
       criticalStep('The relay opens and the fan stops.', 'Friction ramping to 0.5.', 'CRITICAL: tripped by the RCF (or, if the current stays above 0.30 A for 3 windows, by the local I_MAX limit). The trip is latched.'), // prettier-ignore
       doneStep('The friction stays, so a restart would trip again.', 'Friction 0.5.', LATCHED),
     ],

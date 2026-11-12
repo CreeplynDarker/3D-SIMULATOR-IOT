@@ -66,11 +66,12 @@ export function createFirmware(opts: FirmwareOptions): Firmware {
   const featureText = () => {
     const f = lastFeatures;
     if (!f) return '';
-    return ` a_rms=${f.a_rms_g.toFixed(3)}g cf=${f.cf.toFixed(2)} i_rms=${f.i_rms_A.toFixed(3)}A t=${f.t_C?.toFixed(2) ?? 'null'}C rpm=${f.rpm.toFixed(0)}`; // prettier-ignore
+    return ` a_rms=${f.a_rms_g.toFixed(3)}g cf=${f.cf.toFixed(2)} i_rms=${f.i_rms_A.toFixed(3)}A t=${f.t_C?.toFixed(2) ?? 'null'}C`; // prettier-ignore
   };
 
   /** Runs one trigger through the state machine and records its logs, events and timers. */
   const fire = (trigger: Trigger, t_s: number): Outcome => {
+    fsm.now_s = t_s;
     const out = transition(fsm, trigger, cfg);
     for (const l of out.log) logger.log(t_s, l.level, 'fsm', l.text.startsWith('trip ') ? l.text + featureText() : l.text); // prettier-ignore
     for (const type of out.events) emit(t_s, type, out.map ?? undefined);
@@ -105,7 +106,6 @@ export function createFirmware(opts: FirmwareOptions): Firmware {
     i_rms_A: f.i_rms_A,
     t_C: temp.t_C,
     dtdt_C_per_min: temp.dtdt_C_per_min,
-    rpm: f.rpm,
     state: fsm.state,
     relay_ch2: fsm.gpio26 === GPIO_LOW ? 'ON' : 'OFF',
     link_lost: limits.linkLost,
@@ -119,7 +119,6 @@ export function createFirmware(opts: FirmwareOptions): Firmware {
     const f = computeFeatures(w, counts0, cfg);
     const temp = tempFeatures(temps, t_s, cfg);
     lastFeatures = { ...f, t_C: temp.t_C };
-    fsm.rpm = f.rpm;
     const r = evaluateLimits(limits, { state: fsm.state, tEnd_s: t_s, ...f, t_C: temp.t_C, lastValidTemp_s }, cfg);
     if (r.sensorChanged) {
       logger.log(t_s, r.sensorFault ? 'WARN' : 'INFO', 'fw', r.sensorFault ? 'sensor fault: no valid DS18B20 reading' : 'sensor ok'); // prettier-ignore
@@ -185,6 +184,7 @@ export function createFirmware(opts: FirmwareOptions): Firmware {
       linkLost: limits.linkLost,
       sensorFault: limits.sensorFault,
       tripReason: fsm.tripReason,
+      trippedAt_s: fsm.trippedAt_s,
       activeMap: fsm.activeMap,
       traffic: { ...traffic },
     }),

@@ -7,9 +7,11 @@ describe('config', () => {
   });
 
   it('keeps the OPEN-item defaults from §2', () => {
-    expect(CONFIG.rcf.features).toContain('rpm'); // OPEN-1
+    // OPEN-1 closed "no" (D-078): the report's five features, no speed sensing on the bench
+    expect(CONFIG.rcf.features).toEqual(['a_rms_g', 'cf', 'i_rms_A', 't_C', 'dtdt_C_per_min']);
+    expect(Object.keys(CONFIG.rcf.stdFloor)).toEqual([...CONFIG.rcf.features]);
     expect(CONFIG.sensors.acs712.sens_VperA).toBe(0.185); // OPEN-2
-    expect(CONFIG.fan.tachPulsesPerRev).toBe(2); // OPEN-3
+    expect('tachPulsesPerRev' in CONFIG.fan).toBe(false); // OPEN-3: moot, the tach is not wired
     expect(CONFIG.fan.blades).toBe(7); // OPEN-7
   });
 

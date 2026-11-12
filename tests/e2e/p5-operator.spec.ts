@@ -27,8 +27,8 @@ test('M5: every control exists; READY at boot; start only in OFF, reset only in 
   await state(page, 'CRITICAL');
   await expect(page.getByTestId('latched-indicator')).toHaveText('LATCHED');
   await expect(page.getByTestId('btn-reset')).toBeEnabled();
-  // RESET is accepted below resetMaxRpm as the firmware measures it (the last window's tach), not the plant's rpm
-  await page.waitForFunction(() => (window.__sim?.packetRpm ?? 1e9) < 100, undefined, { timeout: 60_000 });
+  // The firmware accepts RESET resetMinDelay_s after the trip: the bench has no speed sensor (D-078)
+  await page.waitForFunction(() => window.__sim?.resetReady === true, undefined, { timeout: 60_000 });
   await page.getByTestId('btn-reset').click();
   await expect(page.getByTestId('dlg-reset-confirm')).toBeVisible();
   await page.getByTestId('btn-reset-confirm').click();

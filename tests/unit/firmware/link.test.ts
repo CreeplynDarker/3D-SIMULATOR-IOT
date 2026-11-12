@@ -17,7 +17,6 @@ const packet = (seq: number): Packet => ({
   i_rms_A: 0.18,
   t_C: 34,
   dtdt_C_per_min: 0,
-  rpm: 3800,
   state: 'NORMAL',
   relay_ch2: 'ON',
   link_lost: false,
@@ -60,7 +59,7 @@ function run(end_s: number, loss: (t: number) => number) {
       const seq = Math.round(t) - 1;
       const p = packet(seq);
       sendPacket(link, p, t, loss(t), (sent) => receiveVerdict(link, verdictFor(sent), t));
-      const r = evaluateLimits(limits, { state: 'NORMAL', tEnd_s: t, i_rms_A: 0.18, rpm: 3800, t_C: 34, lastValidTemp_s: t }, CONFIG); // prettier-ignore
+      const r = evaluateLimits(limits, { state: 'NORMAL', tEnd_s: t, i_rms_A: 0.18, t_C: 34, lastValidTemp_s: t }, CONFIG); // prettier-ignore
       if (r.linkLost && lostAt === null) lostAt = t;
     }
   }

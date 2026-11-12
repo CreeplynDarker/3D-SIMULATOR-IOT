@@ -709,3 +709,148 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   the debug-only `window.__sim.packetRpm` (an addition to the §8.2 hook). p5-shell waits for the canvas to mount
   (`window.__scene`, which its theme test calls) before it stops the loop. No limit or accept item changed; the
   rendering specs (camera, scene, p6-fan, p6-flow, p6-heat, p6-relay, p7-perf) still render.
+
+- **D-078 · 2026-11-12 · No speed sensing on the real bench: OPEN-1 closed "no", protocol v2.** The team's wiring
+  document leaves the fan's blue tach wire free, so nothing on the bench measures speed. This reverses OPEN-1's
+  2026-10-30 "yes" (D-001's six features). (a) `rcf.features` is the report's five (`a_rms_g, cf, i_rms_A, t_C,
+  dtdt_C_per_min`); the rpm std floor is gone. (b) Protocol v2 (rule 5): `rpm` leaves `Packet` and `FeatureKey`,
+  `STALL` leaves `TripReason`, `PROTOCOL_VERSION` = 2; `public/schema/*` regenerated (a v1 packet, or one carrying
+  `rpm`, is now dropped by the bridge); `bridge-py` tests and `fake_esp32.py` speak v2; the S2 session fixture is
+  regenerated. (c) Firmware, TS and reference C++ together (rule 10): no PCNT sampling, no `rpm` feature, no STALL
+  limit; the `feat.rpm` and `sm.limit.stall` markers are gone (§7.6 lists 22 ids). The config loses
+  `fan.tachPulsesPerRev` (OPEN-3 is moot), `firmware.stallFraction`, `firmware.nStall` and `firmware.resetMaxRpm`.
+  (d) **New RESET rule** (`firmware.resetMinDelay_s` = 15): the firmware records the time of each trip on its own clock
+  and accepts RESET only `resetMinDelay_s` or more after it; earlier, it refuses with `WARN reset refused: wait 15 s
+  after the trip`. The plant's fan coasts from 3,800 rpm to under 100 rpm in about 9 s (§6.1), so 15 s leaves margin.
+  For the team's real firmware: store `millis()` in `trip()` and test `millis() − trippedAtMs >= 15000` in the RESET
+  handler (`reference-cpp/state_machine.cpp`, `firmwareMs()` in `main.cpp`). The snapshot carries `trippedAt_s`, and
+  the e2e specs wait on the debug-only `window.__sim.resetReady` (replacing D-077's `packetRpm`). (e) The plant still
+  models the speed (blades, vibration, current), but it never reaches the firmware; `sim/sensors/tach.ts` and the
+  snapshot's `tachHigh` are removed. M3 loses `rpm-readout`, M6 loses `chart-rpm` (five strips in the 3 × 2 grid),
+  the M7 packet line and CSV lose `rpm`. M9 shows the fan speed as "simulated, not measured on the bench". In Live
+  and Replay the snapshot's speed is an estimate from `relay_ch2` (first-order spin-up to `rpmRated` with `tauUp_s`
+  while ON, coast-down with `tauDown_s` while OFF; `bridge/liveSnapshot.ts`), shown as "estimated from relay CH2",
+  and `trippedAt_s` is the first CRITICAL packet's time. (f) The tach wires W27/W28, `r_pu_tach`, the TACH net and
+  its violet legend entry are removed; the fan's blue lead stays drawn as a loose pigtail (the full rewiring is
+  D-082). (g) S4's expected dominant variable is `i_rms_A` alone (§12); guided cards that pointed at the RPM chart
+  now point at I_RMS, and S2's done text names the 15 s RESET delay. The scenario tests' "rpm < 100" checks read the
+  plant's speed, which still exists. (h) P8.4 calibration can't fit `fan.rpmRated`, `tauUp_s` or `tauDown_s` any
+  more: they move to the kept keys, the relay's switch times come from `relay_ch2` (middle of the window where it
+  changed), and the stopped-fan windows are those `coastSettleTaus · tauDown_s` (config) after the stop. Its
+  simulated test now shifts only the fittable keys. (i) `tests/fixtures/normalise.json` drops its rpm column (the
+  NumPy per-column mean and std are unchanged); the feature fixtures, `rcf_dataset.json` and the Python
+  references were regenerated; `public/models/default-model.json` was retrained with five features (holdout max
+  0.159, was 0.171). S1–S8 all pass with no tuning. (j) Two P2/P3 accept items about the tach are struck through in
+  §11 as superseded. Affects `src/shared/{protocol,config,messages,guided,calibration,wiring,components}.ts`,
+  `src/firmware/*` (TS and C++), `src/sim/{plant.ts,sensors/tach.ts}`, `src/bridge/liveSnapshot.ts`, `src/ui/*`,
+  `src/scene/*`, `src/harness/calibrate.ts`, `scripts/*`, `bridge-py/*`, `public/`, `tests/`, `PENDING_CHECKS.md`.
+
+- **D-079 · 2026-11-12 · ACS712 divider is 10 kΩ / 10 kΩ.** The wiring document puts two 10 kΩ resistors between
+  ACS712 OUT and GND, with the middle to GPIO34, so `sensors.divider.rBottom_ohm` = 10000 (was 20000). This is a
+  hardware fact, not §5.2 tuning. The divider halves the output: 2.5 V at 0 A reads 1.25 V at the pin, and the
+  ACS712-05B's full 0.5–4.5 V range maps to 0.25–2.25 V, inside the ADC's 11 dB span. Ideal counts (with the INL
+  term, no noise): **1583 at 0 A and 1606 at 0.18 A** (were 2143 and 2173); one count is now 8.05 mA (was 6.04 mA),
+  so the ADC's 2-count noise weighs more on I_RMS. The reference C++ (`R_BOTTOM`, the nominal `counts0` = 1578 before
+  calibration) follows (rule 10); `r_div_bot` is 10 kΩ in §13.2, in 3D (brown-black-orange bands) and in M9. Model,
+  fixtures and Python references regenerated: holdout max 0.203 (0.159 before), S1–S8 pass with no tuning. Affects
+  `src/shared/config.ts`, `src/firmware/reference-cpp/{features,main}.cpp`, `src/shared/components.ts`,
+  `src/scene/models/geometry.ts`, `src/ui/inspectorData.ts`, `public/models/`, `tests/fixtures/`, two sensor tests.
+
+- **D-080 · 2026-11-12 · Relay module on 5 V with the JD-VCC jumper fitted.** The wiring document keeps the
+  JD-VCC–VCC jumper on, so the whole relay module (optocoupler side and coils) runs on 5 V: its VCC is fed from
+  the breadboard's 5 V node, and there is no separate JD-VCC wire or header-A GND wire. This replaces the earlier
+  split supply (JD-VCC = 5 V, VCC = 3V3, jumper removed, §1.2). Wires: W13 (5 V → JD-VCC) and W14 (header-A GND) are
+  removed, and W15 now brings 5 V (net V5, orange) to `relay.vcc`. In this commit it comes from the 5 V rail; D-082
+  moves it to hole C25 of the 5 V node. W16 (GND), W29 (IN2 ← D26) are unchanged; IN1 and NC2 stay free. The 3D
+  model shows a black jumper cap across the JD-VCC and VCC pins of header A (`relay:jumper`); M9 says so. The plant
+  is unchanged: the coil is on while GPIO26 is LOW. **Hardware note for the team:** with VCC = 5 V, an ESP32 HIGH of
+  3.3 V leaves about 1.7 V across the input optocoupler's LED and its series resistor, which on some modules keeps a
+  little current flowing, so the relay may not release. This is now a `[human]` check in PROGRESS. If CH2 stays on
+  with IN2 HIGH, switch GPIO26 to open-drain (or to an input) for OFF, so IN2 floats up to 5 V through the module's
+  own pull-up. Affects `src/shared/wiring.ts`, `src/scene/models/geometry.ts`, `src/ui/inspectorData.ts`, §1.2, §1.5,
+  §13.3, `tests/unit/shared/wiring.test.ts`, `tests/unit/scene/models.test.ts`.
+
+- **D-081 · 2026-11-12 · 12 V path order and no common ground.** The wiring document runs the 12 V line as jack + →
+  relay COM2 (W02, V12) → NO2 → ACS712 top screw IP+ (W03) → bottom screw IP− → fan red (W04) → fan black → jack −
+  (W05). The ACS712 now sits in the switched part of the line (after NO2), so W03 and W04 are both `V12_SW`: lit only
+  while CH2 is closed. W04 is still the wire to the fan, so the guided text and the P6.3 checks about W04 dimming
+  hold. The ACS712 keeps its screw terminals on the left (−x) and its pins on the right (+x), as §13.2 already had;
+  IP+ is the top (−z) screw, so current flows IP+ → IP− and reads positive. The jack's − goes only to the fan:
+  **there is no wire from the 12 V supply's − to the breadboard GND**, so W06 is removed. To keep that visible in the
+  data, the 12 V return gets its own net, `GND12` (black, always energised), distinct from the ESP32 side's `GND`.
+  The plant needs no change: the current through the sensor is the fan current either way, and it is zero with the
+  relay open, as the CALIBRATING zero assumes. Affects `src/shared/wiring.ts` (Net, W02–W06),
+  `src/ui/inspectorData.ts`, §1.2, §13.2, §13.3, `tests/unit/{shared/wiring,ui/inspectorData,scene/anim}.test.ts`.
+
+- **D-082 · 2026-11-12 · Breadboard wired hole for hole from the team's document.** (a) Naming: the document numbers
+  the board's rows 1–63 from the top and names columns A–E left of the channel. Our `BREADBOARD` calls those
+  "columns" and "rows", with column 1 at the +x end and row a the outermost on −z, so the document's hole `A25` is
+  `bbHole_m(25, 'a')`. Every terminal hole is now an anchor by its document name (`bb.A1`…`bb.J63`). A wire to one
+  lands in exactly that hole, and A–E of a row (or F–J) count as one node (`bbNodeOf`, used by M9). The agent-chosen
+  nodes (`bb.node.*`, `BB_NODE_COLUMNS`) are gone. (b) The wire list is the document's, W01–W26 (§13.3): the 12 V
+  path as in D-081; the 5 V node on row 25 (VIN → A25, ACS712 VCC → B25, relay VCC → C25); 3V3 from the ESP32 on
+  the left red rail; every GND on the left blue rail; no right-rail 5 V and no GND bridge between the rails; IN2
+  straight to D26. ACS712 OUT goes into A30, with 10 kΩ B30–B35 and 10 kΩ C35 to the GND rail; GPIO34 reads D35. The
+  DS18B20's yellow goes into D18 and B18 to D4; its pull-up is two 10 kΩ (A18 and A19 to the 3V3 rail) joined by a
+  C18–C19 jumper (W20), i.e. 5 kΩ instead of the 4.7 kΩ assumed before (the plant's 1-Wire model has no pull-up
+  term, so nothing else changes). The MPU's SDA goes into A45 with B45 to D21, and SCL into A46 with B46 to D22.
+  The fan's blue lead stays loose. Wires W01–W05 keep their IDs (the e2e checks on W02, W04 and W05 hold); the rest
+  are renumbered in the document's order. (c) **The ESP32 is off the breadboard.** The document's nodes use columns
+  A–E of rows 18 to 46. A DevKit V1 straddling the board spans 15 rows of pins and about 20 rows of PCB, covering
+  A–E, and no 20-row stretch of a 63-row board is free of those nodes. The document also wires straight to ESP32
+  pins ("B18 → esp32.D4"), so the ESP32 must sit off the board. It now lies pins-down on the bench just behind the
+  A–E side, at (0.05, 0.0065, 0.02) m. It is turned 180° so VIN faces A25, D34 faces D35, D21 and D22 run parallel
+  to B45 and B46, and the USB-C points at the laptop, so the USB cable runs straight across. The `cam-esp32` preset
+  follows. Its exact place on the real bench is a `[human]` check. (d) Resistors: `r_pu_ds1` and `r_pu_ds2` replace
+  `r_pu_ds`, all four are 10 kΩ, and a resistor's leads now span its own two holes (B30–B35 is five rows).
+  `r_div_bot` arches 3.5 mm higher so it clears `r_div_top`'s lead in B35. The holes under the bodies (L− 18 and 19,
+  A35) are kept free for wires. `route.test.ts` passes unchanged: no wire crosses a component, no two wires share a
+  hole, travel 10–30 mm. (e) The Prettier format slip in `wiring.ts` from the previous commit is fixed here.
+  Affects `src/shared/{wiring,components}.ts`, `src/scene/{anchors,cameras}.ts`, `src/scene/wires/route.ts`,
+  `src/scene/models/{Resistor.tsx,geometry.ts}`, `src/scene/Bench.tsx`, `src/ui/inspectorData.ts`, §1.2, §1.3, §13.2,
+  §13.3, `tests/unit/{shared/wiring,shared/components,scene/anchors,ui/inspectorData}.test.ts`.
+
+- **D-083 · 2026-11-12 · Retraining and re-validation after the real-bench changes.** On the code after D-078 to
+  D-082, `pnpm gen:model`, `pnpm gen:fixtures`, `scripts/features_reference.py` and `scripts/rrcf_reference.py`
+  (Python rrcf 0.4.4) reproduce the committed `public/models/default-model.json` and `tests/fixtures/*` byte for byte.
+  They were regenerated in D-078 (five features) and D-079 (divider), since `pnpm verify` checks they match the code,
+  and the wiring changes (D-080 to D-082) touch no simulated signal. The default model (five features, 10 kΩ / 10 kΩ
+  divider) has holdout max **0.203** (accept < 0.8 × 0.50 = 0.40; 0.171 with six features before). P3.2: the TS
+  features match the NumPy reference within 1e-6 on all five fixtures. P4.6: the TS RRCF ranks the 60 test windows
+  like Python rrcf with Spearman **0.917** (accept ≥ 0.90; 0.944 before), and re-running the Python script reproduces
+  the stored scores. §12, before (`main`, six features, 10 k / 20 k) → after:
+
+  | | first alert (s) | dominant | CRITICAL (s) | reason | max score | final | other |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | S1 | — → — | — | — → — | — | 0.285 → 0.323 | NORMAL | 0 alerts → 0 |
+  | S2 | 61.03 → 61.03 | a_rms_g | 65.01 → 65.01 | RCF | 0.993 → 0.988 | CRITICAL | relay +5 ms; plant rpm < 100 at +10 s |
+  | S3 | 61.03 → 61.03 | a_rms_g | 65.01 → 65.01 | RCF | 0.938 → 0.905 | CRITICAL | |
+  | S4 | 64.02 → 64.02 | i_rms_A | 68.01 → 68.01 | RCF | 0.812 → 0.792 | CRITICAL | dominant now must be i_rms_A |
+  | S5 | 72.02 → 72.02 | t_C | 76.01 → 76.01 | RCF | 0.710 → 0.728 | CRITICAL | |
+  | S6 | — | — | 313 → 313 | T_MAX | 0.061 → 0.085 | NORMAL | link lost 35 s |
+  | S7 | — | — | — → — | — | 0.085 → 0.128 | WARNING | −127 at 61 s, SENSOR at 70 s |
+  | S8 | 61.03 → 61.03 | a_rms_g | 65.01 → 65.01 | RCF | 0.993 → 0.988 | NORMAL | START refused +1, RESET +20 accepted (≥ 15 s), NORMAL +31.5 |
+
+  Every §12 target holds with margin, so no §5.2 key was tuned. Affects nothing but the docs; the files it checks
+  were committed in D-078 and D-079.
+
+- **D-084 · 2026-11-12 · OPEN-4 closed: a GY-521, rigidly fixed to the fan housing, modelled procedurally.** The
+  team confirms a GY-521 board (8 pins: VCC, GND, SCL, SDA, XDA, XCL, AD0, INT; on-board 3.3 V regulator and 2.2 kΩ
+  I²C pull-ups), rigidly fixed to the fan housing, and has no photo of its own. The 3D model is built from that
+  description with no texture (`mpuParts`): a blue 21 × 16 × 1 mm PCB, the MPU6050 chip, the regulator, the two
+  pull-ups and the power LED on the front face, X and Y axis arrows printed in white, and the 8-pin header along one
+  long edge. **Mounting:** the old default (flat on the frame's top edge) contradicted the plant: §6.3 puts x and y in
+  the fan plane with gravity on y and z along the fan axis, while a board lying flat would have gravity on its Z.
+  "Rigidly fixed to the housing" leaves the orientation open, so the board stands upright on the frame's top edge,
+  in the fan plane, glued to the housing. Its printed X points along +x, Y up, and Z out of the board along the fan
+  axis, exactly the plant's axes, so no feature or threshold changes. Upright, the header is a right-angle one on the
+  front face with its pins pointing up, and the wires leave the pin tips upward, then run past the frame's +x side
+  as before. The component box is 21 × 22 × 3.5 mm (pins included), centred at (−0.20, 0.1011, −0.05) m with its
+  bottom on the frame top. Its VCC goes to the 3V3 rail as in the wiring document (W21); XDA, XCL, AD0 and INT are
+  free (AD0 pulled low on the board: address 0x68). The GY-521's regulator then runs from 3.3 V, below its usual
+  5 V input, and passes about 3.2 V on; that is normal for this board. The fan's name tag moves 5 cm to −x so it
+  doesn't cover the board, and the `cam-fan` preset rises a little to frame it. Whether the real board is mounted
+  this way is a `[human]` check in PROGRESS: if it lies flat, the plant's axis mapping must change, not just the 3D.
+  Affects `src/scene/models/geometry.ts`, `src/scene/anchors.ts`, `src/shared/components.ts`, `src/scene/Labels.tsx`,
+  `src/scene/cameras.ts`, `src/ui/inspectorData.ts`, §1.2, §2, §6.3, §13.2, `tests/unit/scene/models.test.ts`,
+  `tests/unit/shared/wiring.test.ts`.

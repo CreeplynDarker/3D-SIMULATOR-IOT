@@ -24,7 +24,10 @@ export interface Fsm {
   /** Inputs the guards read, kept current by the firmware. */
   linkLost: boolean;
   softActive: boolean;
-  rpm: number;
+  /** The firmware's clock (s), kept current before each trigger; the RESET guard reads it. */
+  now_s: number;
+  /** When the last trip happened (s of the firmware's clock), or null when not tripped. */
+  trippedAt_s: number | null;
   /** Last row executed (its `@map` id), for M8. */
   activeMap: string | null;
 }
@@ -51,7 +54,7 @@ interface Row {
   guard?: (f: Fsm, cfg: SimConfig) => boolean;
   to: State | null;
   /** Side effects on the machine; returns the events and log lines to emit. */
-  act: (f: Fsm, t: Trigger) => Pick<Outcome, 'events' | 'log'>;
+  act: (f: Fsm, t: Trigger, cfg: SimConfig) => Pick<Outcome, 'events' | 'log'>;
 }
 
 const RUN_STATES: readonly State[] = ['STARTING', 'NORMAL', 'WARNING'];
@@ -61,6 +64,12 @@ const isCmd = (cmd: 'START' | 'RESET' | 'ESTOP') => (t: Trigger) => t.kind === '
 const isTrip = (reason: TripLimit) => (t: Trigger) => t.kind === 'trip' && t.reason === reason;
 const isAlert = (t: Trigger) => t.kind === 'verdict' && t.alert;
 const isClear = (t: Trigger) => t.kind === 'verdict' && t.clear;
+
+/**
+ * RESET guard: at least `resetMinDelay_s` since the trip. The bench has no speed sensor, so the firmware waits for
+ * the fan to coast down instead of measuring it (D-078).
+ */
+const resetAllowed = (f: Fsm, cfg: SimConfig) => f.trippedAt_s === null || f.now_s - f.trippedAt_s >= cfg.firmware.resetMinDelay_s - 1e-9; // prettier-ignore
 
 function relayOn(f: Fsm): void {
   f.gpio26 = GPIO_LOW; // @map relay.on
@@ -79,6 +88,7 @@ function resetCounters(f: Fsm): void {
 function trip(f: Fsm, reason: TripReason): Pick<Outcome, 'events' | 'log'> {
   relayOff(f);
   f.tripReason = reason;
+  f.trippedAt_s = f.now_s;
   return { events: ['CRITICAL'], log: [{ level: 'ERR', text: `trip ${reason}` }] };
 }
 
@@ -96,15 +106,14 @@ export const TRANSITIONS: readonly Row[] = [
   { map: 'sm.start.done', from: ['STARTING'], on: (t) => t.kind === 'graceDone', to: 'NORMAL', act: (f) => (resetCounters(f), { events: ['NORMAL'], log: [] }) }, // @map sm.start.done
   tripRow('sm.limit.imax', 'I_MAX', RUN_STATES), // @map sm.limit.imax
   tripRow('sm.limit.tmax', 'T_MAX', RUN_STATES), // @map sm.limit.tmax
-  tripRow('sm.limit.stall', 'STALL', ['NORMAL', 'WARNING']), // @map sm.limit.stall
   { map: 'sm.estop', from: ALL_BUT_OFF, on: isCmd('ESTOP'), to: 'CRITICAL', act: (f) => trip(f, 'ESTOP') }, // @map sm.estop
   { map: 'sm.normal.alert', from: ['NORMAL'], on: isAlert, guard: (f) => !f.linkLost, to: 'WARNING', act: (f) => ((f.alertRun = 1), (f.warnReason = 'RCF'), { events: ['ALERT', 'WARNING'], log: [] }) }, // @map sm.normal.alert
   { map: 'sm.normal.soft', from: ['NORMAL'], on: (t) => t.kind === 'soft', to: 'WARNING', act: (f, t) => ((f.warnReason = t.kind === 'soft' ? t.reason : null), { events: ['WARNING'], log: [] }) }, // @map sm.normal.soft
   { map: 'sm.warn.trip', from: ['WARNING'], on: isAlert, guard: (f, cfg) => f.alertRun >= cfg.firmware.nCritical, to: 'CRITICAL', act: (f) => { const out = trip(f, 'RCF'); return { events: ['ALERT', ...out.events], log: out.log }; } }, // @map sm.warn.trip
   { map: 'sm.warn.alert', from: ['WARNING'], on: isAlert, to: null, act: () => ({ events: ['ALERT'], log: [] }) }, // @map sm.warn.alert
   { map: 'sm.warn.clear', from: ['WARNING'], on: isClear, guard: (f, cfg) => f.clearRun >= cfg.firmware.nClear, to: 'NORMAL', act: (f) => ((f.warnReason = null), { events: ['NORMAL'], log: [] }) }, // @map sm.warn.clear
-  { map: 'sm.reset.ok', from: ['CRITICAL'], on: isCmd('RESET'), guard: (f, cfg) => f.rpm < cfg.firmware.resetMaxRpm, to: 'OFF', act: (f) => (resetCounters(f), (f.tripReason = null), (f.warnReason = null), (f.linkLost = false), (f.softActive = false), { events: ['RESET'], log: [] }) }, // @map sm.reset.ok
-  { map: 'sm.reset.refused', from: ['CRITICAL'], on: isCmd('RESET'), to: null, act: () => ({ events: ['REFUSED'], log: [{ level: 'WARN', text: 'reset refused: fan still turning' }] }) }, // @map sm.reset.refused
+  { map: 'sm.reset.ok', from: ['CRITICAL'], on: isCmd('RESET'), guard: resetAllowed, to: 'OFF', act: (f) => (resetCounters(f), (f.tripReason = null), (f.trippedAt_s = null), (f.warnReason = null), (f.linkLost = false), (f.softActive = false), { events: ['RESET'], log: [] }) }, // @map sm.reset.ok
+  { map: 'sm.reset.refused', from: ['CRITICAL'], on: isCmd('RESET'), to: null, act: (_f, _t, cfg) => ({ events: ['REFUSED'], log: [{ level: 'WARN', text: `reset refused: wait ${cfg.firmware.resetMinDelay_s} s after the trip` }] }) }, // @map sm.reset.refused
   { map: 'sm.start.refused', from: ['CRITICAL'], on: isCmd('START'), to: null, act: () => ({ events: ['REFUSED'], log: [{ level: 'ERR', text: 'start refused: latched' }] }) }, // @map sm.start.refused
 ]; // prettier-ignore
 
@@ -119,7 +128,8 @@ export function createFsm(): Fsm {
     warnReason: null,
     linkLost: false,
     softActive: false,
-    rpm: 0,
+    now_s: 0,
+    trippedAt_s: null,
     activeMap: null,
   };
 }
@@ -137,7 +147,7 @@ export function transition(f: Fsm, t: Trigger, cfg: SimConfig): Outcome {
   countVerdict(f, t);
   const row = TRANSITIONS.find((r) => r.from.includes(from) && r.on(t) && (r.guard?.(f, cfg) ?? true));
   if (!row) return { map: null, from, to: null, events: [], log: [] };
-  const { events, log } = row.act(f, t);
+  const { events, log } = row.act(f, t, cfg);
   f.activeMap = row.map;
   if (row.to === null || row.to === from) return { map: row.map, from, to: row.to, events, log };
   f.state = row.to;

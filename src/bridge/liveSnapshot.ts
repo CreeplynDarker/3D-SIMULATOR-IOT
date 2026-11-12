@@ -1,5 +1,7 @@
 // Live and replay modes (P8.2, P8.3): a Snapshot built from the board's packets, the events their changes imply, and
-// the scene's display time between packets. Pure: it maps fields, it computes no physics.
+// the scene's display time between packets. Pure. The board measures no speed (D-078), so the fan speed is an
+// estimate from relay CH2 (spin-up to the rated speed while ON, coast-down while OFF), for the blades only.
+import { CONFIG } from '../shared/config.ts';
 import type { SimEvent, SimEventType, Snapshot } from '../shared/messages.ts';
 import type { Packet } from '../shared/protocol.ts';
 import { rpmToRadps } from '../shared/units.ts';
@@ -14,7 +16,6 @@ export const LIVE_UNKNOWN: readonly (keyof Snapshot)[] = [
   'acsOut_V',
   'adcPin_V',
   'adcCounts',
-  'tachHigh',
   'alertRun',
   'activeMap',
   'faults',
@@ -30,16 +31,27 @@ const NO_FAULTS: Snapshot['faults'] = {
   ds18b20Disconnect: false,
 };
 
-/** The snapshot after `p`; `prev` carries the last temperature and the traffic counts. */
+/**
+ * Estimated fan speed (rpm) `dt_s` seconds after an estimate of `prev_rpm`: a first-order approach to the rated
+ * speed while CH2 is ON (tauUp) or to rest while it's OFF (tauDown), as the plant's fan model does (§6.1).
+ */
+export function estimatedRpm(on: boolean, prev_rpm: number, dt_s: number): number {
+  const { rpmRated, tauUp_s, tauDown_s } = CONFIG.fan;
+  const target = on ? rpmRated : 0;
+  return target + (prev_rpm - target) * Math.exp(-Math.max(0, dt_s) / (on ? tauUp_s : tauDown_s));
+}
+
+/** The snapshot after `p`; `prev` carries the last temperature, speed estimate, trip time and traffic counts. */
 export function liveSnapshot(p: Packet, prev: Snapshot | null, ctx: { nCritical: number }): Snapshot {
   const t_s = p.ts_ms / 1000;
   const on = p.relay_ch2 === 'ON';
   const t_C = p.t_C ?? prev?.tProbe_C ?? 0;
   const traffic = prev?.traffic ?? { packets: 0, dropped: 0, verdicts: 0, dsReads: 0, lastPacket_s: -Infinity, lastDrop_s: -Infinity, lastVerdict_s: -Infinity, lastDsRead_s: -Infinity }; // prettier-ignore
+  const rpm = prev ? estimatedRpm(on, prev.rpm, t_s - prev.t_s) : on ? CONFIG.fan.rpmRated : 0;
   return {
     t_s,
-    rpm: p.rpm,
-    omega_radps: rpmToRadps(p.rpm),
+    rpm,
+    omega_radps: rpmToRadps(rpm),
     theta_rad: 0,
     fanV_V: 0,
     current_A: 0,
@@ -55,12 +67,13 @@ export function liveSnapshot(p: Packet, prev: Snapshot | null, ctx: { nCritical:
     adcPin_V: 0,
     adcCounts: 0,
     dsReading_C: t_C,
-    tachHigh: false,
     alertRun: 0,
     nCritical: ctx.nCritical,
     linkLost: p.link_lost,
     sensorFault: p.sensor_fault,
     tripReason: p.trip_reason,
+    // first CRITICAL packet seen: the trip happened in that window (an estimate, to the window)
+    trippedAt_s: p.state === 'CRITICAL' ? (prev?.trippedAt_s ?? t_s) : null,
     activeMap: null,
     traffic: { ...traffic, packets: traffic.packets + 1, lastPacket_s: t_s },
     lagging: false,

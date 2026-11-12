@@ -63,7 +63,6 @@ function capture(c: (typeof CASES)[number]) {
               ay_lsb: lsb(w.ay_g),
               az_lsb: lsb(w.az_g),
               counts: Array.from(w.counts.subarray(0, w.n)),
-              edges: w.edges,
             },
             temps: temps.history.map((r) => [r.t_s, r.value_C]),
             config: {
@@ -73,7 +72,6 @@ function capture(c: (typeof CASES)[number]) {
               rTop_ohm: CONFIG.sensors.divider.rTop_ohm,
               rBottom_ohm: CONFIG.sensors.divider.rBottom_ohm,
               sens_VperA: CONFIG.sensors.acs712.sens_VperA,
-              tachPulsesPerRev: CONFIG.fan.tachPulsesPerRev,
               window_s: CONFIG.firmware.window_s,
               dtdtSpan_s: CONFIG.firmware.dtdtSpan_s,
               dtdtMinSamples: CONFIG.firmware.dtdtMinSamples,

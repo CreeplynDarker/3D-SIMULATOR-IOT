@@ -10,7 +10,6 @@ import { acs712Out_V } from './sensors/acs712.ts';
 import { adcCounts, dividerOut_V } from './sensors/adc.ts';
 import { createDs18b20, type Ds18b20State, stepDs18b20 } from './sensors/ds18b20.ts';
 import { createMpu, filterMpu, type MpuState, sampleMpu } from './sensors/mpu6050.ts';
-import { createTach, stepTach, type TachState } from './sensors/tach.ts';
 import { fanSupply_V, supplyVoltage_V } from './supply.ts';
 import { createThermal, stepThermal, type ThermalState } from './thermal.ts';
 import { GPIO_HIGH, type GpioLevel, type SimConfig } from './types.ts';
@@ -27,8 +26,6 @@ export interface SensorsView {
   /** Latest DS18B20 register (°C) and the count of completed conversions. */
   dsReading_C: number;
   dsReadings: number;
-  /** Tach rising edges since start (PCNT). */
-  tachEdges: number;
 }
 
 /** The firmware as seen by the plant (P3 provides the real one). */
@@ -60,7 +57,6 @@ export interface Plant {
   vibration: VibrationState;
   mpu: MpuState;
   ds: Ds18b20State;
-  tach: TachState;
   relay: RelayState;
   faults: FaultState;
   /** ACS712 output and ADC pin voltage at the latest sample (V). */
@@ -96,12 +92,11 @@ export function createPlant(cfg: SimConfig, seed: number, opts: { warmStart: boo
     vibration: createVibration(rng.plant),
     mpu: createMpu(cfg.sensors.mpu, dt_s),
     ds: createDs18b20(cfg.sensors.ds18b20, thermal.tMotor_C),
-    tach: createTach(),
     relay: createRelay(),
     faults: createFaults(),
     acsOut_V: 0,
     adcPin_V: 0,
-    view: { t_s: 0, accel_g: new Float64Array(3), adcCounts: 0, dsReading_C: 0, dsReadings: 0, tachEdges: 0 },
+    view: { t_s: 0, accel_g: new Float64Array(3), adcCounts: 0, dsReading_C: 0, dsReadings: 0 },
     rng,
     actions: [],
     events: [],
@@ -141,11 +136,10 @@ function sampleSensors(p: Plant, controller: Controller): void {
   v.adcCounts = adcCounts(p.adcPin_V, s.adc, p.rng.adc.normal(0, s.adc.noise_counts));
   v.dsReading_C = p.ds.reading_C;
   v.dsReadings = p.ds.readings;
-  v.tachEdges = p.tach.edges;
   p.gpio26 = controller.tick(v);
 }
 
-/** §6.10 step 3: relay → supply → fan → thermal and probe → vibration and DLPF → tach. */
+/** §6.10 step 3: relay → supply → fan → thermal and probe → vibration and DLPF. */
 function stepPhysics(p: Plant): void {
   const { cfg, dt_s } = p;
   const f = p.faults.values;
@@ -159,7 +153,6 @@ function stepPhysics(p: Plant): void {
   const fan = p.fan;
   stepVibration(p.vibration, cfg.fan, fan.theta_rad, fan.omega_radps, f.imbalance_g, f.looseness, p.rng.plant, dt_s);
   filterMpu(p.mpu, p.vibration.accel_g);
-  stepTach(p.tach, fan.theta_rad, cfg.fan.tachPulsesPerRev);
 }
 
 /** Advances the plant by one physics step (spec §6.10). */
@@ -198,6 +191,8 @@ export interface FirmwareView {
   linkLost: boolean;
   sensorFault: boolean;
   tripReason: TripReason | null;
+  /** When the firmware last tripped (s of sim time), or null when not tripped; RESET waits `resetMinDelay_s`. */
+  trippedAt_s: number | null;
   activeMap: string | null;
   traffic: TrafficView;
 }
@@ -220,6 +215,7 @@ const FIRMWARE_OFF: FirmwareView = {
   linkLost: false,
   sensorFault: false,
   tripReason: null,
+  trippedAt_s: null,
   activeMap: null,
   traffic: NO_TRAFFIC,
 };
@@ -245,7 +241,6 @@ export function toSnapshot(p: Plant, fw: FirmwareView = FIRMWARE_OFF, lagging = 
     adcPin_V: p.adcPin_V,
     adcCounts: p.view.adcCounts,
     dsReading_C: p.ds.reading_C,
-    tachHigh: p.tach.high,
     ...fw,
     lagging,
   };

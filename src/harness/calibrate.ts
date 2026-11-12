@@ -2,10 +2,11 @@
 // packets (§10.1 window features only) and proposes values; it never edits config.ts. Pure.
 // The session follows CALIBRATION_SCENARIO: rest → START from cold → run → E-STOP → coast and rest. Each parameter
 // comes from the part of the recording where it shows alone (spec §6):
-//   fan at rest (relay open, 0 rpm)   a_RMS² = 3 σ_mpu²; i_RMS² = σ_I² (after calibration only)
-//   spin-up / coast-down windows      window-averaged first-order rpm curves → tauUp, tauDown and the switch times
-//   steady running                    rpm → rpmRated; i_RMS² − σ_I² − ripple²/2 → iIdle + iAero; a_RMS → unbalance
+//   fan at rest (relay open, stopped) a_RMS² = 3 σ_mpu²; i_RMS² = σ_I² (after calibration only)
+//   steady running                    i_RMS² − σ_I² − ripple²/2 → iIdle + iAero; a_RMS → unbalance
 //   heating from cold                 two first-order lags (C_th·R_th and the probe) → ambient, R_th, C_th
+// The bench measures no speed (D-078), so rpmRated, tauUp and tauDown are kept; the relay's switch times come from
+// relay_ch2 (the middle of the window where it changed).
 import { currentFromCounts_A } from '../firmware/features.ts';
 import { CALIBRATED_KEYS, CALIBRATION_FIT as FIT, CALIBRATION_SCENARIO, type CalibratedKey, TUNING_RANGES } from '../shared/calibration.ts'; // prettier-ignore
 import type { Packet } from '../shared/protocol.ts';
@@ -31,10 +32,10 @@ export interface CalibrationEntry {
 
 export interface CalibrationResult {
   entries: CalibrationEntry[];
-  /** Fitted switching times (s of the recording's clock): relay closed at START, opened at E-STOP. */
+  /** Switching times (s of the recording's clock): relay closed after START, opened at E-STOP. */
   switch_s: { on: number; off: number | null };
   /** Windows used per part of the recording. */
-  windows: { rest: number; spinUp: number; steady: number; coast: number; currentNoise: number; heating: number };
+  windows: { rest: number; steady: number; currentNoise: number; heating: number };
 }
 
 const mean = (xs: readonly number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
@@ -59,26 +60,6 @@ export function minimize1d(f: (x: number) => number, lo: number, hi: number): nu
     else a = c;
   }
   return (a + b) / 2;
-}
-
-/** Time constant τ (s, searched on a log scale) and switch time t (s) minimising sse(τ, t). */
-function fitTauAndEdge(sse: (tau_s: number, t_s: number) => number, t0: number, t1: number) {
-  const [lo, hi] = FIT.fanTau_s.map(Math.log) as [number, number];
-  const edge = (tau_s: number) => minimize1d((t) => sse(tau_s, t), t0, t1);
-  const tau_s = Math.exp(minimize1d((x) => sse(Math.exp(x), edge(Math.exp(x))), lo, hi));
-  return { tau_s, t_s: edge(tau_s) };
-}
-
-/** Mean of ω/ω_full over [a, b] for a first-order spin-up from rest that starts at t0 (unitless). */
-export function spinUpAverage(a_s: number, b_s: number, t0_s: number, tau_s: number): number {
-  const F = (u: number) => (u <= 0 ? 0 : u - tau_s * (1 - Math.exp(-u / tau_s)));
-  return (F(b_s - t0_s) - F(a_s - t0_s)) / (b_s - a_s);
-}
-
-/** Mean of ω/ω_full over [a, b] for a first-order coast-down from full speed that starts at t1 (unitless). */
-export function coastAverage(a_s: number, b_s: number, t1_s: number, tau_s: number): number {
-  const G = (u: number) => (u <= 0 ? u : tau_s * (1 - Math.exp(-u / tau_s)));
-  return (G(b_s - t1_s) - G(a_s - t1_s)) / (b_s - a_s);
 }
 
 /** Probe reading rise (0…1) u s after a heat step: plant lag τ (s) then probe lag τp (s). */
@@ -107,11 +88,10 @@ function segments(packets: readonly Packet[], cfg: SimConfig) {
   return {
     ws,
     firstOn,
-    rest: ws.slice(0, iOn).filter((w) => w.p.state === 'OFF' && w.p.rpm === 0),
-    spinUp: ws.slice(Math.max(0, iOn - 1), iOn + FIT.transientWindows),
+    // before START the fan has been off: at rest
+    rest: ws.slice(0, iOn).filter((w) => w.p.state === 'OFF'),
     // full speed: after the start grace, and not the last powered window (the stop may fall inside it)
     steady: ws.slice(iOn, iOff < 0 ? onEnd : onEnd - 1).filter((w) => w.a_s >= firstOn.b_s + cfg.firmware.startGrace_s), // prettier-ignore
-    coast: iOff < 0 ? [] : ws.slice(iOff - 1, iOff + FIT.transientWindows),
     firstOff: iOff < 0 ? null : (ws[iOff] as Win),
     // relay open after the calibration: no current flows, so i_RMS is the noise alone
     offAfterCal: iOff < 0 ? [] : ws.slice(iOff).filter((w) => w.p.relay_ch2 === 'OFF'),
@@ -121,26 +101,11 @@ function segments(packets: readonly Packet[], cfg: SimConfig) {
 
 type Fitted = Partial<Record<CalibratedKey, number>>;
 
-/** Fan speed curves: rpmRated, tauUp, tauDown and the two switch times. */
-function fitSpeed(seg: ReturnType<typeof segments>, cfg: SimConfig, out: Fitted) {
+/** The relay's switch times (s): the middle of the first window with CH2 ON, and of the first OFF one after it. */
+function switchTimes(seg: ReturnType<typeof segments>) {
   if (seg.steady.length === 0) throw new Error('the recording has no steady running after the start grace');
-  const rpmFull = mean(seg.steady.map((w) => w.p.rpm));
-  out['fan.rpmRated'] = rpmFull / speedRatio(cfg);
-  const sse = (avg: (w: Win, tau_s: number, t_s: number) => number, wins: readonly Win[]) => (tau_s: number, t_s: number) => wins.reduce((s, w) => s + (w.p.rpm - rpmFull * avg(w, tau_s, t_s)) ** 2, 0); // prettier-ignore
-  const up = fitTauAndEdge(
-    sse((w, tau, t) => spinUpAverage(w.a_s, w.b_s, t, tau), seg.spinUp),
-    seg.firstOn.a_s - FIT.edgeSearch_s,
-    seg.firstOn.b_s,
-  );
-  out['fan.tauUp_s'] = up.tau_s;
-  if (!seg.firstOff) return { on: up.t_s, off: null };
-  const down = fitTauAndEdge(
-    sse((w, tau, t) => coastAverage(w.a_s, w.b_s, t, tau), seg.coast),
-    seg.firstOff.a_s - FIT.edgeSearch_s,
-    seg.firstOff.b_s + FIT.edgeSearch_s,
-  );
-  out['fan.tauDown_s'] = down.tau_s;
-  return { on: up.t_s, off: down.t_s };
+  const mid = (w: Win) => (w.a_s + w.b_s) / 2;
+  return { on: mid(seg.firstOn), off: seg.firstOff ? mid(seg.firstOff) : null };
 }
 
 /** Sensor noise from the fan-at-rest windows, and the running current with that noise taken out. */
@@ -150,7 +115,8 @@ function fitNoiseAndCurrent(seg: ReturnType<typeof segments>, cfg: SimConfig, sw
   // relay open for a whole window: the window where it opened, and the next (the contact releases late), still
   // carry running current
   const off = switchOff_s === null ? [] : seg.offAfterCal.filter((w) => w.a_s >= switchOff_s + w.p.win_ms / 1000);
-  const settled = off.filter((w) => w.p.rpm === 0 && w.a_s >= (switchOff_s ?? 0) + FIT.coastSettleTaus * (out['fan.tauDown_s'] ?? cfg.fan.tauDown_s)); // prettier-ignore
+  // coasting for several time constants of the config's coast-down: stopped (no speed is measured to check it)
+  const settled = off.filter((w) => w.a_s >= (switchOff_s ?? 0) + FIT.coastSettleTaus * cfg.fan.tauDown_s);
   const still = [...seg.rest, ...settled];
   if (still.length > 0) out['sensors.mpu.noise_g'] = Math.sqrt(Math.max(0, msq(still.map((w) => w.p.a_rms_g)) / 3 - (q_g * q_g) / 12)); // prettier-ignore
   const a_per_count = currentFromCounts_A(1, 0, cfg);
@@ -254,9 +220,6 @@ function fitUnbalance(seg: ReturnType<typeof segments>, cfg: SimConfig, sigmaMpu
 }
 
 const BASIS: Record<CalibratedKey, string> = {
-  'fan.rpmRated': 'mean rpm while running',
-  'fan.tauUp_s': 'spin-up rpm windows',
-  'fan.tauDown_s': 'coast-down rpm windows after E-STOP',
   'fan.iIdle_A': 'running i_RMS less noise and ripple (scaled with iAero)',
   'fan.iAero_A': 'running i_RMS less noise and ripple (scaled with iIdle)',
   'fan.residualUnbalance_gmm': 'running a_RMS less noise, matched in a short sim',
@@ -280,9 +243,8 @@ function outOfRange(key: CalibratedKey, current: number, v: number): boolean {
 export function calibrate(packets: readonly Packet[], cfg: SimConfig): CalibrationResult {
   const seg = segments(packets, cfg);
   const out: Fitted = {};
-  const switch_s = fitSpeed(seg, cfg, out);
-  const speedCfg = withValues(cfg, out);
-  const { i_A, sigmaMpu_g, settled, currentNoise } = fitNoiseAndCurrent(seg, speedCfg, switch_s.off, out);
+  const switch_s = switchTimes(seg);
+  const { i_A, sigmaMpu_g, settled, currentNoise } = fitNoiseAndCurrent(seg, cfg, switch_s.off, out);
   fitThermal(seg, cfg, switch_s.on, i_A, out);
   fitUnbalance(seg, cfg, sigmaMpu_g, out);
   const entries = CALIBRATED_KEYS.map((key) => {
@@ -292,9 +254,7 @@ export function calibrate(packets: readonly Packet[], cfg: SimConfig): Calibrati
   });
   const windows = {
     rest: seg.rest.length + settled,
-    spinUp: seg.spinUp.length,
     steady: seg.steady.length,
-    coast: seg.coast.length,
     currentNoise,
     heating: seg.heating.length,
   };
@@ -312,12 +272,11 @@ export function recordCalibration(cfg: SimConfig, seed: number): Packet[] {
   return runScenario(CALIBRATION_SCENARIO, { seed, config: cold, model: null }).packets;
 }
 
-/** Means of the running windows (after the start grace): rpm, a_RMS (g), crest factor, i_RMS (A), t_C (°C). */
+/** Means of the running windows (after the start grace): a_RMS (g), crest factor, i_RMS (A), t_C (°C). */
 export function baselineMeans(packets: readonly Packet[], cfg: SimConfig) {
   const steady = segments(packets, cfg).steady.map((w) => w.p);
   const temps = steady.map((p) => p.t_C).filter((t): t is number => t !== null);
   return {
-    rpm: mean(steady.map((p) => p.rpm)),
     a_rms_g: mean(steady.map((p) => p.a_rms_g)),
     cf: mean(steady.map((p) => p.cf)),
     i_rms_A: mean(steady.map((p) => p.i_rms_A)),

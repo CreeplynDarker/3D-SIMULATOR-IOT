@@ -16,8 +16,8 @@ describe('M12 legend data and keyboard shortcuts (§8.2, §13.3, §14)', () => {
     expect(SHORTCUTS.map((s) => s.keys)).toEqual(['Space', 'S', 'E', 'R', '1–5', '?', 'Esc']);
   });
 
-  it('lists all 11 wire colours of §13.3 and every §14 term', () => {
-    expect(WIRE_KEY.map((w) => w.meaning)).toEqual(['12 V', 'GND', '5 V', '3V3', 'SDA', 'SCL', '1-Wire', 'analog', 'tach', 'relay control', 'USB, barrel cable']); // prettier-ignore
+  it('lists all 10 wire colours of §13.3 (no tach: D-078) and every §14 term', () => {
+    expect(WIRE_KEY.map((w) => w.meaning)).toEqual(['12 V', 'GND', '5 V', '3V3', 'SDA', 'SCL', '1-Wire', 'analog', 'relay control', 'USB, barrel cable']); // prettier-ignore
     expect(GLOSSARY.map((g) => g.term)).toEqual(['a_RMS', 'Crest factor (CF)', 'I_RMS', 'dT/dt', 'RCF / RRCF', 'CoDisp', 'Dominant variable', 'NO / NC', 'Persistence', 'Latched']); // prettier-ignore
   });
 });

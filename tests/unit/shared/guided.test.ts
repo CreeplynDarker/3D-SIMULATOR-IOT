@@ -4,7 +4,7 @@ import { GUIDED, guidedFor, reachedStep } from '../../../src/shared/guided.ts';
 import { SCENARIOS } from '../../../src/shared/scenarios.ts';
 
 const PRESETS = ['overview', 'fan', 'esp32', 'relay', 'breadboard'];
-const CHARTS = ['chart-arms', 'chart-cf', 'chart-irms', 'chart-temp', 'chart-rpm', 'chart-score'];
+const CHARTS = ['chart-arms', 'chart-cf', 'chart-irms', 'chart-temp', 'chart-score'];
 
 describe('M11 guided scenarios data (P6.6)', () => {
   it('covers exactly the scenarios marked guided in §12', () => {

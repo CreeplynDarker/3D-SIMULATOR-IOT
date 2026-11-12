@@ -146,6 +146,25 @@ it: `2026-11-02 · what changed · tuning (if any)`. Specs live in `docs/PLAN.md
 - [x] P8.4 Calibration
   2026-10-31 · src/harness/calibrate.ts (pure fit: spin-up/coast curves, steady rpm/current/vibration, cold-start two-lag heating, noise from rest windows), configDiff.ts, shared/calibration.ts (recording protocol, fit settings, kept keys), `pnpm calibrate` writes a git-apply diff, never config.ts; 12 keys recovered within 2 % on defaults and shifted params, baseline means within 1 % · no tuning
 
+## Real bench wiring (after P8, 2026-11-12)
+
+Seven changes from the team's wiring document, one commit each.
+
+- [x] B1 No speed sensing (OPEN-1 → no, protocol v2)
+  2026-11-12 · 5 RCF features; Packet/FeatureKey without rpm, no STALL, PROTOCOL_VERSION 2, schemas, bridge-py v2; firmware without PCNT/rpm/STALL (TS and reference-cpp); RESET guard = resetMinDelay_s 15 s since the trip; plant keeps the speed for the scene; M3 rpm-readout and M6 chart-rpm removed; M9 "simulated"/"estimated"; Live blades from relay_ch2; S4 dominant i_rms_A; model retrained (holdout max 0.159) · no tuning
+- [x] B2 Divider 10 kΩ / 10 kΩ
+  2026-11-12 · sensors.divider.rBottom_ohm 20000 → 10000 (hardware fact, not §5.2 tuning); reference-cpp R_BOTTOM and nominal counts0; r_div_bot 10 kΩ in 3D and M9; ADC 1583 counts at 0 A, 1606 at 0.18 A (8.05 mA/count); model retrained (holdout max 0.203) · no tuning
+- [x] B3 Relay jumper fitted, module on 5 V
+  2026-11-12 · relay VCC on 5 V (W15, orange), W13 (JD-VCC) and W14 (header-A GND) removed, jumper cap drawn across JD-VCC–VCC; IN2 ← D26, IN1 and NC2 free; the row-25 5 V node arrives with B5 · no tuning
+- [x] B4 12 V path order, ACS712 orientation, no common ground
+  2026-11-12 · W02 jack + → COM2, W03 NO2 → ACS712 IP+ (top screw), W04 IP− (bottom screw) → fan red, W05 fan black → jack − on the new GND12 net; W06 (jack − → breadboard GND) removed; ACS712 screws left, pins right · no tuning
+- [x] B5 Breadboard topology from the wiring document
+  2026-11-12 · 26 wires W01–W26 as in the document; holes named as the document (`bb.A25`), A–E of a row one node; 5 V node row 25 (VIN A25, ACS712 VCC B25, relay VCC C25); 3V3 and every GND on the left rails, right rails unused; DS18B20 D18/B18 with 2 × 10 kΩ (A18, A19) + C18–C19 jumper; MPU A45/B45, A46/B46; ACS712 OUT A30, 10 kΩ B30–B35 and C35–GND, D35 → D34; ESP32 off the breadboard (turned 180°, USB-C to the laptop); route tests pass · no tuning
+- [x] B6 Retrain, fixtures, Python cross-checks, S1–S8
+  2026-11-12 · on the final code (B1–B5): gen:model, gen:fixtures and both Python references reproduce the committed files byte for byte; default model holdout max 0.203 (limit 0.40); features vs NumPy within 1e-6; TS RRCF vs Python rrcf 0.4.4 Spearman 0.917 (≥ 0.90; 0.944 before); S1–S8 meet every §12 target, timings unchanged (table in D-083) · no tuning
+- [x] B7 OPEN-4 closed: procedural GY-521
+  2026-11-12 · GY-521 built from its description (no photo, no texture): blue 21 × 16 mm PCB upright on the frame's top edge in the fan plane, MPU6050 chip, 3.3 V regulator, two 2.2 kΩ pull-ups, LED, X/Y arrows printed, 8-pin right-angle header (VCC GND SCL SDA XDA XCL AD0 INT) along the top edge; VCC on the 3V3 rail; fan tag and camera adjusted · no tuning
+
 ## Waiting for human review
 
 List every `[human]` check here with its task ID, so a person can sign it off.
@@ -166,4 +185,8 @@ List every `[human]` check here with its task ID, so a person can sign it off.
 - P8 · real packets from the board render with no change outside `src/bridge/` (sel-mode Live through `python bridge-py/app.py`, page at http://localhost:8765)
 - P8 · `btn-estop` in Live opens the real relay (CH2 clicks and the fan coasts down); the 12 V switch stays the safety stop
 - P8.1 · the bridge venv installs and runs on the team laptop (Windows and Linux steps in `bridge-py/README.md`)
+- B1 · the team's real firmware has no tach input and refuses RESET until 15 s after the trip (`millis()` at the trip; reference in `src/firmware/reference-cpp/state_machine.cpp`)
+- B3 · on the real board, relay CH2 releases when GPIO26 is HIGH (3.3 V) with the module on 5 V and the jumper fitted (D-080); if it stays on, drive IN2 open-drain or as an input for OFF
+- B5 · the 3D bench matches the team's wiring document hole for hole (camera `cam-breadboard`), and the ESP32's place off the breadboard matches the real bench
+- B7 · the GY-521's mounting on the real fan (upright on the frame, X/Y as printed) matches the 3D board and the plant's axes (x, y in the fan plane, y up); if the real board lies flat, tell us and the axis mapping changes
 - P8.4 · `pnpm calibrate` on a real healthy recording (CALIBRATION_SCENARIO protocol) gives plausible values; review the diff before `git apply`

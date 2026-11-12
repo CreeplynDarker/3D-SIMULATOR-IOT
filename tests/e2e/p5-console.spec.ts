@@ -20,7 +20,7 @@ test('M7: every control exists; packets, verdicts, commands and logs appear in t
   test.setTimeout(90_000);
   await running(page);
   for (const id of IDS) await expect(page.getByTestId(id), id).toBeVisible();
-  await expect(lines(page, 'packet').last()).toHaveText(/^↑ #\d+ (NORMAL|STARTING) a=\d\.\d{3}g cf=\d+\.\d\d I=\d\.\d{3}A T=\d+\.\d\d°C dT=-?\d+\.\d\d\/min rpm=\d+$/); // prettier-ignore
+  await expect(lines(page, 'packet').last()).toHaveText(/^↑ #\d+ (NORMAL|STARTING) a=\d\.\d{3}g cf=\d+\.\d\d I=\d\.\d{3}A T=\d+\.\d\d°C dT=-?\d+\.\d\d\/min$/); // prettier-ignore
   await expect(lines(page, 'verdict').last()).toHaveText(/^↓ #\d+ score=(\d\.\d\d|—)\/0\.50 (ALERT|clear|hold|unscored) dom=\S+$/); // prettier-ignore
   await expect(lines(page, 'command').first()).toHaveText(/^→ cmd START #\d+$/);
   await expect(lines(page, 'log').first()).toContainText('INFO fsm: OFF -> CALIBRATING');
@@ -60,10 +60,10 @@ test('M7: CSV and JSON exports, and the raw MPU stream', async ({ page }) => {
     .trimEnd()
     .split('\n');
   const packets = (await page.evaluate(() => window.__pdm?.inspect().console))?.packets ?? -1;
-  expect(csv[0]?.split(',')).toHaveLength(22);
+  expect(csv[0]?.split(',')).toHaveLength(21); // 16 packet fields (v2, no rpm) + 5 verdict fields
   expect(csv[0]?.endsWith('score,threshold,alert,clear,dominant')).toBe(true);
   expect(csv.length - 1).toBe(packets);
-  for (const row of csv.slice(1)) expect(row.split(',')).toHaveLength(22);
+  for (const row of csv.slice(1)) expect(row.split(',')).toHaveLength(21);
   const jsonDl = page.waitForEvent('download');
   await page.getByTestId('btn-export-json').click();
   const session = JSON.parse(readFileSync((await (await jsonDl).path()) ?? '', 'utf8')) as Record<string, unknown[]>;

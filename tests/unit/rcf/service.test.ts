@@ -21,7 +21,6 @@ function packet(seq: number, state: State = 'NORMAL', extra: Partial<Packet> = {
     i_rms_A: 0.181,
     t_C: 33.9,
     dtdt_C_per_min: -0.1,
-    rpm: 3800,
     state,
     relay_ch2: 'ON',
     link_lost: false,
@@ -42,7 +41,6 @@ function healthy(n: number, from = 0): Packet[] {
       i_rms_A: rng.normal(0.181, 0.0015),
       t_C: rng.normal(33.8, 0.3),
       dtdt_C_per_min: rng.normal(-0.2, 0.3),
-      rpm: rng.normal(3800, 15),
     }),
   );
 }

@@ -66,15 +66,18 @@ test.describe('P8.2 with the bridge and the emulated ESP32', () => {
       await expect(badge(page)).toHaveText('OFF', { timeout: 15_000 });
       await page.getByTestId('btn-start').click();
       await expect(badge(page)).toHaveText('NORMAL', { timeout: 30_000 });
-      await expect(page.getByTestId('rpm-readout')).toHaveText(/^3[78]\d\d rpm$/);
       await expect(page.getByTestId('persistence')).toHaveText('—/5');
       await page.evaluate(() => window.__pdm?.select('fan'));
       await expect(page.getByTestId('inspector-pin').first()).toHaveText('red +— V, — A');
+      // no speed sensing (D-078): the blades follow an estimate from relay CH2
+      await expect(page.getByTestId('inspector-pin').nth(1)).toHaveText(
+        /^speed ≈ 3[78]\d\d rpm \(estimated from relay CH2\)$/,
+      );
       await expect(badge(page)).toHaveText('CRITICAL', { timeout: 40_000 });
       await expect(page.getByTestId('trip-reason')).toHaveText('RCF');
       await expect(page.getByTestId('dominant-var')).toHaveText('a_rms_g');
       await expect(page.getByTestId('relay-state')).toHaveText('CH2 open');
-      await expect.poll(async () => Number((await page.getByTestId('rpm-readout').textContent())?.split(' ')[0]), { timeout: 30_000 }).toBeLessThan(100); // prettier-ignore
+      await page.waitForFunction(() => window.__sim?.resetReady === true, undefined, { timeout: 30_000 });
       await page.getByTestId('btn-reset').click();
       await page.getByTestId('btn-reset-confirm').click();
       await expect(badge(page)).toHaveText('OFF', { timeout: 15_000 });

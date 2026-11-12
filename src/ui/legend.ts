@@ -13,7 +13,6 @@ export const WIRE_KEY: { color: WireColor; meaning: string }[] = [
   { color: 'lightBlue', meaning: 'SCL' },
   { color: 'yellow', meaning: '1-Wire' },
   { color: 'green', meaning: 'analog' },
-  { color: 'violet', meaning: 'tach' },
   { color: 'white', meaning: 'relay control' },
   { color: 'grey', meaning: 'USB, barrel cable' },
 ];

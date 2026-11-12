@@ -5,9 +5,9 @@ import type { ConsoleEntry } from '../store/slices/console.ts';
 
 const num = (x: number | null, digits: number) => (x === null ? '—' : x.toFixed(digits));
 
-/** `↑ #1042 NORMAL a=0.121g cf=2.50 I=0.181A T=34.06°C dT=0.00/min rpm=3810` */
+/** `↑ #1042 NORMAL a=0.121g cf=2.50 I=0.181A T=34.06°C dT=0.00/min` */
 export function packetLine(p: Packet): string {
-  return `↑ #${p.seq} ${p.state} a=${p.a_rms_g.toFixed(3)}g cf=${p.cf.toFixed(2)} I=${p.i_rms_A.toFixed(3)}A T=${num(p.t_C, 2)}°C dT=${num(p.dtdt_C_per_min, 2)}/min rpm=${Math.round(p.rpm)}`; // prettier-ignore
+  return `↑ #${p.seq} ${p.state} a=${p.a_rms_g.toFixed(3)}g cf=${p.cf.toFixed(2)} I=${p.i_rms_A.toFixed(3)}A T=${num(p.t_C, 2)}°C dT=${num(p.dtdt_C_per_min, 2)}/min`; // prettier-ignore
 }
 
 /** `↓ #1042 score=0.21/0.50 clear dom=cf` — the word is ALERT, clear, hold (neither) or unscored. */

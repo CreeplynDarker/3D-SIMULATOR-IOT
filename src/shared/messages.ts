@@ -55,12 +55,13 @@ export interface Snapshot {
   adcPin_V: number;
   adcCounts: number;
   dsReading_C: number;
-  tachHigh: boolean;
   alertRun: number;
   nCritical: number;
   linkLost: boolean;
   sensorFault: boolean;
   tripReason: TripReason | null;
+  /** Sim time of the last trip (s), or null when not tripped. */
+  trippedAt_s: number | null;
   activeMap: string | null;
   /** Link and 1-Wire traffic for the P6.2 signal-flow view (D-058). Not part of the §10.1 protocol. */
   traffic: {
