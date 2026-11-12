@@ -31,7 +31,7 @@ const SPECS: Record<ComponentId, string[]> = {
   r_div_top: ['10 kΩ, top of the ACS712 → GPIO34 divider (×1/2: 2.5 V at 0 A reads 1.25 V)'],
   r_div_bot: ['10 kΩ, bottom of the ACS712 → GPIO34 divider'],
   acs712: ['5 A variant, 0.185 V/A, 2.5 V at 0 A, 5 V supply', 'IP+ from the jack +12 V, IP− to relay COM2'],
-  relay: ['2 channels, JQC-3FF-S-Z 5 VDC coils, IN LOW = coil on', 'Only CH2 used: +12 V → COM2, NO2 → fan red (fail-safe)'], // prettier-ignore
+  relay: ['2 channels, JQC-3FF-S-Z 5 VDC coils, IN LOW = coil on', 'JD-VCC jumper fitted: the whole module on 5 V', 'Only CH2 used: +12 V → COM2, NO2 → fan red (fail-safe); IN2 ← GPIO26, IN1 and NC2 free'], // prettier-ignore
   dcjack: ['5.5 × 2.1 mm female jack with screw terminals'],
   adapter: ['JSY-1220, 12 V 1 A'],
   laptop: ['Runs the RCF and the dashboard; Wi-Fi to the ESP32'],

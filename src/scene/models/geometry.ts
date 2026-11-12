@@ -123,7 +123,10 @@ export function acs712Parts(): Part[] {
   return parts;
 }
 
-/** Relay module: black PCB (photo), two blue relays (CH1 X-marked), two 3-way terminal blocks, opto, LEDs, headers. */
+/**
+ * Relay module: black PCB (photo), two blue relays (CH1 X-marked), two 3-way terminal blocks, opto, LEDs, headers,
+ * and the JD-VCC–VCC jumper fitted on header A (the whole module runs on 5 V, D-080).
+ */
 export function relayParts(): Part[] {
   const { terminalX, terminalY, headerA, headerB, headerPinY, halfDepth } = RELAY_DIMS;
   const parts: Part[] = [
@@ -147,6 +150,9 @@ export function relayParts(): Part[] {
   for (const x of Object.values({ ...headerA, ...headerB })) {
     parts.push(box([0.64, 0.64, 3], [x, headerPinY, halfDepth - 1.5], 'metal'));
   }
+  // jumper cap over the JD-VCC and VCC pins of header A
+  const jumperX = (headerA.jdvcc + headerA.vcc_a) / 2;
+  parts.push(box([5, 2.5, 4], [jumperX, headerPinY, halfDepth - 2], 'plasticBlack', { name: 'relay:jumper' }));
   return parts;
 }
 

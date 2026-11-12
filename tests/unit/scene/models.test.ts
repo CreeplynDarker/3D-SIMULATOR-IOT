@@ -22,6 +22,11 @@ describe('model geometry (§13.2 sizes)', () => {
     expect(MODEL_PARTS.fan().filter((p) => p.group === 'blades')).toHaveLength(7);
   });
 
+  it('the relay has the JD-VCC–VCC jumper fitted across header A (D-080)', () => {
+    const jumper = MODEL_PARTS.relay().find((p) => p.name === 'relay:jumper');
+    expect(jumper?.kind).toBe('box');
+  });
+
   it('the ESP32 has 30 header pins', () => {
     expect(MODEL_PARTS.esp32().filter((p) => p.name?.startsWith('pin:'))).toHaveLength(30);
   });

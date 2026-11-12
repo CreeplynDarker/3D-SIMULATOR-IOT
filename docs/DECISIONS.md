@@ -755,3 +755,17 @@ Append-only. Format: `D-NNN · date · decision · why · affects`.
   fixtures and Python references regenerated: holdout max 0.203 (0.159 before), S1–S8 pass with no tuning. Affects
   `src/shared/config.ts`, `src/firmware/reference-cpp/{features,main}.cpp`, `src/shared/components.ts`,
   `src/scene/models/geometry.ts`, `src/ui/inspectorData.ts`, `public/models/`, `tests/fixtures/`, two sensor tests.
+
+- **D-080 · 2026-11-12 · Relay module on 5 V with the JD-VCC jumper fitted.** The wiring document keeps the
+  JD-VCC–VCC jumper on, so the whole relay module (optocoupler side and coils) runs on 5 V: its VCC is fed from
+  the breadboard's 5 V node, and there is no separate JD-VCC wire or header-A GND wire. This replaces the earlier
+  split supply (JD-VCC = 5 V, VCC = 3V3, jumper removed, §1.2). Wires: W13 (5 V → JD-VCC) and W14 (header-A GND) are
+  removed, and W15 now brings 5 V (net V5, orange) to `relay.vcc`. In this commit it comes from the 5 V rail; D-082
+  moves it to hole C25 of the 5 V node. W16 (GND), W29 (IN2 ← D26) are unchanged; IN1 and NC2 stay free. The 3D
+  model shows a black jumper cap across the JD-VCC and VCC pins of header A (`relay:jumper`); M9 says so. The plant
+  is unchanged: the coil is on while GPIO26 is LOW. **Hardware note for the team:** with VCC = 5 V, an ESP32 HIGH of
+  3.3 V leaves about 1.7 V across the input optocoupler's LED and its series resistor, which on some modules keeps a
+  little current flowing, so the relay may not release. This is now a `[human]` check in PROGRESS. If CH2 stays on
+  with IN2 HIGH, switch GPIO26 to open-drain (or to an input) for OFF, so IN2 floats up to 5 V through the module's
+  own pull-up. Affects `src/shared/wiring.ts`, `src/scene/models/geometry.ts`, `src/ui/inspectorData.ts`, §1.2, §1.5,
+  §13.3, `tests/unit/shared/wiring.test.ts`, `tests/unit/scene/models.test.ts`.

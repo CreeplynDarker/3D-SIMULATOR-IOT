@@ -41,7 +41,7 @@ Demo story the app must support end to end:
 | --- | --- |
 | Fan | Delta AFB0712HB-F00. 70 × 70 × 15 mm, 47 g, 12 VDC, 4.0–13.8 V, 3,800 RPM, 0.18 A typical (0.33 A on label = max), 3 wires: red +12 V, black GND, blue tach — **left free on the bench: no speed sensing** (D-078). Datasheet: https://www.mouser.com/datasheet/2/632/AFB70x70x15mm-515820.pdf |
 | Relay | 2-channel optocoupler module, coils TONGLING JQC-3FF-S-Z **5 VDC**, low-level trigger (IN LOW = coil on). CH1 is dead (marked with an X); **only CH2 is used**. |
-| Relay wiring | +12 V → COM2; NO2 → fan red (fail-safe: no coil current = fan off). JD-VCC jumper **removed**: JD-VCC = 5 V (ESP32 VIN), VCC = 3V3. |
+| Relay wiring | +12 V → COM2; NO2 → fan red (fail-safe: no coil current = fan off). JD-VCC jumper **fitted** (2026-11-12, D-080): the whole module runs on 5 V, VCC from the breadboard's 5 V node; no separate JD-VCC or header-A GND wire. IN2 ← GPIO26; IN1 and NC2 free. |
 | Controller | ESP32 DevKit V1, 30 pins, USB-C, ESP32-WROOM-32, powered by the laptop over USB. |
 | Current sensor | ACS712 module (5 A variant assumed, see OPEN-2), 5 V supply, header Vcc/Out/Gnd, 2-screw terminal IP+/IP−. |
 | Temperature | DS18B20 waterproof probe, steel tip, wires red (VCC) / yellow (DATA) / black (GND). |
@@ -72,7 +72,7 @@ USB-C at the bottom, module antenna at the top, viewed from the component side:
 
 | Module | Pins (anchor names) |
 | --- | --- |
-| Relay | Input header A: `jdvcc, vcc_a, gnd_a` (jumper removed). Input header B: `gnd, in1, in2, vcc`. Terminals: `nc1, com1, no1, nc2, com2, no2`, in that order from left to right with the terminals facing away (CH1 on the left; COM is the middle screw of each block; OPEN-5). |
+| Relay | Input header A: `jdvcc, vcc_a, gnd_a` (jumper fitted across `jdvcc`–`vcc_a`; no wire on header A). Input header B: `gnd, in1, in2, vcc`. Terminals: `nc1, com1, no1, nc2, com2, no2`, in that order from left to right with the terminals facing away (CH1 on the left; COM is the middle screw of each block; OPEN-5). |
 | ACS712 | `vcc, out, gnd`; terminals `ipPlus, ipMinus` |
 | MPU6050 GY-521 | `vcc, gnd, scl, sda, xda, xcl, ad0, int` |
 | DS18B20 | `red, yellow, black` (cable ends) |
@@ -930,9 +930,7 @@ it attaches at the pin.
 | W10 | bb.railL.n | bb.railR.n | GND | black |
 | W11 | bb.railR.p | acs712.vcc | V5 | orange |
 | W12 | bb.railR.n | acs712.gnd | GND | black |
-| W13 | bb.railR.p | relay.jdvcc | V5 | orange |
-| W14 | bb.railR.n | relay.gnd_a | GND | black |
-| W15 | bb.railL.p | relay.vcc | V3V3 | pink |
+| W15 | bb.railR.p | relay.vcc | V5 | orange |
 | W16 | bb.railL.n | relay.gnd | GND | black |
 | W17 | bb.railL.p | mpu6050.vcc | V3V3 | pink |
 | W18 | bb.railL.n | mpu6050.gnd | GND | black |
